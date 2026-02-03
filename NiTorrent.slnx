@@ -1,0 +1,24 @@
+<Solution>
+  <Configurations>
+    <Platform Name="ARM64" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path="../../.editorconfig" />
+    <File Path="../../.github/workflows/dotnet-release.yml" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/NiTorrent.App/NiTorrent.App.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+      <Deploy />
+    </Project>
+    <Project Path="src/NiTorrent.Application/NiTorrent.Application.csproj" Id="b48c459c-669e-457a-bd51-819396ab0970" />
+    <Project Path="src/NiTorrent.Domain/NiTorrent.Domain.csproj" Id="e515169e-7d2f-4644-bec4-1806aa23dbd6" />
+    <Project Path="src/NiTorrent.Infrastructure/NiTorrent.Infrastructure.csproj" Id="bc1fef36-c2a9-4eef-a632-a1ea04208650" />
+    <Project Path="src/NiTorrent.Presentation/NiTorrent.Presentation.csproj" Id="51bc6d76-5b82-4907-ba8d-cf2f4e33a4da" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+</Solution>

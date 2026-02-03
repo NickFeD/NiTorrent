@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  IgnorableNamespaces="uap rescap">
+
+	<Identity
+	  Name="b49f6720-f3e5-4f92-b8ff-06d9a55c56b8"
+	  Publisher="CN=NickFeD"
+	  Version="1.0.0.0"/>
+
+	<mp:PhoneIdentity PhoneProductId="b49f6720-f3e5-4f92-b8ff-06d9a55c56b8" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+
+	<Properties>
+		<DisplayName>NiTorrent.App</DisplayName>
+		<PublisherDisplayName>NickFeD</PublisherDisplayName>
+		<Logo>Assets\Store\StoreLogo.png</Logo>
+	</Properties>
+
+	<Dependencies>
+		<TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0"/>
+		<TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.19041.0"/>
+	</Dependencies>
+
+	<Resources>
+		<Resource Language="x-generate"/>
+	</Resources>
+
+	<Applications>
+		<Application Id="App"
+		  Executable="$targetnametoken$.exe"
+		  EntryPoint="$targetentrypoint$">
+			<uap:VisualElements
+			  DisplayName="NiTorrent.App"
+			  Description="NiTorrent.App"
+			  BackgroundColor="transparent"
+			  Square150x150Logo="Assets\Store\Square150x150Logo.png"
+			  Square44x44Logo="Assets\Store\Square44x44Logo.png">
+				<uap:DefaultTile Wide310x150Logo="Assets\Store\Wide310x150Logo.png"/>
+				<uap:SplashScreen Image="Assets\Store\SplashScreen.png"/>
+			</uap:VisualElements>
+			<Extensions>
+				<desktop4:Extension Category="windows.fileExplorerContextMenus">
+					<desktop4:FileExplorerContextMenus>
+						<desktop5:ItemType Type="Directory">
+							<desktop5:Verb Id="CustomMenu" Clsid="0319c578-9ea4-407d-a1bf-0c691b0b472f"/>
+						</desktop5:ItemType>
+						<desktop5:ItemType Type="*">
+							<desktop5:Verb Id="CustomMenu" Clsid="0319c578-9ea4-407d-a1bf-0c691b0b472f"/>
+						</desktop5:ItemType>
+						<desktop5:ItemType Type="Directory\Background">
+							<desktop5:Verb Id="CustomMenu" Clsid="0319c578-9ea4-407d-a1bf-0c691b0b472f"/>
+						</desktop5:ItemType>
+					</desktop4:FileExplorerContextMenus>
+				</desktop4:Extension>
+				<com:Extension Category="windows.comServer">
+					<com:ComServer>
+						<com:SurrogateServer DisplayName="Custome Context Menu">
+							<com:Class Id="0319c578-9ea4-407d-a1bf-0c691b0b472f" Path="ContextMenuCustomHost.dll" ThreadingModel="STA"/>
+						</com:SurrogateServer>
+					</com:ComServer>
+				</com:Extension>
+				<uap3:Extension Category="windows.appExecutionAlias">
+					<uap3:AppExecutionAlias>
+						<desktop:ExecutionAlias Alias="NiTorrent.App.exe"/>
+					</uap3:AppExecutionAlias>
+				</uap3:Extension>
+      </Extensions>
+		</Application>
+	</Applications>
+
+	<Capabilities>
+		<rescap:Capability Name="runFullTrust"/>
+	</Capabilities>
+</Package>

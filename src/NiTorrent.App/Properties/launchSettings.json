@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NiTorrent.App (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "NiTorrent.App (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

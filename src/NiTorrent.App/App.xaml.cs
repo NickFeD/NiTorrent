@@ -1,0 +1,110 @@
+﻿using NiTorrent.App.Services;
+using NiTorrent.Application.Abstractions;
+using NiTorrent.Infrastructure.DI;
+using NiTorrent.Presentation;
+using NiTorrent.Presentation.Features.Settings;
+using NiTorrent.Presentation.Features.Shell;
+using WinUIApplication = Microsoft.UI.Xaml.Application;
+
+namespace NiTorrent.App;
+
+public partial class App : WinUIApplication
+{
+    public new static App Current => (App)WinUIApplication.Current;
+    public static Window MainWindow = Window.Current;
+    public static IntPtr Hwnd => WinRT.Interop.WindowNative.GetWindowHandle(MainWindow);
+    public IServiceProvider Services { get; }
+    public IJsonNavigationService NavService => GetService<IJsonNavigationService>();
+
+    public static T GetService<T>() where T : class
+    {
+        if ((App.Current as App)!.Services.GetService(typeof(T)) is not T service)
+        {
+            throw new ArgumentException($"{typeof(T)} needs to be registered in ConfigureServices within App.xaml.cs.");
+        }
+
+        return service;
+    }
+
+    public App()
+    {
+        Services = ConfigureServices();
+        this.InitializeComponent();
+    }
+
+    private static IServiceProvider ConfigureServices()
+    {
+        var services = new ServiceCollection();
+
+        // DevWinUI
+        services.AddSingleton<IThemeService, ThemeService>();
+        services.AddSingleton<ContextMenuService>();
+
+        services.AddSingleton<IAppStorageService, AppStorageService>();
+
+        // Наши слои
+        services.AddNiTorrentInfrastructure();
+        services.AddNiTorrentPresentation();
+
+        // App implementations
+        services.AddSingleton<IAppInfo, DevWinAppInfo>();
+        services.AddSingleton<IUriLauncher, WinUriLauncher>();
+        services.AddSingleton<IDialogService, WinUiDialogService>();
+        services.AddSingleton<IUpdateService, DevWinUiUpdateService>();
+        services.AddSingleton<IJsonNavigationService, JsonNavigationService>();
+
+        return services.BuildServiceProvider();
+    }
+
+    protected override void OnLaunched(LaunchActivatedEventArgs args)
+    {
+        MainWindow = new MainWindow();
+
+        MainWindow.Title = MainWindow.AppWindow.Title = ProcessInfoHelper.ProductNameAndVersion;
+        MainWindow.AppWindow.SetIcon("Assets/AppIcon.ico");
+
+        GetService<IThemeService>().Initialize(MainWindow);
+
+        MainWindow.Activate();
+
+        InitializeApp();
+    }
+
+    private async void InitializeApp()
+    {
+        var menuService = GetService<ContextMenuService>();
+        if (menuService != null && RuntimeHelper.IsPackaged())
+        {
+            ContextMenuItem menu = new ContextMenuItem
+            {
+                Title = "Open NiTorrent.App Here",
+                Param = @"""{path}""",
+                AcceptFileFlag = (int)FileMatchFlagEnum.All,
+                AcceptDirectoryFlag = (int)(DirectoryMatchFlagEnum.Directory | DirectoryMatchFlagEnum.Background | DirectoryMatchFlagEnum.Desktop),
+                AcceptMultipleFilesFlag = (int)FilesMatchFlagEnum.Each,
+                Index = 0,
+                Enabled = true,
+                Icon = ProcessInfoHelper.GetFileVersionInfo().FileName,
+                Exe = "NiTorrent.App.exe"
+            };
+
+            await menuService.SaveAsync(menu);
+        }
+        _ = InitializeTorrentEngineAsync();
+    }
+
+
+    private async Task InitializeTorrentEngineAsync()
+    {
+        try
+        {
+            await GetService<ITorrentService>().InitializeAsync();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(ex);
+            // позже можно показать диалог через IDialogService
+        }
+    }
+}
+
