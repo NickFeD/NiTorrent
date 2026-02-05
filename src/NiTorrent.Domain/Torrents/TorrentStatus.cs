@@ -6,14 +6,5 @@ public sealed record TorrentStatus(
     double Progress,
     long DownloadRateBytesPerSecond,
     long UploadRateBytesPerSecond,
-    string? ErrorMessage
-);
-
-public sealed record TorrentSnapshot(
-    TorrentId Id,
-    string Key,
-    string Name,
-    string SavePath,
-    DateTimeOffset AddedAtUtc,
-    TorrentStatus Status
+    string? ErrorMessage = null
 );

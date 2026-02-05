@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
@@ -7,9 +8,9 @@ using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public sealed class MonoTorrentTorrentService : ITorrentService
+public sealed class MonoTorrentService : ITorrentService
 {
-    private readonly ILogger<MonoTorrentTorrentService> _logger;
+    private readonly ILogger<MonoTorrentService> _logger;
     private readonly IAppStorageService _storage;
 
     private readonly string _cacheDir;
@@ -27,8 +28,9 @@ public sealed class MonoTorrentTorrentService : ITorrentService
 
     public event Action? Loaded;
 
-    public MonoTorrentTorrentService(
-    ILogger<MonoTorrentTorrentService> logger,
+    public event Action<IReadOnlyList<TorrentSnapshot>>? UptateTorrent;
+    public MonoTorrentService(
+    ILogger<MonoTorrentService> logger,
     IAppStorageService storage)
     {
         _logger = logger;
@@ -46,11 +48,17 @@ public sealed class MonoTorrentTorrentService : ITorrentService
 
     public Task InitializeAsync(CancellationToken ct = default)
     {
-        lock (_initGate)
-        {
-            _initTask ??= Task.Run(() => LoadEngineInternalAsync(ct), ct);
-            return _initTask;
-        }
+        if (_engine == null)
+            lock (_initGate)
+            {
+                if (_engine is null)
+                {
+                    _initTask ??= LoadEngineInternalAsync(ct);
+                    return _initTask;
+                }
+                
+            }
+        return Task.CompletedTask;
     }
 
     private async Task LoadEngineInternalAsync(CancellationToken ct)
@@ -92,7 +100,6 @@ public sealed class MonoTorrentTorrentService : ITorrentService
 
     public async Task<TorrentPreview> GetPreviewAsync(TorrentSource source, CancellationToken ct = default)
     {
-        await EnsureInitialized(ct);
 
         var torrent = await ResolveTorrentAsync(source, ct);
 
@@ -105,7 +112,6 @@ public sealed class MonoTorrentTorrentService : ITorrentService
 
     public async Task<TorrentId> AddAsync(AddTorrentRequest request, CancellationToken ct = default)
     {
-        await EnsureInitialized(ct);
 
         var torrent = await ResolveTorrentAsync(request.Source, ct);
 
@@ -133,47 +139,48 @@ public sealed class MonoTorrentTorrentService : ITorrentService
 
     public async Task StartAsync(TorrentId id, CancellationToken ct = default)
     {
-        await EnsureInitialized(ct);
         if (_byId.TryGetValue(id, out var m))
         {
             await m.StartAsync();
-            await SaveAsync(ct);
         }
     }
 
     public async Task PauseAsync(TorrentId id, CancellationToken ct = default)
     {
-        await EnsureInitialized(ct);
         if (_byId.TryGetValue(id, out var m))
         {
             await m.PauseAsync();
-            await SaveAsync(ct);
         }
     }
 
     public async Task StopAsync(TorrentId id, CancellationToken ct = default)
     {
-        await EnsureInitialized(ct);
         if (_byId.TryGetValue(id, out var m))
         {
             await m.StopAsync(TimeSpan.FromSeconds(3));
-            await SaveAsync(ct);
         }
     }
 
-    public async Task RemoveAsync(TorrentId id, bool deleteData, CancellationToken ct = default)
+    public async Task RemoveAsync(TorrentId id, bool deleteDownloadedData, CancellationToken ct = default)
     {
-        await EnsureInitialized(ct);
         if (!_byId.TryGetValue(id, out var m))
             return;
 
         await m.StopAsync(TimeSpan.FromSeconds(3));
 
-        var mode = deleteData ? RemoveMode.CacheDataAndDownloadedData : RemoveMode.CacheDataOnly;
+        var mode = deleteDownloadedData ? RemoveMode.CacheDataAndDownloadedData : RemoveMode.CacheDataOnly;
         await Engine.RemoveAsync(m, mode);
 
         _byId.Remove(id);
         await SaveAsync(ct);
+    }
+
+    public void UpdateTorrent()
+    {
+        var items = GetAll();
+
+        if (UptateTorrent is not null)
+            UptateTorrent.Invoke(items);
     }
 
     private async Task SaveAsync(CancellationToken ct)
@@ -194,15 +201,12 @@ public sealed class MonoTorrentTorrentService : ITorrentService
         }
     }
 
-    private async Task EnsureInitialized(CancellationToken ct)
-        => await InitializeAsync(ct);
-
     private async Task<Torrent> ResolveTorrentAsync(TorrentSource source, CancellationToken ct)
     {
         switch (source)
         {
-            case TorrentSource.TorrentFileBytes tf:
-                return await Torrent.LoadAsync(memory: tf.Bytes);
+            case TorrentSource.TorrentFile tf:
+                return await Torrent.LoadAsync(tf.path);
 
             case TorrentSource.Magnet m:
                 var magnet = MagnetLink.Parse(m.Uri);
@@ -232,12 +236,12 @@ public sealed class MonoTorrentTorrentService : ITorrentService
         };
 
         var isComplete = m.PartialProgress >= 100.0;
-        var progress01 = Math.Clamp(m.PartialProgress / 100.0, 0, 1);
+        var progress = m.PartialProgress;
 
         var status = new TorrentStatus(
             phase,
             isComplete,
-            progress01,
+            progress,
             m.Monitor.DownloadRate,
             m.Monitor.UploadRate,
             m.Error?.ToString()
@@ -248,9 +252,11 @@ public sealed class MonoTorrentTorrentService : ITorrentService
             id,
             Key: "",
             Name: m.Name,
+            Size: m.Torrent!.Size,
             SavePath: m.SavePath,
             AddedAtUtc: DateTimeOffset.UtcNow,
             Status: status
         );
     }
+
 }

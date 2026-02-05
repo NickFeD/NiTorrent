@@ -15,6 +15,13 @@
           "Subtitle": "App1",
           "ImagePath": "ms-appx:///Assets/AppIcon.png",
           "HideItem": true
+        },
+        {
+          "UniqueId": "NiTorrent.App.Views.TorrentPage",
+          "Title": "Torrent",
+          "Subtitle": "Torrent",
+          "ImagePath": "ms-appx:///Assets/AppIcon.png",
+          "HideItem": true
         }
 
       ]

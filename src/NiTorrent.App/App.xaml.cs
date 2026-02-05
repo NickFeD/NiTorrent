@@ -2,6 +2,7 @@
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
+using NiTorrent.Presentation.Abstractions;
 using NiTorrent.Presentation.Features.Settings;
 using NiTorrent.Presentation.Features.Shell;
 using WinUIApplication = Microsoft.UI.Xaml.Application;
@@ -47,11 +48,14 @@ public partial class App : WinUIApplication
         services.AddNiTorrentPresentation();
 
         // App implementations
+        services.AddLogging();
         services.AddSingleton<IAppInfo, DevWinAppInfo>();
+        services.AddSingleton<IPickerHelper, WinPickerHelper>();
         services.AddSingleton<IUriLauncher, WinUriLauncher>();
         services.AddSingleton<IDialogService, WinUiDialogService>();
         services.AddSingleton<IUpdateService, DevWinUiUpdateService>();
         services.AddSingleton<IJsonNavigationService, JsonNavigationService>();
+        services.AddSingleton<ITorrentPreviewDialogService, TorrentPreviewDialogService>();
 
         return services.BuildServiceProvider();
     }

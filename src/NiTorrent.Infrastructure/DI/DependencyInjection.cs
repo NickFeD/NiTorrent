@@ -11,8 +11,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton(AppConfigLoader.Load());
         services.AddSingleton<IAppPreferences, JsonAppPreferences>();
-
-        services.AddSingleton<ITorrentService, MonoTorrentTorrentService>();
+        services.AddHostedService<TorrentMonitor>();
+        services.AddSingleton<ITorrentService, MonoTorrentService>();
 
         return services;
     }

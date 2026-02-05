@@ -16,9 +16,5 @@
     <ProjectReference Include="..\NiTorrent.Application\NiTorrent.Application.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Features\Torrents\" />
-  </ItemGroup>
-
 
   </Project>

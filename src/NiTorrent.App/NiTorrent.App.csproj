@@ -49,6 +49,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="Views\TorrentPage.xaml" />
+    <None Remove="Views\TorrentPreviewWindow.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
 	<Folder Include="Assets\NavViewMenu\" />
   </ItemGroup>
 
@@ -86,6 +91,14 @@
   <ItemGroup>
     <ProjectReference Include="..\NiTorrent.Infrastructure\NiTorrent.Infrastructure.csproj" />
     <ProjectReference Include="..\NiTorrent.Presentation\NiTorrent.Presentation.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Update="Views\TorrentPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </AdditionalFiles>
+    <AdditionalFiles Update="Views\TorrentPreviewWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </AdditionalFiles>
   </ItemGroup>
 
   <!-- 
