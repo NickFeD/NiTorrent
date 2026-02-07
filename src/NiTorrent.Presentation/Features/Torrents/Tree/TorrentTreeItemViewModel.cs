@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace NiTorrent.Presentation.Features.Torrents.Tree;
 
@@ -10,7 +11,7 @@ namespace NiTorrent.Presentation.Features.Torrents.Tree;
 /// ViewModel-узел дерева для TreeView (ItemsSource).
 /// Не содержит WinUI-типов (TreeViewNode и т.п.).
 /// </summary>
-public sealed class TorrentTreeItemViewModel : ObservableObject
+public sealed partial class TorrentTreeItemViewModel : ObservableObject
 {
     private readonly TorrentTreeModel _tree;
     private readonly FolderModel? _folder;
@@ -25,6 +26,8 @@ public sealed class TorrentTreeItemViewModel : ObservableObject
     public string Name { get; }
     public bool IsFolder => _folder != null;
     public bool IsFile => _file != null;
+    public string TypeGlyph => IsFolder ? "\uE8B7" : "\uE7C3";
+
     public bool IsPlaceholder { get; }
 
     public bool CanToggle => !IsPlaceholder;
@@ -47,52 +50,53 @@ public sealed class TorrentTreeItemViewModel : ObservableObject
 
             return _file?.IsSelected;
         }
-        set
-        {
-            if (IsPlaceholder)
-                return;
-
-            if (_folder != null)
-            {
-                // В UI при IsThreeState=true чекбокс может попытаться выставить null.
-                // Мы считаем null "вводом" (toggle) и переводим в bool.
-                var current = _folder.CheckState;
-                bool target = value switch
-                {
-                    true => true,
-                    false => false,
-                    null => current != true
-                };
-
-                if (current == target)
-                    return;
-
-                _tree.SetFolderSelection(_folder, target);
-
-                // пересчитать родителей (у потомков уже выставили CheckState в SetFolderSelection)
-                _tree.UpdateSelectionUpwards(_folder.Parent);
-
-                // обновить UI для уже загруженной части дерева
-                RaiseCheckStateChangedLoadedSubtree();
-                Parent?.RaiseCheckStateChangedUpwards();
-                return;
-            }
-
-            if (_file != null)
-            {
-                bool target = value == true;
-                if (_file.IsSelected == target)
-                    return;
-
-                _file.IsSelected = target;
-                _tree.UpdateSelectionUpwards(_file.Parent);
-
-                OnPropertyChanged(nameof(IsChecked));
-                Parent?.RaiseCheckStateChangedUpwards();
-            }
-        }
     }
 
+    [RelayCommand]
+    private void Toggle(bool? isChecked)
+    {
+        if (IsPlaceholder)
+            return;
+
+        if (_folder != null)
+        {
+            // В UI при IsThreeState=true чекбокс может попытаться выставить null.
+            // Мы считаем null "вводом" (toggle) и переводим в bool.
+            var current = _folder.CheckState;
+            bool target = isChecked switch
+            {
+                true => true,
+                false => false,
+                null => current != true
+            };
+
+            if (current == target)
+                return;
+
+            _tree.SetFolderSelection(_folder, target);
+
+            // пересчитать родителей (у потомков уже выставили CheckState в SetFolderSelection)
+            _tree.UpdateSelectionUpwards(_folder.Parent);
+
+            // обновить UI для уже загруженной части дерева
+            RaiseCheckStateChangedLoadedSubtree();
+            Parent?.RaiseCheckStateChangedUpwards();
+            return;
+        }
+
+        if (_file != null)
+        {
+            bool target = isChecked == true;
+            if (_file.IsSelected == target)
+                return;
+
+            _file.IsSelected = target;
+            _tree.UpdateSelectionUpwards(_file.Parent);
+
+            OnPropertyChanged(nameof(IsChecked));
+            Parent?.RaiseCheckStateChangedUpwards();
+        }
+    }
     private TorrentTreeItemViewModel(
         TorrentTreeModel tree,
         string name,

@@ -1,6 +1,6 @@
-using System;
+﻿using System;
 
-namespace NTorrent.App.Styles;
+namespace NiTorrent.Presentation;
 
 public static class SizeFormatter
 {

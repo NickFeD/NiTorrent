@@ -1,4 +1,8 @@
-﻿using NiTorrent.App.Services;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.UI.Dispatching;
+using NiTorrent.App.Services;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
@@ -11,6 +15,7 @@ namespace NiTorrent.App;
 
 public partial class App : WinUIApplication
 {
+    private IHost _host;
     public new static App Current => (App)WinUIApplication.Current;
     public static Window MainWindow = Window.Current;
     public static IntPtr Hwnd => WinRT.Interop.WindowNative.GetWindowHandle(MainWindow);
@@ -29,14 +34,19 @@ public partial class App : WinUIApplication
 
     public App()
     {
-        Services = ConfigureServices();
+        _host = Microsoft.Extensions.Hosting.Host
+           .CreateDefaultBuilder()
+           .UseContentRoot(AppContext.BaseDirectory)
+           .ConfigureServices(ConfigureServices)
+           .Build();
+        Services = _host.Services;
+
         this.InitializeComponent();
+
     }
 
-    private static IServiceProvider ConfigureServices()
+    private static void ConfigureServices(HostBuilderContext contexts, IServiceCollection services)
     {
-        var services = new ServiceCollection();
-
         // DevWinUI
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<ContextMenuService>();
@@ -49,6 +59,12 @@ public partial class App : WinUIApplication
 
         // App implementations
         services.AddLogging();
+        services.AddSingleton<UiDispatcherHolder>();
+        services.AddSingleton<IUiDispatcher>(sp =>
+        {
+            var holder = sp.GetRequiredService<UiDispatcherHolder>();
+            return new WinUiDispatcher(holder.Queue ?? throw new InvalidOperationException("UI Dispatcher not initialized"));
+        });
         services.AddSingleton<IAppInfo, DevWinAppInfo>();
         services.AddSingleton<IPickerHelper, WinPickerHelper>();
         services.AddSingleton<IUriLauncher, WinUriLauncher>();
@@ -56,12 +72,11 @@ public partial class App : WinUIApplication
         services.AddSingleton<IUpdateService, DevWinUiUpdateService>();
         services.AddSingleton<IJsonNavigationService, JsonNavigationService>();
         services.AddSingleton<ITorrentPreviewDialogService, TorrentPreviewDialogService>();
-
-        return services.BuildServiceProvider();
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+
         MainWindow = new MainWindow();
 
         MainWindow.Title = MainWindow.AppWindow.Title = ProcessInfoHelper.ProductNameAndVersion;
@@ -71,11 +86,20 @@ public partial class App : WinUIApplication
 
         MainWindow.Activate();
 
+        MainWindow.Closed += async (_, __) =>
+        {
+            await _host.StopAsync();
+            _host.Dispose();
+        };
+        var holder = GetService<UiDispatcherHolder>();
+        holder.Initialize(DispatcherQueue.GetForCurrentThread());
+
         InitializeApp();
     }
 
     private async void InitializeApp()
     {
+        await _host.StartAsync();
         var menuService = GetService<ContextMenuService>();
         if (menuService != null && RuntimeHelper.IsPackaged())
         {

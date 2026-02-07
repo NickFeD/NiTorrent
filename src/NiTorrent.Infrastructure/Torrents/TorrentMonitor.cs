@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NiTorrent.Application.Abstractions;
-using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
@@ -18,7 +17,7 @@ public sealed class TorrentMonitor : BackgroundService
     {
         using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
 
-        while (await timer.WaitForNextTickAsync(ct))
+        while (await timer.WaitForNextTickAsync(ct) && !ct.IsCancellationRequested)
         {
             _torrentService.UpdateTorrent();
         }

@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace NiTorrent.Presentation.Features.Torrents.Tree;
 
-public sealed class FolderModel
+public sealed partial class FolderModel : ObservableObject
 {
     public string Name { get; }
     public FolderModel? Parent { get; internal set; }
@@ -15,7 +16,8 @@ public sealed class FolderModel
     /// - false : no files are selected
     /// - null  : mixed selection (indeterminate)
     /// </summary>
-    public bool? CheckState { get; set; } = true;
+    [ObservableProperty]
+    public partial bool? CheckState { get; set; } = true;
     public bool IsSorted { get; set; } = false;
 
     public FolderModel(string name)

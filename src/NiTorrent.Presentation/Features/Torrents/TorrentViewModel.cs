@@ -17,10 +17,12 @@ public partial class TorrentViewModel : ObservableObject
     private readonly ITorrentService _torrentService;
     private readonly IPickerHelper _pickerHelper;
     private readonly ITorrentPreviewDialogService _previewDialog;
+    private readonly IUiDispatcher _ui;
 
-    [ObservableProperty]
-    public partial ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
+    public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
+
     private Dictionary<TorrentId,TorrentItemViewModel> _torrents = new();
+    public bool IsEmpty => Torrents.Count() < 1;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanRemove))]
@@ -40,8 +42,10 @@ public partial class TorrentViewModel : ObservableObject
     public TorrentViewModel(
         ITorrentPreviewDialogService previewDialog,
         ITorrentService torrentService,
-        IPickerHelper pickerHelper)
+        IPickerHelper pickerHelper,
+        IUiDispatcher ui)
     {
+        _ui = ui;
         _torrentService = torrentService;
         _pickerHelper = pickerHelper;
         _previewDialog = previewDialog;
@@ -50,19 +54,25 @@ public partial class TorrentViewModel : ObservableObject
 
     private void UptateTorrent(IReadOnlyList<Domain.Torrents.TorrentSnapshot> torrents)
     {
-        foreach (var torrent in torrents)
+        _ui.TryEnqueue(() =>
         {
-            if (_torrents.TryGetValue(torrent.Id, out var oldTorrent))
+            foreach (var torrent in torrents)
             {
-                oldTorrent.Update(torrent);
+                if (_torrents.TryGetValue(torrent.Id, out var oldTorrent))
+                {
+                    oldTorrent.Update(torrent);
+                    PauseCommand.NotifyCanExecuteChanged();
+                    OpenFolderCommand.NotifyCanExecuteChanged();
+                }
+                else
+                {
+                    var newTorrent = new TorrentItemViewModel(torrent);
+                    _torrents.Add(newTorrent.Id, newTorrent);
+                    Torrents.Add(newTorrent);
+                }
             }
-            else
-            {
-                 var newTorrent = new TorrentItemViewModel(torrent);
-                _torrents.Add(newTorrent.Id, newTorrent);
-                Torrents.Add(newTorrent);
-            }
-        }
+            OnPropertyChanged(nameof(IsEmpty));
+        });
     }
 
     partial void OnSelectedTorrentChanged(TorrentItemViewModel? value)
@@ -90,7 +100,10 @@ public partial class TorrentViewModel : ObservableObject
         
         var torrent = new TorrentFile(path);
         var torrentPreview = await _torrentService.GetPreviewAsync(torrent);
-        await _previewDialog.ShowAsync(torrentPreview);
+        var torrentPreviewDialogResult = await _previewDialog.ShowAsync(torrentPreview);
+        if (torrentPreviewDialogResult is null)
+            return;
+        await _torrentService.AddAsync(new(torrent,torrentPreviewDialogResult.OutputFolder,torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
     }
 
     public async Task AddMagnet(string magnet)
@@ -98,6 +111,10 @@ public partial class TorrentViewModel : ObservableObject
         var torrent = new Magnet(magnet);
         var torrentPreview = await _torrentService.GetPreviewAsync(torrent);
         await _previewDialog.ShowAsync(torrentPreview);
+        var torrentPreviewDialogResult = await _previewDialog.ShowAsync(torrentPreview);
+        if (torrentPreviewDialogResult is null)
+            return;
+        await _torrentService.AddAsync(new(torrent, torrentPreviewDialogResult.OutputFolder, torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
     }
 
     // ---------------- COMMAND LOGIC ----------------
@@ -136,13 +153,13 @@ public partial class TorrentViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanRemove))]
-    private async Task RemoveTorrent(bool isDeleteData)
+    private async Task RemoveTorrent(string isDeleteData)
     {
         if (SelectedTorrent == null) return;
 
         var toRemove = SelectedTorrent;
 
-        await _torrentService.RemoveAsync(SelectedTorrent.Id,isDeleteData);
+        await _torrentService.RemoveAsync(SelectedTorrent.Id,isDeleteData == "1");
 
         toRemove.Dispose();
         Torrents.Remove(toRemove);

@@ -16,6 +16,7 @@ public sealed partial class TorrentPage : Page
     {
         InitializeComponent();
         ViewModel = App.GetService<TorrentViewModel>();
+
     }
 
 

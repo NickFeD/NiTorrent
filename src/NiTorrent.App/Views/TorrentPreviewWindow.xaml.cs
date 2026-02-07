@@ -1,9 +1,11 @@
-﻿using NiTorrent.Presentation.Features.Torrents;
+﻿using Microsoft.UI.Windowing;
+using NiTorrent.Presentation.Features.Torrents;
 using NiTorrent.Presentation.Features.Torrents.Tree;
+using WinUIEx;
 
 namespace NiTorrent.App.Views;
 
-public sealed partial class TorrentPreviewWindow : Window
+public sealed partial class TorrentPreviewWindow : WindowEx
 {
     public TorrentPreviewViewModel ViewModel { get; }
     public bool Result { get; private set; } = false;
@@ -15,7 +17,9 @@ public sealed partial class TorrentPreviewWindow : Window
         ViewModel = vm;
         InitializeComponent();
         Root.DataContext = ViewModel;
-
+        ExtendsContentIntoTitleBar = true;
+        SetTitleBar(AppTitleBar);
+        AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
     }
     private async void FilesTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
     {

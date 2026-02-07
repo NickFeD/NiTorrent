@@ -49,8 +49,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="Views\TorrentPage.xaml" />
-    <None Remove="Views\TorrentPreviewWindow.xaml" />
+    <AdditionalFiles Remove="Views\TorrentPage.xaml" />
+    <AdditionalFiles Remove="Views\TorrentPreviewWindow.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -87,18 +87,19 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="nucs.JsonSettings" Version="2.0.2" />
     <PackageReference Include="nucs.JsonSettings.AutoSaveGenerator" Version="2.0.4" />
+    <PackageReference Include="WinUIEx" Version="2.9.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NiTorrent.Infrastructure\NiTorrent.Infrastructure.csproj" />
     <ProjectReference Include="..\NiTorrent.Presentation\NiTorrent.Presentation.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <AdditionalFiles Update="Views\TorrentPage.xaml">
+    <None Update="Views\TorrentPage.xaml">
       <Generator>MSBuild:Compile</Generator>
-    </AdditionalFiles>
-    <AdditionalFiles Update="Views\TorrentPreviewWindow.xaml">
+    </None>
+    <None Update="Views\TorrentPreviewWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
-    </AdditionalFiles>
+    </None>
   </ItemGroup>
 
   <!-- 

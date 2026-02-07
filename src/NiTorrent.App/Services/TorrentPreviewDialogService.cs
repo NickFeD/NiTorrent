@@ -23,7 +23,6 @@ public sealed class TorrentPreviewDialogService : ITorrentPreviewDialogService
 
         // окно — чистая WinUI-деталь (только App слой)
         var window = new Views.TorrentPreviewWindow(vm);
-
         void ClosedHandler(object? s, WindowEventArgs e)
         {
             window.Closed -= ClosedHandler;
@@ -36,7 +35,7 @@ public sealed class TorrentPreviewDialogService : ITorrentPreviewDialogService
 
             tcs.TrySetResult(new TorrentPreviewDialogResult(
                 SelectedFilePaths: window.SelectedFilePaths,
-                OutputFolder: vm.OutputFolder
+                OutputFolder:vm.OutputFolder
             ));
         }
 
