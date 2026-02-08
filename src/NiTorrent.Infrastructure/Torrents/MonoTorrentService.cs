@@ -48,16 +48,12 @@ public sealed class MonoTorrentService : ITorrentService
 
     public Task InitializeAsync(CancellationToken ct = default)
     {
-        if (_engine == null)
-            lock (_initGate)
-            {
-                if (_engine is null)
-                {
-                    _initTask ??= LoadEngineInternalAsync(ct);
-                    return _initTask;
-                }
+        if (_engine is null)
+        {
+            _initTask ??= LoadEngineInternalAsync(ct);
+            return _initTask;
+        }
                 
-            }
         return Task.CompletedTask;
     }
 
@@ -206,12 +202,15 @@ public sealed class MonoTorrentService : ITorrentService
         switch (source)
         {
             case TorrentSource.TorrentFile tf:
-                return await Torrent.LoadAsync(tf.path);
+                return await Torrent.LoadAsync(tf.Path);
 
             case TorrentSource.Magnet m:
                 var magnet = MagnetLink.Parse(m.Uri);
                 var metadata = await Engine.DownloadMetadataAsync(magnet, ct); // ReadOnlyMemory<byte>
                 return await Torrent.LoadAsync(memory: metadata.ToArray());
+
+            case TorrentSource.TorrentBytes b:
+                return  await Torrent.LoadAsync(b.Bytes);
 
             default:
                 throw new ArgumentOutOfRangeException(nameof(source));

@@ -1,9 +1,10 @@
 ﻿using Microsoft.UI.Windowing;
 using NiTorrent.Presentation.Features.Shell;
+using WinUIEx;
 
 namespace NiTorrent.App.Views;
 
-public sealed partial class MainWindow : Window
+public sealed partial class MainWindow : WindowEx
 {
     public MainViewModel ViewModel { get; }
     public MainWindow()

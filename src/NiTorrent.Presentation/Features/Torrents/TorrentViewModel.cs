@@ -29,7 +29,7 @@ public partial class TorrentViewModel : ObservableObject
     public partial TorrentItemViewModel? SelectedTorrent { get; set; }
 
     [ObservableProperty]
-    public partial string StatusText { get; set; } = "������";
+    public partial string StatusText { get; set; } = "LoadingSystem";
 
     [ObservableProperty]
     public partial string TotalDownloadSpeed { get; set; } = "v 0 KB/s";
@@ -50,14 +50,24 @@ public partial class TorrentViewModel : ObservableObject
         _pickerHelper = pickerHelper;
         _previewDialog = previewDialog;
         _torrentService.UptateTorrent += UptateTorrent;
+        _torrentService.Loaded += TorrentServiceLoaded;
+    }
+
+    private void TorrentServiceLoaded()
+    {
+        StatusText = "Ok";
     }
 
     private void UptateTorrent(IReadOnlyList<Domain.Torrents.TorrentSnapshot> torrents)
     {
         _ui.TryEnqueue(() =>
         {
+            long totalDownloadSpeed = 0;
+            long totalUploadSpeed = 0;
             foreach (var torrent in torrents)
             {
+                totalDownloadSpeed += torrent.Status.DownloadRateBytesPerSecond;
+                totalUploadSpeed += torrent.Status.UploadRateBytesPerSecond;
                 if (_torrents.TryGetValue(torrent.Id, out var oldTorrent))
                 {
                     oldTorrent.Update(torrent);
@@ -71,6 +81,8 @@ public partial class TorrentViewModel : ObservableObject
                     Torrents.Add(newTorrent);
                 }
             }
+            TotalDownloadSpeed = SizeFormatter.FormatSpeed(totalDownloadSpeed);
+            TotalUploadSpeed = SizeFormatter.FormatSpeed(totalUploadSpeed);
             OnPropertyChanged(nameof(IsEmpty));
         });
     }

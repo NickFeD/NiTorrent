@@ -8,3 +8,4 @@ public sealed class WinUriLauncher : IUriLauncher
     public Task LaunchAsync(Uri uri, CancellationToken ct = default)
         => Launcher.LaunchUriAsync(uri).AsTask(ct);
 }
+
