@@ -115,7 +115,7 @@ public partial class TorrentViewModel : ObservableObject
         var torrentPreviewDialogResult = await _previewDialog.ShowAsync(torrentPreview);
         if (torrentPreviewDialogResult is null)
             return;
-        await _torrentService.AddAsync(new(torrent,torrentPreviewDialogResult.OutputFolder,torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
+        _= _torrentService.AddAsync(new(torrent,torrentPreviewDialogResult.OutputFolder,torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
     }
 
     public async Task AddMagnet(string magnet)
@@ -126,7 +126,7 @@ public partial class TorrentViewModel : ObservableObject
         var torrentPreviewDialogResult = await _previewDialog.ShowAsync(torrentPreview);
         if (torrentPreviewDialogResult is null)
             return;
-        await _torrentService.AddAsync(new(torrent, torrentPreviewDialogResult.OutputFolder, torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
+        _ = _torrentService.AddAsync(new(torrent, torrentPreviewDialogResult.OutputFolder, torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
     }
 
     // ---------------- COMMAND LOGIC ----------------

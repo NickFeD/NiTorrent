@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Presentation.Features.Torrents.Tree;
 
@@ -17,20 +18,20 @@ public partial class TorrentPreviewViewModel : ObservableObject
     public TorrentTreeModel Tree { get; }
     public ObservableCollection<TorrentTreeItemViewModel> RootItems { get; } = new();
 
-    public TorrentPreviewViewModel(TorrentPreview torrentPreview)
+    public TorrentPreviewViewModel(TorrentPreview torrentPreview, ITorrentPreferences prefs)
     {
         Torrent = torrentPreview;
 
-        OutputFolder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            "Downloads"
-        );
-        // Важно: FullPath в TorrentFileEntry содержит file.Path из MonoTorrent
+        OutputFolder = string.IsNullOrWhiteSpace(prefs.DefaultDownloadPath)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
+            : prefs.DefaultDownloadPath;
+
         Tree = new TorrentTreeModel(torrentPreview.Files.Select(f => f.FullPath));
 
         foreach (var root in TorrentTreeItemViewModel.CreateRootItems(Tree))
             RootItems.Add(root);
     }
+
 
 
     private string FormatSize(long bytes)

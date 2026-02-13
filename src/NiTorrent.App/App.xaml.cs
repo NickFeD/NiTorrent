@@ -104,9 +104,6 @@ public partial class App : WinUIApplication
         // Главный экземпляр: слушаем будущие активации (файлы/протоколы)
         mainInstance.Activated += (_, e) => _ = HandleActivationAsync(e);
 
-        // Обработать “текущую” активацию (если запуск был через .torrent)
-        _ = HandleActivationAsync(mainInstance.GetActivatedEventArgs());
-
         MainWindow = new MainWindow();
 
         MainWindow.Title = MainWindow.AppWindow.Title = ProcessInfoHelper.ProductNameAndVersion;
@@ -116,13 +113,18 @@ public partial class App : WinUIApplication
 
         MainWindow.Activate();
 
+
+        var holder = GetService<UiDispatcherHolder>();
+        holder.Initialize(DispatcherQueue.GetForCurrentThread());
+
         var tray = GetService<ITrayService>();
         tray.Initialize();
         tray.OpenRequested += ShowMainWindow;
         tray.ExitRequested += ExitAsync;
         // "Закрыть" = спрятать в трей
-        MainWindow.AppWindow.Closing += (_, e) =>
+        MainWindow.AppWindow.Closing += (w, e) =>
         {
+            GetService<ITorrentService>().SaveAsync().Wait();
             if (_isExiting)
                 return;
 
@@ -131,13 +133,12 @@ public partial class App : WinUIApplication
             GetService<ITrayService>().SetVisible(true);
         };
 
-        var holder = GetService<UiDispatcherHolder>();
-        holder.Initialize(DispatcherQueue.GetForCurrentThread());
-
         InitializeApp();
+        _ = HandleActivationAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
     }
     private async Task HandleActivationAsync(AppActivationArguments args)
     {
+
         if (args.Kind != ExtendedActivationKind.File)
             return;
 
@@ -160,7 +161,7 @@ public partial class App : WinUIApplication
                     return;
                 await torrentService.AddAsync(new(new TorrentSource.TorrentFile(file.Path), torrentPreviewDialogResult.OutputFolder, torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
             }
-        }
+        } 
     }
 
     private async void InitializeApp()

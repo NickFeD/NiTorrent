@@ -13,8 +13,9 @@ public static class DependencyInjection
         services.AddTransient<MainViewModel>();
 
         // Settings
-        services.AddTransient<AppUpdateSettingViewModel>();
         services.AddTransient<AboutUsSettingViewModel>();
+        services.AddTransient<TorrentSettingsViewModel>();
+        services.AddTransient<AppUpdateSettingViewModel>();
 
         // Torrents
         services.AddTransient<TorrentViewModel>();

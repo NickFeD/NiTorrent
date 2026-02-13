@@ -15,7 +15,7 @@ public sealed class TorrentMonitor : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
 
         while (await timer.WaitForNextTickAsync(ct) && !ct.IsCancellationRequested)
         {

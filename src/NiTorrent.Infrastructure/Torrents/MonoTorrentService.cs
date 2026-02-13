@@ -1,9 +1,10 @@
-﻿using System.Threading.Channels;
+﻿using System.Reflection;
 using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Domain.Settings;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
@@ -12,6 +13,9 @@ public sealed class MonoTorrentService : ITorrentService
 {
     private readonly ILogger<MonoTorrentService> _logger;
     private readonly IAppStorageService _storage;
+    private readonly ITorrentPreferences _prefs;
+
+    private readonly SemaphoreSlim _initLock = new(1, 1);
 
     private readonly string _cacheDir;
     private readonly string _stateFilePath;
@@ -31,10 +35,12 @@ public sealed class MonoTorrentService : ITorrentService
     public event Action<IReadOnlyList<TorrentSnapshot>>? UptateTorrent;
     public MonoTorrentService(
     ILogger<MonoTorrentService> logger,
-    IAppStorageService storage)
+    IAppStorageService storage,
+    ITorrentPreferences prefs)
     {
         _logger = logger;
         _storage = storage;
+        _prefs = prefs;
 
         _cacheDir = _storage.GetCachePath(@"Torrents\cache");
         _stateFilePath = _storage.GetLocalPath(@"Torrents\torrent_engine.dat");
@@ -46,16 +52,7 @@ public sealed class MonoTorrentService : ITorrentService
     private ClientEngine Engine
         => _engine ?? throw new InvalidOperationException("Torrent engine is not initialized yet.");
 
-    public Task InitializeAsync(CancellationToken ct = default)
-    {
-        if (_engine is null)
-        {
-            _initTask ??= LoadEngineInternalAsync(ct);
-            return _initTask;
-        }
-                
-        return Task.CompletedTask;
-    }
+    public Task InitializeAsync(CancellationToken ct = default) => EnsureStartedAsync(ct);
 
     private async Task LoadEngineInternalAsync(CancellationToken ct)
     {
@@ -69,7 +66,8 @@ public sealed class MonoTorrentService : ITorrentService
             {
                 var settings = new EngineSettingsBuilder
                 {
-                    CacheDirectory = _cacheDir
+                    CacheDirectory = _cacheDir,
+                    DhtEndPoint
                 }.ToSettings();
 
                 _engine = new ClientEngine(settings);
@@ -87,6 +85,24 @@ public sealed class MonoTorrentService : ITorrentService
             throw;
         }
     }
+    private Task EnsureStartedAsync(CancellationToken ct = default)
+    {
+        if (_initTask is not null) return _initTask;
+
+        return StartOnceAsync(ct);
+
+        async Task StartOnceAsync(CancellationToken ct = default)
+        {
+            await _initLock.WaitAsync();
+            try
+            {
+                _initTask ??= LoadEngineInternalAsync(ct);
+            }
+            finally { _initLock.Release(); }
+
+            await _initTask;
+        }
+    }
 
     public IReadOnlyList<TorrentSnapshot> GetAll()
         => _byId.Select(kv => BuildSnapshot(kv.Key, kv.Value)).ToList();
@@ -96,7 +112,7 @@ public sealed class MonoTorrentService : ITorrentService
 
     public async Task<TorrentPreview> GetPreviewAsync(TorrentSource source, CancellationToken ct = default)
     {
-
+        await EnsureStartedAsync(ct);
         var torrent = await ResolveTorrentAsync(source, ct);
 
         var files = torrent.Files
@@ -108,30 +124,45 @@ public sealed class MonoTorrentService : ITorrentService
 
     public async Task<TorrentId> AddAsync(AddTorrentRequest request, CancellationToken ct = default)
     {
+        var torrent = await ResolveTorrentAsync(request.Source, ct).ConfigureAwait(false);
 
-        var torrent = await ResolveTorrentAsync(request.Source, ct);
+        var manager = await Engine.AddAsync(torrent, request.SavePath).ConfigureAwait(false);
 
-        var manager = await Engine.AddAsync(torrent, request.SavePath);
-
-        // выбор файлов — как у тебя в UTorrent: через SetFilePriorityAsync и file.Path
         if (request.SelectedFilePaths is { Count: > 0 })
         {
             var selected = new HashSet<string>(request.SelectedFilePaths, StringComparer.OrdinalIgnoreCase);
 
+            // батчами, чтобы не породить шторм тасков
+            var batch = new List<Task>(256);
             foreach (var file in manager.Files)
             {
-                if (!selected.Contains(file.Path))
-                    await manager.SetFilePriorityAsync(file, Priority.DoNotDownload);
+                if (selected.Contains(file.Path)) continue;
+
+                batch.Add(manager.SetFilePriorityAsync(file, Priority.DoNotDownload));
+                if (batch.Count >= 200)
+                {
+                    await Task.WhenAll(batch).ConfigureAwait(false);
+                    batch.Clear();
+                }
             }
+
+            if (batch.Count > 0)
+                await Task.WhenAll(batch).ConfigureAwait(false);
         }
 
-        await manager.StartAsync();
-        await SaveAsync(ct);
-
+        // сначала зарегистрируй в словарях, чтобы UI мог показать сразу
         var id = new TorrentId(Guid.NewGuid());
         _byId[id] = manager;
+
+        // старт — лучше не на UI контексте
+        await manager.StartAsync().ConfigureAwait(false);
+
+        // сохранение — не обязано быть блокирующим перед возвратом id
+        _ = Task.Run(() => SaveAsync(ct), CancellationToken.None);
+
         return id;
     }
+
 
     public async Task StartAsync(TorrentId id, CancellationToken ct = default)
     {
@@ -179,7 +210,7 @@ public sealed class MonoTorrentService : ITorrentService
             UptateTorrent.Invoke(items);
     }
 
-    private async Task SaveAsync(CancellationToken ct)
+    public async Task SaveAsync(CancellationToken ct = default)
     {
         await _saveGate.WaitAsync(ct);
         try
@@ -210,12 +241,42 @@ public sealed class MonoTorrentService : ITorrentService
                 return await Torrent.LoadAsync(memory: metadata.ToArray());
 
             case TorrentSource.TorrentBytes b:
-                return  await Torrent.LoadAsync(b.Bytes);
+                return await Torrent.LoadAsync(b.Bytes);
 
             default:
                 throw new ArgumentOutOfRangeException(nameof(source));
         }
     }
+
+    public async Task ApplySettingsAsync()
+    {
+        var b = new EngineSettingsBuilder(Engine.Settings)
+        {
+            CacheDirectory = _cacheDir,
+
+            MaximumDownloadRate = _prefs.MaximumDownloadRate,
+            MaximumUploadRate = _prefs.MaximumUploadRate,
+
+            MaximumDiskReadRate = _prefs.MaximumDiskReadRate,
+            MaximumDiskWriteRate = _prefs.MaximumDiskWriteRate,
+
+            AllowPortForwarding = _prefs.AllowPortForwarding,
+            AllowLocalPeerDiscovery = _prefs.AllowLocalPeerDiscovery,
+
+            MaximumConnections = _prefs.MaximumConnections,
+            MaximumOpenFiles = _prefs.MaximumOpenFiles,
+
+            AutoSaveLoadFastResume = _prefs.AutoSaveLoadFastResume,
+            AutoSaveLoadMagnetLinkMetadata = _prefs.AutoSaveLoadMagnetLinkMetadata,
+
+            FastResumeMode = _prefs.FastResumeMode == TorrentFastResumeMode.Accurate
+                ? MonoTorrent.Client.FastResumeMode.Accurate
+                : MonoTorrent.Client.FastResumeMode.BestEffort
+        };
+
+        await Engine.UpdateSettingsAsync(b.ToSettings());
+    }
+
 
     private static TorrentSnapshot BuildSnapshot(TorrentId id, TorrentManager m)
     {

@@ -7,5 +7,4 @@ public interface ITrayService : IDisposable
 
     void Initialize();
     void SetVisible(bool visible);
-    void UpdateTotals(string totalDownload, string totalUpload);
 }

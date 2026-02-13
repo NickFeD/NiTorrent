@@ -1,18 +1,28 @@
-﻿using NiTorrent.Presentation.Abstractions;
+﻿using NiTorrent.Application.Abstractions;
+using NiTorrent.Domain.Torrents;
+using NiTorrent.Presentation;
+using NiTorrent.Presentation.Abstractions;
 using WinUIEx;
 
 public sealed partial class TrayService : ITrayService, IDisposable
 {
+    private readonly ITorrentService _torrentService;
+    private readonly IUiDispatcher _ui;
+
     private TrayIcon? _tray;
-
-    private string _totalDl = "0 B/s";
-    private string _totalUl = "0 B/s";
-
-    // Чтобы обновлять пункт меню со скоростями без пересоздания
     private MenuFlyoutItem? _speedsItem;
 
+    private string _lastDl = "0 B/s";
+    private string _lastUl = "0 B/s";
+
     public event Action? OpenRequested;
-    public event Func<System.Threading.Tasks.Task>? ExitRequested;
+    public event Func<Task>? ExitRequested;
+
+    public TrayService(ITorrentService torrentService, IUiDispatcher ui)
+    {
+        _torrentService = torrentService;
+        _ui = ui;
+    }
 
     public void Initialize()
     {
@@ -28,8 +38,9 @@ public sealed partial class TrayService : ITrayService, IDisposable
         };
 
         _tray.Selected += (_, __) => OpenRequested?.Invoke();
+        _tray.ContextMenu += (_, e) => e.Flyout = BuildMenuFlyout();
 
-        _tray.ContextMenu += (_, e) => ShowContextMenu(e);
+        _torrentService.UptateTorrent += OnTorrentsUpdated;
     }
 
     public void SetVisible(bool visible)
@@ -37,42 +48,56 @@ public sealed partial class TrayService : ITrayService, IDisposable
         if (_tray != null)
             _tray.IsVisible = visible;
     }
-    public void UpdateTotals(string totalDownload, string totalUpload)
-    {
-        _totalDl = totalDownload;
-        _totalUl = totalUpload;
 
+    private void OnTorrentsUpdated(IReadOnlyList<TorrentSnapshot> snapshots)
+    {
+        long totalDl = 0;
+        long totalUl = 0;
+
+        foreach (var s in snapshots)
+        {
+            totalDl += s.Status.DownloadRateBytesPerSecond;
+            totalUl += s.Status.UploadRateBytesPerSecond;
+        }
+
+        _lastDl = SizeFormatter.FormatSpeed(totalDl);
+        _lastUl = SizeFormatter.FormatSpeed(totalUl);
+
+        // важно: обновлять UI безопасно
+        _ui.EnqueueAsync(ApplyUi).Wait();
+    }
+
+    private void ApplyUi()
+    {
         if (_tray != null)
             _tray.Tooltip = BuildTooltip();
 
         if (_speedsItem != null)
-            _speedsItem.Text = $"↓ {_totalDl}    ↑ {_totalUl}";
+            _speedsItem.Text = $"↓ {_lastDl}    ↑ {_lastUl}";
     }
 
     private string BuildTooltip()
-        => $"NiTorrent • ↓ {_totalDl} • ↑ {_totalUl}";
-
-    private void ShowContextMenu(TrayIconEventArgs e)
-    {
-        var flyout = BuildMenuFlyout();
-        e.Flyout = flyout;
-    }
+        => $"NiTorrent • ↓ {_lastDl} • ↑ {_lastUl}";
 
     private MenuFlyout BuildMenuFlyout()
     {
         var flyout = new MenuFlyout();
 
-        var open = new MenuFlyoutItem { Text = "Открыть" };
-        open.Click += (_, __) => OpenRequested?.Invoke();
-
         _speedsItem = new MenuFlyoutItem
         {
-            Text = $"↓ {_totalDl}    ↑ {_totalUl}",
+            Text = $"↓ {_lastDl}    ↑ {_lastUl}",
             IsEnabled = false
         };
 
+        var open = new MenuFlyoutItem { Text = "Открыть" };
+        open.Click += (_, __) => OpenRequested?.Invoke();
+
         var exit = new MenuFlyoutItem { Text = "Выход" };
-        exit.Click += (_, __) => ExitRequested?.Invoke();
+        exit.Click += async (_, __) =>
+        {
+            if (ExitRequested != null)
+                await ExitRequested();
+        };
 
         flyout.Items.Add(_speedsItem);
         flyout.Items.Add(new MenuFlyoutSeparator());
@@ -85,6 +110,8 @@ public sealed partial class TrayService : ITrayService, IDisposable
 
     public void Dispose()
     {
+        _torrentService.UptateTorrent -= OnTorrentsUpdated;
+
         if (_tray != null)
         {
             _tray.IsVisible = false;

@@ -7,4 +7,7 @@ public static class InfrastructurePaths
 
     public static readonly string AppConfigPath =
         Path.Combine(RootDirectoryPath, "AppConfig.json");
+
+    public static readonly string TorrentConfigPath =
+        Path.Combine(RootDirectoryPath, "TorrentConfig.json");
 }

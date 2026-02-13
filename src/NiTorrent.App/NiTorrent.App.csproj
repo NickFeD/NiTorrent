@@ -65,6 +65,7 @@
   <ItemGroup>
     <None Remove="Assets\Store\SmallTile.scale-100.png" />
     <None Remove="Assets\Store\Square150x150Logo.scale-100.png" />
+    <None Remove="Views\Settings\TorrentSettingPage.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -106,6 +107,11 @@
   <ItemGroup>
     <ProjectReference Include="..\NiTorrent.Infrastructure\NiTorrent.Infrastructure.csproj" />
     <ProjectReference Include="..\NiTorrent.Presentation\NiTorrent.Presentation.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Update="Views\Settings\TorrentSettingPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </AdditionalFiles>
   </ItemGroup>
   <ItemGroup>
     <None Update="Views\TorrentPage.xaml">

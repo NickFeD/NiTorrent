@@ -64,7 +64,7 @@ public sealed class TorrentPreviewDialogService(IServiceProvider services, IUiDi
                     });
                 });
             }
-
+            window.BringToFront();
             window.Activate();
 
 

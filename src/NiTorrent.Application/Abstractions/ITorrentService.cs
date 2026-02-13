@@ -23,4 +23,6 @@ public interface ITorrentService
 
     Task RemoveAsync(TorrentId id, bool deleteData, CancellationToken ct = default);
     void UpdateTorrent();
+    Task ApplySettingsAsync();
+    Task SaveAsync(CancellationToken ct = default);
 }
