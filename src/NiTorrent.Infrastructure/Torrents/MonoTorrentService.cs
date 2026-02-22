@@ -67,7 +67,6 @@ public sealed class MonoTorrentService : ITorrentService
                 var settings = new EngineSettingsBuilder
                 {
                     CacheDirectory = _cacheDir,
-                    DhtEndPoint
                 }.ToSettings();
 
                 _engine = new ClientEngine(settings);

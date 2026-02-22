@@ -104,7 +104,7 @@ public partial class App : WinUIApplication
         // Главный экземпляр: слушаем будущие активации (файлы/протоколы)
         mainInstance.Activated += (_, e) => _ = HandleActivationAsync(e);
 
-        MainWindow = new MainWindow();
+        MainWindow = (Window) new MainWindow();
 
         MainWindow.Title = MainWindow.AppWindow.Title = ProcessInfoHelper.ProductNameAndVersion;
         MainWindow.AppWindow.SetIcon("Assets/AppIcon.ico");
@@ -122,9 +122,9 @@ public partial class App : WinUIApplication
         tray.OpenRequested += ShowMainWindow;
         tray.ExitRequested += ExitAsync;
         // "Закрыть" = спрятать в трей
-        MainWindow.AppWindow.Closing += (w, e) =>
+        MainWindow.AppWindow.Closing += async (w, e) =>
         {
-            GetService<ITorrentService>().SaveAsync().Wait();
+            await GetService<ITorrentService>().SaveAsync();
             if (_isExiting)
                 return;
 
