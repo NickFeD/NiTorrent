@@ -4,7 +4,6 @@ namespace NiTorrent.App.Services;
 
 public sealed class DevWinUiUpdateService : IUpdateService
 {
-    // TODO: заполни на свой репозиторий
     private const string Owner = "Ghost1372";
     private const string Repo = "DevWinUI";
 
@@ -16,7 +15,6 @@ public sealed class DevWinUiUpdateService : IUpdateService
         if (!NetworkHelper.IsNetworkAvailable())
             return new UpdateCheckResult(false, "Error Connection", null, null);
 
-        // DevWinUI helper
         var update = await UpdateHelper.CheckUpdateAsync(Owner, Repo, currentVersion);
 
         if (update.StableRelease.IsExistNewVersion)

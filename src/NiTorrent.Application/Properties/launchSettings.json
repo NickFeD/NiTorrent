@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "NiTorrent.Application": {
+      "commandName": "Project"
+    }
+  }
+}

@@ -15,6 +15,8 @@ public partial class TorrentStateToBadgeStyleConverter : IValueConverter
 
         return info.Phase switch
         {
+            TorrentPhase.EngineStarting => App.Current.Resources["TorrentStartingBadgeStyle"],
+            TorrentPhase.WaitingForEngine => App.Current.Resources["TorrentStartingBadgeStyle"],
             TorrentPhase.Stopped => App.Current.Resources["TorrentStoppedBadgeStyle"],
             TorrentPhase.Paused => App.Current.Resources["TorrentPausedBadgeStyle"],
             TorrentPhase.Downloading => App.Current.Resources["TorrentDownloadingBadgeStyle"],
@@ -27,7 +29,7 @@ public partial class TorrentStateToBadgeStyleConverter : IValueConverter
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language)
-        => throw new NotImplementedException();
+        => value;
 }
 
 

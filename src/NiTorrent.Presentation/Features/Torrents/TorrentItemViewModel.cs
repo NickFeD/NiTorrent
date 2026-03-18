@@ -1,6 +1,5 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
 using NiTorrent.Domain.Torrents;
-
 
 namespace NiTorrent.Presentation.Features.Torrents;
 
@@ -21,7 +20,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     public string ProgressText => $"{Progress:F1}%";
 
     [ObservableProperty]
-    public partial TorrentStatus State { get; set; } = new(TorrentPhase.Unknown,false,0,0,0);
+    public partial TorrentStatus State { get; set; } = new(TorrentPhase.Unknown, false, 0, 0, 0);
 
     [ObservableProperty]
     public partial string StateText { get; set; } = "";
@@ -34,6 +33,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial string UploadSpeed { get; set; } = "0 B";
+
     public TorrentItemViewModel(TorrentSnapshot torrentSnapshot)
     {
         _torrentSnapshot = torrentSnapshot;
@@ -52,7 +52,29 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         IsCompleted = _torrentSnapshot.Status.IsComplete;
         DownloadSpeed = SizeFormatter.FormatSpeed(_torrentSnapshot.Status.DownloadRateBytesPerSecond);
         UploadSpeed = SizeFormatter.FormatSpeed(_torrentSnapshot.Status.UploadRateBytesPerSecond);
-        StateText = State.Phase.ToString();
+        StateText = BuildStateText(_torrentSnapshot.Status);
+    }
+
+    private static string BuildStateText(TorrentStatus status)
+    {
+        if (!string.IsNullOrWhiteSpace(status.Error) && status.Phase == TorrentPhase.Error)
+            return $"Ошибка: {status.Error}";
+
+        var sourceSuffix = status.Source == TorrentSnapshotSource.Cached ? " (кэш)" : string.Empty;
+
+        return status.Phase switch
+        {
+            TorrentPhase.EngineStarting => $"Запуск движка{sourceSuffix}",
+            TorrentPhase.WaitingForEngine => $"Ожидает запуск движка{sourceSuffix}",
+            TorrentPhase.FetchingMetadata => $"Получение метаданных{sourceSuffix}",
+            TorrentPhase.Checking => $"Проверка файлов{sourceSuffix}",
+            TorrentPhase.Downloading => $"Скачивание{sourceSuffix}",
+            TorrentPhase.Seeding => $"Раздача{sourceSuffix}",
+            TorrentPhase.Paused => $"Пауза{sourceSuffix}",
+            TorrentPhase.Stopped => $"Остановлен{sourceSuffix}",
+            TorrentPhase.Error => $"Ошибка{sourceSuffix}",
+            _ => $"Неизвестно{sourceSuffix}"
+        };
     }
 
     public void Dispose()
@@ -63,4 +85,3 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         GC.SuppressFinalize(this);
     }
 }
-

@@ -34,13 +34,13 @@ public sealed partial class TrayService : ITrayService, IDisposable
             iconPath: "Assets\\AppIcon.ico",
             tooltip: BuildTooltip())
         {
-            IsVisible = false
+            IsVisible = true
         };
 
         _tray.Selected += (_, __) => OpenRequested?.Invoke();
         _tray.ContextMenu += (_, e) => e.Flyout = BuildMenuFlyout();
 
-        _torrentService.UptateTorrent += OnTorrentsUpdated;
+        _torrentService.UpdateTorrent += OnTorrentsUpdated;
     }
 
     public void SetVisible(bool visible)
@@ -110,7 +110,7 @@ public sealed partial class TrayService : ITrayService, IDisposable
 
     public void Dispose()
     {
-        _torrentService.UptateTorrent -= OnTorrentsUpdated;
+        _torrentService.UpdateTorrent -= OnTorrentsUpdated;
 
         if (_tray != null)
         {

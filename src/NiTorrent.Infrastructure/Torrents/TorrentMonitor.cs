@@ -19,7 +19,7 @@ public sealed class TorrentMonitor : BackgroundService
 
         while (await timer.WaitForNextTickAsync(ct) && !ct.IsCancellationRequested)
         {
-            _torrentService.UpdateTorrent();
+            _torrentService.PublishTorrentUpdates();
         }
     }
 }

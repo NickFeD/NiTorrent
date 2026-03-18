@@ -17,6 +17,7 @@ public partial class TorrentViewModel : ObservableObject
     private readonly ITorrentService _torrentService;
     private readonly IPickerHelper _pickerHelper;
     private readonly ITorrentPreviewDialogService _previewDialog;
+    private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
 
     public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
@@ -29,7 +30,7 @@ public partial class TorrentViewModel : ObservableObject
     public partial TorrentItemViewModel? SelectedTorrent { get; set; }
 
     [ObservableProperty]
-    public partial string StatusText { get; set; } = "LoadingSystem";
+    public partial string StatusText { get; set; } = "Загрузка кэша торрентов...";
 
     [ObservableProperty]
     public partial string TotalDownloadSpeed { get; set; } = "v 0 KB/s";
@@ -43,27 +44,45 @@ public partial class TorrentViewModel : ObservableObject
         ITorrentPreviewDialogService previewDialog,
         ITorrentService torrentService,
         IPickerHelper pickerHelper,
+        IDialogService dialogs,
         IUiDispatcher ui)
     {
         _ui = ui;
         _torrentService = torrentService;
         _pickerHelper = pickerHelper;
         _previewDialog = previewDialog;
-        _torrentService.UptateTorrent += UptateTorrent;
+        _dialogs = dialogs;
+        _torrentService.UpdateTorrent += UpdateTorrent;
         _torrentService.Loaded += TorrentServiceLoaded;
     }
 
     private void TorrentServiceLoaded()
     {
-        StatusText = "Ok";
+        _ui.TryEnqueue(() =>
+        {
+            StatusText = "Движок торрентов готов";
+        });
     }
 
-    private void UptateTorrent(IReadOnlyList<Domain.Torrents.TorrentSnapshot> torrents)
+    private void UpdateTorrent(IReadOnlyList<Domain.Torrents.TorrentSnapshot> torrents)
     {
         _ui.TryEnqueue(() =>
         {
             long totalDownloadSpeed = 0;
             long totalUploadSpeed = 0;
+            var actualIds = torrents.Select(x => x.Id).ToHashSet();
+
+            foreach (var stale in _torrents.Keys.Where(id => !actualIds.Contains(id)).ToList())
+            {
+                var staleVm = _torrents[stale];
+                staleVm.Dispose();
+                _torrents.Remove(stale);
+                Torrents.Remove(staleVm);
+
+                if (ReferenceEquals(SelectedTorrent, staleVm))
+                    SelectedTorrent = null;
+            }
+
             foreach (var torrent in torrents)
             {
                 totalDownloadSpeed += torrent.Status.DownloadRateBytesPerSecond;
@@ -122,7 +141,6 @@ public partial class TorrentViewModel : ObservableObject
     {
         var torrent = new Magnet(magnet);
         var torrentPreview = await _torrentService.GetPreviewAsync(torrent);
-        await _previewDialog.ShowAsync(torrentPreview);
         var torrentPreviewDialogResult = await _previewDialog.ShowAsync(torrentPreview);
         if (torrentPreviewDialogResult is null)
             return;
@@ -132,10 +150,10 @@ public partial class TorrentViewModel : ObservableObject
     // ---------------- COMMAND LOGIC ----------------
 
     private bool CanStart()
-        => SelectedTorrent != null && (SelectedTorrent.State.Phase is TorrentPhase.Stopped or TorrentPhase.Paused);
+        => SelectedTorrent != null && (SelectedTorrent.State.Phase is TorrentPhase.Stopped or TorrentPhase.Paused or TorrentPhase.Error);
 
     private bool CanPause()
-        => SelectedTorrent != null && (SelectedTorrent.State.Phase is TorrentPhase.Downloading or TorrentPhase.Seeding);
+        => SelectedTorrent != null && (SelectedTorrent.State.Phase is TorrentPhase.WaitingForEngine or TorrentPhase.FetchingMetadata or TorrentPhase.Checking or TorrentPhase.Downloading or TorrentPhase.Seeding);
 
     private bool CanOpenFolder()
         => SelectedTorrent != null;
@@ -144,16 +162,34 @@ public partial class TorrentViewModel : ObservableObject
     private async Task StartAsync()
     {
         if (SelectedTorrent == null) return;
-        StatusText = "������...";
-        await _torrentService.StartAsync(SelectedTorrent.Id);
+
+        try
+        {
+            StatusText = "Запуск торрента...";
+            await _torrentService.StartAsync(SelectedTorrent.Id);
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Не удалось запустить торрент";
+            await _dialogs.ShowTextAsync("Ошибка запуска", ex.Message);
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanPause))]
     private async Task PauseAsync()
     {
         if (SelectedTorrent == null) return;
-        StatusText = "�����...";
-        await _torrentService.PauseAsync(SelectedTorrent.Id);
+
+        try
+        {
+            StatusText = "Пауза торрента...";
+            await _torrentService.PauseAsync(SelectedTorrent.Id);
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Не удалось поставить торрент на паузу";
+            await _dialogs.ShowTextAsync("Ошибка паузы", ex.Message);
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanOpenFolder))]
@@ -171,13 +207,23 @@ public partial class TorrentViewModel : ObservableObject
 
         var toRemove = SelectedTorrent;
 
-        await _torrentService.RemoveAsync(SelectedTorrent.Id,isDeleteData == "1");
+        try
+        {
+            await _torrentService.RemoveAsync(SelectedTorrent.Id, isDeleteData == "1");
 
-        toRemove.Dispose();
-        Torrents.Remove(toRemove);
+            _torrents.Remove(toRemove.Id);
+            toRemove.Dispose();
+            Torrents.Remove(toRemove);
+            OnPropertyChanged(nameof(IsEmpty));
 
-        if (ReferenceEquals(SelectedTorrent, toRemove))
-            SelectedTorrent = null;
+            if (ReferenceEquals(SelectedTorrent, toRemove))
+                SelectedTorrent = null;
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Не удалось удалить торрент";
+            await _dialogs.ShowTextAsync("Ошибка удаления", ex.Message);
+        }
     }
 
     private static void OpenFolder(string path)

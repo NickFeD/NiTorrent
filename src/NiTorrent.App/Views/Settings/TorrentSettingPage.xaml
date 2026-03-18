@@ -177,6 +177,19 @@
                 </dev:SettingsExpander.Items>
             </dev:SettingsExpander>
 
+            <dev:SettingsCard Header="Поведение окна"
+                              Description="Определяет, что делать при нажатии на кнопку закрытия окна."
+                              HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Info.png}">
+                <StackPanel Spacing="12">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}"
+                                  OnContent="Сворачивать в трей"
+                                  OffContent="Закрывать полностью" />
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.ShowCloseActionDialogOnClose, Mode=TwoWay}"
+                                  OnContent="Показывать окно выбора"
+                                  OffContent="Использовать сохранённое поведение" />
+                </StackPanel>
+            </dev:SettingsCard>
+
             <!-- Действия -->
             <dev:SettingsCard Header="Действия"
                               Description="Изменения применяются после сохранения."

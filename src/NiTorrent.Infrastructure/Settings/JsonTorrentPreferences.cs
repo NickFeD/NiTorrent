@@ -85,4 +85,16 @@ public sealed class JsonTorrentPreferences : ITorrentPreferences
         get => _cfg.FastResumeMode;
         set { _cfg.FastResumeMode = value; _cfg.Save(); }
     }
+
+    public bool MinimizeToTrayOnClose
+    {
+        get => _cfg.MinimizeToTrayOnClose;
+        set { _cfg.MinimizeToTrayOnClose = value; _cfg.Save(); }
+    }
+
+    public bool ShowCloseActionDialogOnClose
+    {
+        get => _cfg.ShowCloseActionDialogOnClose;
+        set { _cfg.ShowCloseActionDialogOnClose = value; _cfg.Save(); }
+    }
 }

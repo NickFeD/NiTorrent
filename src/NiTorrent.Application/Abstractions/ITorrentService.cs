@@ -6,7 +6,7 @@ namespace NiTorrent.Application.Abstractions;
 public interface ITorrentService
 {
     event Action? Loaded;
-    event Action<IReadOnlyList<TorrentSnapshot>>? UptateTorrent;
+    event Action<IReadOnlyList<TorrentSnapshot>>? UpdateTorrent;
 
     Task InitializeAsync(CancellationToken ct = default);
 
@@ -22,7 +22,8 @@ public interface ITorrentService
     Task StopAsync(TorrentId id, CancellationToken ct = default);
 
     Task RemoveAsync(TorrentId id, bool deleteData, CancellationToken ct = default);
-    void UpdateTorrent();
+    void PublishTorrentUpdates();
     Task ApplySettingsAsync();
     Task SaveAsync(CancellationToken ct = default);
+    Task ShutdownAsync(CancellationToken ct = default);
 }

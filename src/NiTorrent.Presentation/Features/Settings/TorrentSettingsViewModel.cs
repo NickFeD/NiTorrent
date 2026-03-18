@@ -51,6 +51,8 @@ public partial class TorrentSettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool AutoSaveLoadFastResume { get; set; }
     [ObservableProperty] public partial bool AutoSaveLoadMagnetLinkMetadata { get; set; }
     [ObservableProperty] public partial TorrentFastResumeMode SelectedFastResumeMode { get; set; } = TorrentFastResumeMode.BestEffort;
+    [ObservableProperty] public partial bool MinimizeToTrayOnClose { get; set; }
+    [ObservableProperty] public partial bool ShowCloseActionDialogOnClose { get; set; }
 
     private void LoadFromPrefs()
     {
@@ -72,6 +74,8 @@ public partial class TorrentSettingsViewModel : ObservableObject
         AutoSaveLoadFastResume = _prefs.AutoSaveLoadFastResume;
         AutoSaveLoadMagnetLinkMetadata = _prefs.AutoSaveLoadMagnetLinkMetadata;
         SelectedFastResumeMode = _prefs.FastResumeMode;
+        MinimizeToTrayOnClose = _prefs.MinimizeToTrayOnClose;
+        ShowCloseActionDialogOnClose = _prefs.ShowCloseActionDialogOnClose;
     }
 
     [RelayCommand]
@@ -103,6 +107,8 @@ public partial class TorrentSettingsViewModel : ObservableObject
         _prefs.AutoSaveLoadFastResume = AutoSaveLoadFastResume;
         _prefs.AutoSaveLoadMagnetLinkMetadata = AutoSaveLoadMagnetLinkMetadata;
         _prefs.FastResumeMode = SelectedFastResumeMode;
+        _prefs.MinimizeToTrayOnClose = MinimizeToTrayOnClose;
+        _prefs.ShowCloseActionDialogOnClose = ShowCloseActionDialogOnClose;
         await _torrentService.ApplySettingsAsync();
     }
 

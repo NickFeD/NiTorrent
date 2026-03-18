@@ -1,24 +1,16 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
-using MonoTorrent;
 using NiTorrent.App.Services;
 using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Torrents;
 using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
-using NiTorrent.Presentation.Features.Settings;
-using NiTorrent.Presentation.Features.Shell;
 using Windows.ApplicationModel.Activation;
 using Windows.Storage;
-using Windows.UI.Xaml;
 using WinUIEx;
 using WinUIApplication = Microsoft.UI.Xaml.Application;
 
@@ -26,8 +18,13 @@ namespace NiTorrent.App;
 
 public partial class App : WinUIApplication
 {
-    private IHost _host;
+    private readonly IHost _host;
+    private readonly SemaphoreSlim _exitGate = new(1, 1);
+    private Task? _hostStartTask;
+    private Task? _engineInitTask;
     private bool _isExiting;
+    private int _closeRequestInProgress;
+
     public new static App Current => (App)WinUIApplication.Current;
     public static Window MainWindow = Window.Current;
     public static IntPtr Hwnd => WinRT.Interop.WindowNative.GetWindowHandle(MainWindow);
@@ -37,40 +34,45 @@ public partial class App : WinUIApplication
     public static T GetService<T>() where T : class
     {
         if ((App.Current as App)!.Services.GetService(typeof(T)) is not T service)
-        {
             throw new ArgumentException($"{typeof(T)} needs to be registered in ConfigureServices within App.xaml.cs.");
-        }
 
         return service;
     }
 
     public App()
     {
-        _host = Microsoft.Extensions.Hosting.Host
-           .CreateDefaultBuilder()
-           .UseContentRoot(AppContext.BaseDirectory)
-           .ConfigureServices(ConfigureServices)
-           .Build();
+        _host = Host.CreateDefaultBuilder()
+            .UseContentRoot(AppContext.BaseDirectory)
+            .ConfigureServices(ConfigureServices)
+            .Build();
+
         Services = _host.Services;
-
-        this.InitializeComponent();
-
+        InitializeComponent();
     }
 
     private static void ConfigureServices(HostBuilderContext contexts, IServiceCollection services)
     {
-        // DevWinUI
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<ContextMenuService>();
-
         services.AddSingleton<IAppStorageService, AppStorageService>();
 
-        // Наши слои
+        var logsPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "NiTorrent",
+            "Logs",
+            $"app-{DateTime.Now:yyyyMMdd}.log");
+
         services.AddNiTorrentInfrastructure();
         services.AddNiTorrentPresentation();
 
-        // App implementations
-        services.AddLogging();
+        services.AddLogging(builder =>
+        {
+            builder.ClearProviders();
+            builder.AddDebug();
+            builder.AddProvider(new FileLoggerProvider(logsPath));
+            builder.SetMinimumLevel(LogLevel.Information);
+        });
+
         services.AddSingleton<UiDispatcherHolder>();
         services.AddSingleton<IUiDispatcher>(sp =>
         {
@@ -87,13 +89,9 @@ public partial class App : WinUIApplication
         services.AddSingleton<ITorrentPreviewDialogService, TorrentPreviewDialogService>();
     }
 
-    protected async override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
+    protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-
-
         var mainInstance = AppInstance.FindOrRegisterForKey("main");
-
-        // Если это не главный экземпляр — отправляем активацию главному и выходим
         if (!mainInstance.IsCurrent)
         {
             await mainInstance.RedirectActivationToAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
@@ -101,138 +99,257 @@ public partial class App : WinUIApplication
             return;
         }
 
-        // Главный экземпляр: слушаем будущие активации (файлы/протоколы)
-        mainInstance.Activated += (_, e) => _ = HandleActivationAsync(e);
+        mainInstance.Activated += (_, e) => _ = HandleActivationSafeAsync(e);
 
-        MainWindow = (Window) new MainWindow();
-
+        MainWindow = new MainWindow();
         MainWindow.Title = MainWindow.AppWindow.Title = ProcessInfoHelper.ProductNameAndVersion;
         MainWindow.AppWindow.SetIcon("Assets/AppIcon.ico");
-
-        GetService<IThemeService>().Initialize(MainWindow);
-
-        MainWindow.Activate();
-
+        MainWindow.AppWindow.Closing += OnMainWindowClosing;
 
         var holder = GetService<UiDispatcherHolder>();
         holder.Initialize(DispatcherQueue.GetForCurrentThread());
+
+        GetService<IThemeService>().Initialize(MainWindow);
 
         var tray = GetService<ITrayService>();
         tray.Initialize();
         tray.OpenRequested += ShowMainWindow;
         tray.ExitRequested += ExitAsync;
-        // "Закрыть" = спрятать в трей
-        MainWindow.AppWindow.Closing += async (w, e) =>
-        {
-            await GetService<ITorrentService>().SaveAsync();
-            if (_isExiting)
-                return;
 
-            e.Cancel = true;
-            MainWindow.Hide();
-            GetService<ITrayService>().SetVisible(true);
-        };
+        MainWindow.Activate();
 
-        InitializeApp();
-        _ = HandleActivationAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
+        StartBackgroundInitialization();
+        _ = HandleActivationSafeAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
     }
-    private async Task HandleActivationAsync(AppActivationArguments args)
+
+    private void StartBackgroundInitialization()
     {
-
-        if (args.Kind != ExtendedActivationKind.File)
-            return;
-
-        if (args.Data is not FileActivatedEventArgs fileArgs)
-            return;
-
-        // Поднять главное окно (если было спрятано в трей)
-        ShowMainWindow();
-
-        var torrentPreviewDialog = GetService<ITorrentPreviewDialogService>();
-        var torrentService = GetService<ITorrentService>();
-        foreach (var item in fileArgs.Files)
-        {
-            if (item is StorageFile file &&
-                file.FileType.Equals(".torrent", StringComparison.OrdinalIgnoreCase))
-            {
-                var preview = await torrentService.GetPreviewAsync(new TorrentSource.TorrentFile(file.Path));
-                var torrentPreviewDialogResult = await torrentPreviewDialog.ShowAsync(preview);
-                if (torrentPreviewDialogResult is null)
-                    return;
-                await torrentService.AddAsync(new(new TorrentSource.TorrentFile(file.Path), torrentPreviewDialogResult.OutputFolder, torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
-            }
-        } 
+        _hostStartTask ??= StartHostAndShellAsync();
+        _engineInitTask ??= InitializeTorrentEngineSafeAsync();
     }
 
-    private async void InitializeApp()
-    {
-        await _host.StartAsync();
-        var menuService = GetService<ContextMenuService>();
-        if (menuService != null && RuntimeHelper.IsPackaged())
-        {
-            ContextMenuItem menu = new ContextMenuItem
-            {
-                Title = "Open NiTorrent.App Here",
-                Param = @"""{path}""",
-                AcceptFileFlag = (int)FileMatchFlagEnum.All,
-                AcceptDirectoryFlag = (int)(DirectoryMatchFlagEnum.Directory | DirectoryMatchFlagEnum.Background | DirectoryMatchFlagEnum.Desktop),
-                AcceptMultipleFilesFlag = (int)FilesMatchFlagEnum.Each,
-                Index = 0,
-                Enabled = true,
-                Icon = ProcessInfoHelper.GetFileVersionInfo().FileName,
-                Exe = "NiTorrent.App.exe"
-            };
-
-            await menuService.SaveAsync(menu);
-        }
-        _ = InitializeTorrentEngineAsync();
-    }
-
-    private Task InitializeTorrentEngineAsync()
+    private async Task StartHostAndShellAsync()
     {
         try
         {
-           return  GetService<ITorrentService>().InitializeAsync();
+            await _host.StartAsync().ConfigureAwait(false);
+
+            var menuService = GetService<ContextMenuService>();
+            if (menuService is not null && RuntimeHelper.IsPackaged())
+            {
+                var menu = new ContextMenuItem
+                {
+                    Title = "Open NiTorrent.App Here",
+                    Param = @"""{path}""",
+                    AcceptFileFlag = (int)FileMatchFlagEnum.All,
+                    AcceptDirectoryFlag = (int)(DirectoryMatchFlagEnum.Directory | DirectoryMatchFlagEnum.Background | DirectoryMatchFlagEnum.Desktop),
+                    AcceptMultipleFilesFlag = (int)FilesMatchFlagEnum.Each,
+                    Index = 0,
+                    Enabled = true,
+                    Icon = ProcessInfoHelper.GetFileVersionInfo().FileName,
+                    Exe = "NiTorrent.App.exe"
+                };
+
+                await menuService.SaveAsync(menu).ConfigureAwait(false);
+            }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine(ex);
-            // позже можно показать диалог через IDialogService
+            _host.Services.GetService<ILogger<App>>()?.LogError(ex, "Application background initialization failed");
         }
-        return Task.CompletedTask;
     }
 
-    private void ShowMainWindow()
+    private async Task InitializeTorrentEngineSafeAsync()
     {
-        GetService<IUiDispatcher>().EnqueueAsync(() =>
+        try
         {
-            var win = MainWindow;
-            win.Show();
-            win.Activate();
-        });
-
+            await GetService<ITorrentService>().InitializeAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _host.Services.GetService<ILogger<App>>()?.LogError(ex, "Torrent engine initialization failed");
+        }
     }
 
-    private async Task ExitAsync()
+    private void OnMainWindowClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs e)
     {
         if (_isExiting)
             return;
 
-        _isExiting = true;
+        e.Cancel = true;
 
+        if (Interlocked.Exchange(ref _closeRequestInProgress, 1) == 1)
+            return;
+
+        _ = HandleCloseRequestAsync();
+    }
+
+    private async Task HandleCloseRequestAsync()
+    {
         try
         {
-            // Сохраняем
-            //await GetService<ITorrentService>().SaveAsync();
+            var prefs = GetService<ITorrentPreferences>();
+            var logger = _host.Services.GetService<ILogger<App>>();
 
-            // Гасим трей
-            GetService<TrayService>().Dispose();
+            WindowCloseAction action;
+            if (prefs.ShowCloseActionDialogOnClose)
+            {
+                var choice = await GetService<IDialogService>()
+                    .ShowWindowCloseChoiceAsync(defaultMinimizeToTray: prefs.MinimizeToTrayOnClose)
+                    .ConfigureAwait(false);
 
-            // Останавливаем host
-            await _host.StopAsync();
+                if (choice is null)
+                    return;
 
-            // Теперь реально закрываем окно (Closing больше не cancel-ится)
-            MainWindow?.Close();
+                action = choice.Action;
+
+                if (choice.RememberChoice)
+                {
+                    prefs.ShowCloseActionDialogOnClose = false;
+                    prefs.MinimizeToTrayOnClose = action == WindowCloseAction.MinimizeToTray;
+                }
+            }
+            else
+            {
+                action = prefs.MinimizeToTrayOnClose
+                    ? WindowCloseAction.MinimizeToTray
+                    : WindowCloseAction.ExitApplication;
+            }
+
+            if (action == WindowCloseAction.MinimizeToTray)
+            {
+                try
+                {
+                    await GetService<ITorrentService>().SaveAsync().ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogWarning(ex, "Failed to save state before minimizing to tray");
+                }
+
+                await GetService<IUiDispatcher>().EnqueueAsync(() =>
+                {
+                    MainWindow.Hide();
+                    GetService<ITrayService>().SetVisible(true);
+                }).ConfigureAwait(false);
+
+                return;
+            }
+
+            await ExitAsync().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _host.Services.GetService<ILogger<App>>()?.LogError(ex, "Failed to process window close request");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _closeRequestInProgress, 0);
+        }
+    }
+
+    private async Task HandleActivationSafeAsync(AppActivationArguments args)
+    {
+        try
+        {
+            await HandleActivationCoreAsync(args).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            var logger = _host.Services.GetService<ILogger<App>>();
+            logger?.LogError(ex, "File activation handling failed");
+
+            try
+            {
+                await GetService<IDialogService>().ShowTextAsync("Не удалось открыть торрент-файл", ex.Message).ConfigureAwait(false);
+            }
+            catch (Exception dialogEx)
+            {
+                logger?.LogWarning(dialogEx, "Failed to show file activation error dialog");
+            }
+        }
+    }
+
+    private async Task HandleActivationCoreAsync(AppActivationArguments args)
+    {
+        if (args.Kind != ExtendedActivationKind.File || args.Data is not FileActivatedEventArgs fileArgs)
+            return;
+
+        StartBackgroundInitialization();
+        ShowMainWindow();
+
+        var torrentPreviewDialog = GetService<ITorrentPreviewDialogService>();
+        var torrentService = GetService<ITorrentService>();
+
+        foreach (var item in fileArgs.Files)
+        {
+            if (item is not StorageFile file || !file.FileType.Equals(".torrent", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var preview = await torrentService.GetPreviewAsync(new NiTorrent.Application.Torrents.TorrentSource.TorrentFile(file.Path)).ConfigureAwait(false);
+            var dialogResult = await torrentPreviewDialog.ShowAsync(preview).ConfigureAwait(false);
+            if (dialogResult is null)
+                continue;
+
+            await torrentService.AddAsync(new(
+                new NiTorrent.Application.Torrents.TorrentSource.TorrentFile(file.Path),
+                dialogResult.OutputFolder,
+                dialogResult.SelectedFilePaths.ToHashSet())).ConfigureAwait(false);
+        }
+    }
+
+    private void ShowMainWindow()
+    {
+        _ = GetService<IUiDispatcher>().EnqueueAsync(() =>
+        {
+            MainWindow.Show();
+            MainWindow.Activate();
+        });
+    }
+
+    private async Task ExitAsync()
+    {
+        await _exitGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_isExiting)
+                return;
+
+            _isExiting = true;
+
+            var logger = _host.Services.GetService<ILogger<App>>();
+
+            try
+            {
+                await GetService<ITorrentService>().ShutdownAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Torrent service shutdown failed");
+            }
+
+            try
+            {
+                GetService<TrayService>().Dispose();
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Tray dispose failed");
+            }
+
+            try
+            {
+                if (_hostStartTask is not null)
+                    await _hostStartTask.ConfigureAwait(false);
+
+                await _host.StopAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogWarning(ex, "Host stop failed");
+            }
+
+            await GetService<IUiDispatcher>().EnqueueAsync(() => MainWindow?.Close()).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -240,8 +357,8 @@ public partial class App : WinUIApplication
         }
         finally
         {
+            _exitGate.Release();
             Exit();
         }
     }
 }
-

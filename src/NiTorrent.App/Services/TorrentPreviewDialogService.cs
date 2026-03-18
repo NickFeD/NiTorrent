@@ -20,17 +20,7 @@ public sealed class TorrentPreviewDialogService(IServiceProvider services, IUiDi
         {
             // создаём VM через DI, передавая preview параметром
             var vm = ActivatorUtilities.CreateInstance<TorrentPreviewViewModel>(_services, preview);
-            TorrentPreviewWindow window;
-            try
-            {
-                window = new Views.TorrentPreviewWindow(vm);
-            }
-            catch (Exception e)
-            {
-
-                throw e;
-            }
-
+            var window = new Views.TorrentPreviewWindow(vm);
 
             // окно — чистая WinUI-деталь (только App слой)
 
