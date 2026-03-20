@@ -30,7 +30,6 @@ public sealed class TorrentAddExecutor
         AddTorrentRequest request,
         Func<TorrentSource, CancellationToken, Task<Torrent>> resolveTorrentAsync,
         SemaphoreSlim opGate,
-        Func<Task, string, Task>? _onBackgroundTaskScheduled,
         CancellationToken ct)
     {
         _logger.LogInformation("Adding torrent");
@@ -56,6 +55,10 @@ public sealed class TorrentAddExecutor
                 opGate.Release();
             }
 
+            var snapshot = _snapshotFactory.Create(id, manager, addedAtUtc: addedAt) with
+            {
+                Key = _snapshotFactory.GetStableKey(torrent)
+            };
             await _catalogStore.UpsertFromSnapshotAsync(snapshot, ct).ConfigureAwait(false);
             await _catalogStore.SetShouldRunAsync(id, true, ct).ConfigureAwait(false);
             await _catalogStore.SaveAsync(force: true, ct).ConfigureAwait(false);

@@ -82,12 +82,28 @@ public sealed class TorrentEventOrchestrator
     }
 
     public void RaiseLoaded()
+    {
+        Action? handler;
+        lock (_sync)
+        {
+            _isLoadedRaised = true;
+            handler = _loaded;
+        }
 
         handler?.Invoke();
     }
 
     public async Task PublishUpdatesAsync(bool hasEngine, SemaphoreSlim opGate, CancellationToken ct = default)
     {
+        Action<IReadOnlyList<TorrentSnapshot>>? handler;
+        var snapshots = await _updatePublisher.BuildSnapshotsAsync(hasEngine, opGate, ct).ConfigureAwait(false);
+
+        lock (_sync)
+        {
+            _lastPublishedSnapshots = snapshots;
+            handler = _updateTorrent;
+        }
+
         if (handler is null)
             return;
 
@@ -105,4 +121,16 @@ public sealed class TorrentEventOrchestrator
     public void PublishUpdatesInBackground(bool hasEngine, SemaphoreSlim opGate)
         => _backgroundTasks.Run(PublishUpdatesAsync(hasEngine, opGate, CancellationToken.None), "update-torrent");
 
+    public async Task PublishCachedAsync(CancellationToken ct)
+    {
+        var snapshots = await _updatePublisher.BuildSnapshotsAsync(hasEngine: false, new SemaphoreSlim(1, 1), ct).ConfigureAwait(false);
+        Action<IReadOnlyList<TorrentSnapshot>>? handler;
+        lock (_sync)
+        {
+            _lastPublishedSnapshots = snapshots;
+            handler = _updateTorrent;
+        }
+
+        handler?.Invoke(snapshots);
+    }
 }

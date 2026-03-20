@@ -49,6 +49,8 @@ public sealed class TorrentSnapshotFactory
     {
         try
         {
+            var infoHashes = manager.Torrent?.InfoHashes ?? manager.InfoHashes;
+            return GetStableKey(infoHashes);
         }
         catch
         {
