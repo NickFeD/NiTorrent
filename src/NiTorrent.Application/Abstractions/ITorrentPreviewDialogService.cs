@@ -1,13 +1,9 @@
 ﻿using NiTorrent.Application.Torrents;
 
-namespace NiTorrent.Presentation.Abstractions;
+namespace NiTorrent.Application.Abstractions;
 
 public interface ITorrentPreviewDialogService
 {
-    /// <summary>
-    /// Показывает превью торрента и возвращает выбранные пользователем опции.
-    /// null = пользователь отменил.
-    /// </summary>
     Task<TorrentPreviewDialogResult?> ShowAsync(
         TorrentPreview preview,
         CancellationToken ct = default);

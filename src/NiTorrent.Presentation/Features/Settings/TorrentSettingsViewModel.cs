@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Settings;
+using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.Presentation.Features.Settings;
 
@@ -10,7 +11,8 @@ public partial class TorrentSettingsViewModel : ObservableObject
 {
     private readonly ITorrentPreferences _prefs;
     private readonly IPickerHelper _picker;
-    private readonly ITorrentService _torrentService;
+    private readonly ApplyTorrentSettingsUseCase _applyTorrentSettingsUseCase;
+    private bool _isLoading;
 
     public ObservableCollection<SizeUnit> Units { get; } =
         new() { SizeUnit.B, SizeUnit.KB, SizeUnit.MB, SizeUnit.GB };
@@ -18,12 +20,15 @@ public partial class TorrentSettingsViewModel : ObservableObject
     public ObservableCollection<TorrentFastResumeMode> FastResumeModes { get; } =
         new() { TorrentFastResumeMode.BestEffort, TorrentFastResumeMode.Accurate };
 
-    public TorrentSettingsViewModel(ITorrentPreferences prefs, IPickerHelper picker, ITorrentService torrentService)
+    public TorrentSettingsViewModel(ITorrentPreferences prefs, IPickerHelper picker, ApplyTorrentSettingsUseCase applyTorrentSettingsUseCase)
     {
         _prefs = prefs;
         _picker = picker;
-        _torrentService = torrentService;
+        _applyTorrentSettingsUseCase = applyTorrentSettingsUseCase;
+
+        PropertyChanged += OnViewModelPropertyChanged;
         LoadFromPrefs();
+        HasUnsavedChanges = false;
     }
 
     // --- UI поля ---
@@ -52,11 +57,14 @@ public partial class TorrentSettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool AutoSaveLoadMagnetLinkMetadata { get; set; }
     [ObservableProperty] public partial TorrentFastResumeMode SelectedFastResumeMode { get; set; } = TorrentFastResumeMode.BestEffort;
     [ObservableProperty] public partial bool MinimizeToTrayOnClose { get; set; }
-    [ObservableProperty] public partial bool ShowCloseActionDialogOnClose { get; set; }
+    [ObservableProperty] public partial bool HasUnsavedChanges { get; set; }
 
     private void LoadFromPrefs()
     {
-        DefaultDownloadPath = _prefs.DefaultDownloadPath;
+        _isLoading = true;
+        try
+        {
+            DefaultDownloadPath = _prefs.DefaultDownloadPath;
 
         DownloadRateValue = SizeFormatter.ToUnit(_prefs.MaximumDownloadRate, SelectedDownloadUnit);
         UploadRateValue = SizeFormatter.ToUnit(_prefs.MaximumUploadRate, SelectedUploadUnit);
@@ -75,7 +83,11 @@ public partial class TorrentSettingsViewModel : ObservableObject
         AutoSaveLoadMagnetLinkMetadata = _prefs.AutoSaveLoadMagnetLinkMetadata;
         SelectedFastResumeMode = _prefs.FastResumeMode;
         MinimizeToTrayOnClose = _prefs.MinimizeToTrayOnClose;
-        ShowCloseActionDialogOnClose = _prefs.ShowCloseActionDialogOnClose;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     [RelayCommand]
@@ -86,7 +98,9 @@ public partial class TorrentSettingsViewModel : ObservableObject
             DefaultDownloadPath = folder;
     }
 
-    [RelayCommand]
+    private bool CanSave() => HasUnsavedChanges;
+
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task Save()
     {
         _prefs.DefaultDownloadPath = DefaultDownloadPath;
@@ -108,11 +122,31 @@ public partial class TorrentSettingsViewModel : ObservableObject
         _prefs.AutoSaveLoadMagnetLinkMetadata = AutoSaveLoadMagnetLinkMetadata;
         _prefs.FastResumeMode = SelectedFastResumeMode;
         _prefs.MinimizeToTrayOnClose = MinimizeToTrayOnClose;
-        _prefs.ShowCloseActionDialogOnClose = ShowCloseActionDialogOnClose;
-        await _torrentService.ApplySettingsAsync();
+        await _applyTorrentSettingsUseCase.ExecuteAsync();
+        HasUnsavedChanges = false;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private void Reload()
-        => LoadFromPrefs();
+    {
+        LoadFromPrefs();
+        HasUnsavedChanges = false;
+    }
+
+    partial void OnHasUnsavedChangesChanged(bool value)
+    {
+        SaveCommand.NotifyCanExecuteChanged();
+        ReloadCommand.NotifyCanExecuteChanged();
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_isLoading || string.IsNullOrWhiteSpace(e.PropertyName))
+            return;
+
+        if (e.PropertyName is nameof(HasUnsavedChanges))
+            return;
+
+        HasUnsavedChanges = true;
+    }
 }

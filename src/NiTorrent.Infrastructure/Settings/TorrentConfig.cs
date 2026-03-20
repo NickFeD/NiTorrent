@@ -44,5 +44,4 @@ public sealed partial class TorrentConfig : NotifiyingJsonSettings, IVersionable
     public TorrentFastResumeMode FastResumeMode { get; set; } = TorrentFastResumeMode.BestEffort;
 
     public bool MinimizeToTrayOnClose { get; set; } = true;
-    public bool ShowCloseActionDialogOnClose { get; set; } = true;
 }

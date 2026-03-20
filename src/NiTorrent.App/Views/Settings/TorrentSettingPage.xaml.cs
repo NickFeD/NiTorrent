@@ -8,8 +8,10 @@ public sealed partial class TorrentSettingPage : Page
 
     public TorrentSettingPage()
     {
-        InitializeComponent();
         ViewModel = App.GetService<TorrentSettingsViewModel>();
         DataContext = ViewModel;
+
+        InitializeComponent();
+        Bindings.Update();
     }
 }

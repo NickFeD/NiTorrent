@@ -92,9 +92,4 @@ public sealed class JsonTorrentPreferences : ITorrentPreferences
         set { _cfg.MinimizeToTrayOnClose = value; _cfg.Save(); }
     }
 
-    public bool ShowCloseActionDialogOnClose
-    {
-        get => _cfg.ShowCloseActionDialogOnClose;
-        set { _cfg.ShowCloseActionDialogOnClose = value; _cfg.Save(); }
-    }
 }

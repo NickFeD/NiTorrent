@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
@@ -7,7 +7,7 @@ namespace NiTorrent.Infrastructure.Torrents;
 /// In-memory queue of "user intent" commands issued before the torrent engine is ready.
 /// We intentionally keep it very small: last command wins per torrent.
 /// </summary>
-internal sealed class TorrentCommandQueue
+public sealed class TorrentCommandQueue
 {
     private readonly ConcurrentDictionary<TorrentId, bool> _desiredRunning = new();
 

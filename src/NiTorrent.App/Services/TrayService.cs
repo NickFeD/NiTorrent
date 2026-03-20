@@ -34,7 +34,7 @@ public sealed partial class TrayService : ITrayService, IDisposable
             iconPath: "Assets\\AppIcon.ico",
             tooltip: BuildTooltip())
         {
-            IsVisible = true
+            IsVisible = false
         };
 
         _tray.Selected += (_, __) => OpenRequested?.Invoke();
@@ -63,8 +63,8 @@ public sealed partial class TrayService : ITrayService, IDisposable
         _lastDl = SizeFormatter.FormatSpeed(totalDl);
         _lastUl = SizeFormatter.FormatSpeed(totalUl);
 
-        // важно: обновлять UI безопасно
-        _ui.EnqueueAsync(ApplyUi).Wait();
+        // Не блокируем поток события и не ждём UI-синхронно, иначе можно получить deadlock и дерганье интерфейса.
+        _ = _ui.EnqueueAsync(ApplyUi);
     }
 
     private void ApplyUi()

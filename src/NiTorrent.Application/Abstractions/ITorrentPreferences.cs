@@ -29,5 +29,4 @@ public interface ITorrentPreferences
 
     // Window close behavior
     bool MinimizeToTrayOnClose { get; set; }
-    bool ShowCloseActionDialogOnClose { get; set; }
 }

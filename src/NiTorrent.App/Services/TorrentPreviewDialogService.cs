@@ -1,6 +1,7 @@
 ﻿using NiTorrent.Application.Torrents;
-using NiTorrent.Presentation.Abstractions;
+using NiTorrent.Application.Abstractions;
 using NiTorrent.Presentation.Features.Torrents;
+using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.App.Services;
 

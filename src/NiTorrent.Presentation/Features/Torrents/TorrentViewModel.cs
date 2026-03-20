@@ -1,5 +1,4 @@
 ﻿using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -15,15 +14,14 @@ namespace NiTorrent.Presentation.Features.Torrents;
 public partial class TorrentViewModel : ObservableObject
 {
     private readonly ITorrentService _torrentService;
-    private readonly IPickerHelper _pickerHelper;
-    private readonly ITorrentPreviewDialogService _previewDialog;
+    private readonly ITorrentWorkflowService _torrentWorkflowService;
     private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
 
     public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
 
     private Dictionary<TorrentId,TorrentItemViewModel> _torrents = new();
-    public bool IsEmpty => Torrents.Count() < 1;
+    public bool IsEmpty => Torrents.Count < 1;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanRemove))]
@@ -41,17 +39,15 @@ public partial class TorrentViewModel : ObservableObject
     public bool CanRemove => SelectedTorrent != null;
 
     public TorrentViewModel(
-        ITorrentPreviewDialogService previewDialog,
         ITorrentService torrentService,
-        IPickerHelper pickerHelper,
         IDialogService dialogs,
-        IUiDispatcher ui)
+        IUiDispatcher ui,
+        ITorrentWorkflowService torrentWorkflowService)
     {
         _ui = ui;
         _torrentService = torrentService;
-        _pickerHelper = pickerHelper;
-        _previewDialog = previewDialog;
         _dialogs = dialogs;
+        _torrentWorkflowService = torrentWorkflowService;
         _torrentService.UpdateTorrent += UpdateTorrent;
         _torrentService.Loaded += TorrentServiceLoaded;
     }
@@ -90,8 +86,6 @@ public partial class TorrentViewModel : ObservableObject
                 if (_torrents.TryGetValue(torrent.Id, out var oldTorrent))
                 {
                     oldTorrent.Update(torrent);
-                    PauseCommand.NotifyCanExecuteChanged();
-                    OpenFolderCommand.NotifyCanExecuteChanged();
                 }
                 else
                 {
@@ -103,6 +97,8 @@ public partial class TorrentViewModel : ObservableObject
             TotalDownloadSpeed = SizeFormatter.FormatSpeed(totalDownloadSpeed);
             TotalUploadSpeed = SizeFormatter.FormatSpeed(totalUploadSpeed);
             OnPropertyChanged(nameof(IsEmpty));
+            if (SelectedTorrent != null)
+                RefreshCommands();
         });
     }
 
@@ -124,27 +120,28 @@ public partial class TorrentViewModel : ObservableObject
     [RelayCommand]
     private async Task PickTorrent()
     {
-
-        var path = await _pickerHelper.PickSingleFilePathAsync(".torrent");
-        if (path == null)
-            return;
-        
-        var torrent = new TorrentFile(path);
-        var torrentPreview = await _torrentService.GetPreviewAsync(torrent);
-        var torrentPreviewDialogResult = await _previewDialog.ShowAsync(torrentPreview);
-        if (torrentPreviewDialogResult is null)
-            return;
-        _= _torrentService.AddAsync(new(torrent,torrentPreviewDialogResult.OutputFolder,torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
+        try
+        {
+            await _torrentWorkflowService.PickAndAddAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Не удалось добавить торрент";
+            await _dialogs.ShowTextAsync("Ошибка добавления", ex.Message);
+        }
     }
 
     public async Task AddMagnet(string magnet)
     {
-        var torrent = new Magnet(magnet);
-        var torrentPreview = await _torrentService.GetPreviewAsync(torrent);
-        var torrentPreviewDialogResult = await _previewDialog.ShowAsync(torrentPreview);
-        if (torrentPreviewDialogResult is null)
-            return;
-        _ = _torrentService.AddAsync(new(torrent, torrentPreviewDialogResult.OutputFolder, torrentPreviewDialogResult.SelectedFilePaths.ToHashSet()));
+        try
+        {
+            await _torrentWorkflowService.AddMagnetAsync(magnet);
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Не удалось добавить magnet-ссылку";
+            await _dialogs.ShowTextAsync("Ошибка добавления", ex.Message);
+        }
     }
 
     // ---------------- COMMAND LOGIC ----------------
@@ -166,7 +163,7 @@ public partial class TorrentViewModel : ObservableObject
         try
         {
             StatusText = "Запуск торрента...";
-            await _torrentService.StartAsync(SelectedTorrent.Id);
+            await _torrentWorkflowService.StartAsync(SelectedTorrent.Id);
         }
         catch (Exception ex)
         {
@@ -183,7 +180,7 @@ public partial class TorrentViewModel : ObservableObject
         try
         {
             StatusText = "Пауза торрента...";
-            await _torrentService.PauseAsync(SelectedTorrent.Id);
+            await _torrentWorkflowService.PauseAsync(SelectedTorrent.Id);
         }
         catch (Exception ex)
         {
@@ -196,8 +193,7 @@ public partial class TorrentViewModel : ObservableObject
     private Task OpenFolderAsync()
     {
         if (SelectedTorrent == null) return Task.CompletedTask;
-        OpenFolder(SelectedTorrent.SavePath);
-        return Task.CompletedTask;
+        return _torrentWorkflowService.OpenFolderAsync(SelectedTorrent.SavePath);
     }
 
     [RelayCommand(CanExecute = nameof(CanRemove))]
@@ -209,7 +205,7 @@ public partial class TorrentViewModel : ObservableObject
 
         try
         {
-            await _torrentService.RemoveAsync(SelectedTorrent.Id, isDeleteData == "1");
+            await _torrentWorkflowService.RemoveAsync(SelectedTorrent.Id, isDeleteData == "1");
 
             _torrents.Remove(toRemove.Id);
             toRemove.Dispose();
@@ -226,12 +222,4 @@ public partial class TorrentViewModel : ObservableObject
         }
     }
 
-    private static void OpenFolder(string path)
-    {
-        Process.Start(new ProcessStartInfo()
-        {
-            FileName = path,
-            UseShellExecute = true
-        });
-    }
 }
