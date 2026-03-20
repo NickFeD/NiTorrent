@@ -66,3 +66,25 @@ Only bug fixes found during testing should happen before the next large architec
 - Torrent settings page uses a unified staged-edit model: edit values in the form, then apply with the `Применить` button.
 - `MinimizeToTrayOnClose` follows the same save/apply flow as all other settings on the page.
 - `nucs.JsonSettings` remains the storage backend; no additional NuGet package is required for settings persistence.
+
+
+## Architecture transition started
+Phase 1 of `ARCHITECTURE_TRANSITION_PLAN.md` is now in progress.
+
+Completed in code:
+- a new domain-first torrent model was introduced in `NiTorrent.Domain`;
+- product concepts no longer depend only on `TorrentSnapshot` and `ShouldRun`;
+- transition-only bridges are now tracked in `TRANSITION_BACKLOG.md`.
+
+New domain model introduced:
+- `TorrentEntry`
+- `TorrentIntent`
+- `TorrentKey`
+- `TorrentRuntimeState`
+- `DeferredAction`
+- `AppCloseBehavior`
+- `GlobalTorrentSettings`
+- domain policies for duplicate detection, status resolution and deferred action replacement.
+
+This does **not** yet replace the current working runtime path.
+It establishes the target product model that later stages must migrate toward.
