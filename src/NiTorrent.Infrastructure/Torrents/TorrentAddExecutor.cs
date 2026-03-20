@@ -30,39 +30,49 @@ public sealed class TorrentAddExecutor
         AddTorrentRequest request,
         Func<TorrentSource, CancellationToken, Task<Torrent>> resolveTorrentAsync,
         SemaphoreSlim opGate,
-        Func<Task, string, Task>? onBackgroundTaskScheduled,
+        Func<Task, string, Task>? _onBackgroundTaskScheduled,
         CancellationToken ct)
     {
         _logger.LogInformation("Adding torrent");
 
         var torrent = await resolveTorrentAsync(request.Source, ct).ConfigureAwait(false);
-        var manager = await engine.AddAsync(torrent, request.SavePath).ConfigureAwait(false);
 
-        await ApplyFileSelectionAsync(manager, request.SelectedFilePaths).ConfigureAwait(false);
-
-        var id = new TorrentId(Guid.NewGuid());
-        var addedAt = DateTimeOffset.UtcNow;
-
-        await opGate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            _runtimeRegistry.Set(id, manager);
+            var manager = await engine.AddAsync(torrent, request.SavePath).ConfigureAwait(false);
+
+            await ApplyFileSelectionAsync(manager, request.SelectedFilePaths).ConfigureAwait(false);
+
+            var id = new TorrentId(Guid.NewGuid());
+            var addedAt = DateTimeOffset.UtcNow;
+
+            await opGate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                _runtimeRegistry.Set(id, manager);
+            }
+            finally
+            {
+                opGate.Release();
+            }
+
+            await _catalogStore.UpsertFromSnapshotAsync(snapshot, ct).ConfigureAwait(false);
+            await _catalogStore.SetShouldRunAsync(id, true, ct).ConfigureAwait(false);
+            await _catalogStore.SaveAsync(force: true, ct).ConfigureAwait(false);
+
+            _logger.LogInformation("Starting torrent {TorrentId}", id.Value);
+            await manager.StartAsync().ConfigureAwait(false);
+
+            return id;
         }
-        finally
+        catch (Exception ex) when (IsDuplicateManagerError(ex))
         {
-            opGate.Release();
+            throw new InvalidOperationException("Этот торрент уже добавлен в приложение.", ex);
         }
-
-        var snapshot = _snapshotFactory.Create(id, manager, addedAtUtc: addedAt);
-        await _catalogStore.UpsertFromSnapshotAsync(snapshot, ct).ConfigureAwait(false);
-        await _catalogStore.SetShouldRunAsync(id, true, ct).ConfigureAwait(false);
-        await _catalogStore.SaveAsync(force: true, ct).ConfigureAwait(false);
-
-        _logger.LogInformation("Starting torrent {TorrentId}", id.Value);
-        await manager.StartAsync().ConfigureAwait(false);
-
-        return id;
     }
+
+    private static bool IsDuplicateManagerError(Exception ex)
+        => ex.Message.Contains("already been registered", StringComparison.OrdinalIgnoreCase);
 
     private static async Task ApplyFileSelectionAsync(TorrentManager manager, IReadOnlySet<string>? selectedFilePaths)
     {

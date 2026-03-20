@@ -21,6 +21,21 @@ public sealed class TorrentRuntimeRegistry
     public bool Remove(TorrentId id)
         => _byId.Remove(id);
 
+    public bool TryFindIdByStableKey(string stableKey, Func<TorrentManager, string> getStableKey, out TorrentId id)
+    {
+        foreach (var pair in _byId)
+        {
+            if (string.Equals(getStableKey(pair.Value), stableKey, StringComparison.OrdinalIgnoreCase))
+            {
+                id = pair.Key;
+                return true;
+            }
+        }
+
+        id = default;
+        return false;
+    }
+
     public Dictionary<TorrentId, TorrentManager> AsDictionary()
         => _byId;
 }

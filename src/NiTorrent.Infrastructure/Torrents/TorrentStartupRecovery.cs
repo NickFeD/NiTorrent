@@ -67,7 +67,7 @@ public sealed class TorrentStartupRecovery
                 if (shouldRun)
                     await manager.StartAsync().ConfigureAwait(false);
                 else
-                    await manager.StopAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+                    await manager.PauseAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {

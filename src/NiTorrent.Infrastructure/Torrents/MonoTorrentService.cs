@@ -116,9 +116,10 @@ public sealed class MonoTorrentService : ITorrentService
                 request,
                 (source, token) => _sourceResolver.ResolveAsync(source, EnsureStartedAsync, () => Engine, token),
                 _opGate,
-                onBackgroundTaskScheduled: null,
+                null,
                 ct).ConfigureAwait(false);
 
+            PublishTorrentUpdates();
             _backgroundTasks.Run(SaveAsync(CancellationToken.None), "save-engine-state");
             return id;
         }, ct);
