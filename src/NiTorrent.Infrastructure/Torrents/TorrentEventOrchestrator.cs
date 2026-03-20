@@ -1,4 +1,4 @@
-using NiTorrent.Domain.Torrents;
+﻿using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
@@ -106,8 +106,6 @@ public sealed class TorrentEventOrchestrator
 
         if (handler is null)
             return;
-
-        var snapshots = await _updatePublisher.BuildSnapshotsAsync(hasEngine, opGate, ct).ConfigureAwait(false);
 
         if (hasEngine)
         {

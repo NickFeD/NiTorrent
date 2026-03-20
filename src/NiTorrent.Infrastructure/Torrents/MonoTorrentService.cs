@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
@@ -116,7 +116,6 @@ public sealed class MonoTorrentService : ITorrentService
                 request,
                 (source, token) => _sourceResolver.ResolveAsync(source, EnsureStartedAsync, () => Engine, token),
                 _opGate,
-                null,
                 ct).ConfigureAwait(false);
 
             PublishTorrentUpdates();
