@@ -14,9 +14,8 @@ public sealed partial class TorrentPage : Page
 
     public TorrentPage()
     {
-        InitializeComponent();
         ViewModel = App.GetService<TorrentViewModel>();
-
+        InitializeComponent();
     }
 
 
@@ -48,6 +47,15 @@ public sealed partial class TorrentPage : Page
     {
         ViewModel.RefreshCommands();
     }
+
+    private void TorrentList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (ViewModel.SelectedTorrent is null)
+            return;
+
+        Frame?.Navigate(typeof(TorrentDetailsPage), ViewModel.SelectedTorrent.Id.ToString());
+    }
+
 }
 
 

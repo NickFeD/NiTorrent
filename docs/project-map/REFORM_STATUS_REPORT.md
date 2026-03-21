@@ -99,3 +99,9 @@ Only bug fixes found during testing should happen before the next large architec
 ## Phase 10
 - Introduced a details slice foundation for future double-click navigation.
 - Added product-owned per-torrent settings contract and JSON-backed repository.
+
+
+## Phase 11
+- Wired torrent details into the UI with double-click navigation.
+- Added `TorrentDetailsPage` backed by `TorrentDetailsViewModel`.
+- Preserved existing WinUI/DevWinUI navigation responsibilities instead of introducing custom routing abstractions.

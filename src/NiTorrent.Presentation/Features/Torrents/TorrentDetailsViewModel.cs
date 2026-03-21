@@ -7,8 +7,7 @@ using NiTorrent.Presentation.Abstractions;
 namespace NiTorrent.Presentation.Features.Torrents;
 
 /// <summary>
-/// Foundation for the future double-click details page.
-/// Not wired into navigation yet.
+/// Details view model for the torrent details page and per-torrent settings.
 /// </summary>
 public partial class TorrentDetailsViewModel : ObservableObject
 {
@@ -35,10 +34,10 @@ public partial class TorrentDetailsViewModel : ObservableObject
     public partial string? DownloadPathOverride { get; set; }
 
     [ObservableProperty]
-    public partial int? MaximumDownloadRateBytesPerSecond { get; set; }
+    public partial string? MaximumDownloadRateText { get; set; }
 
     [ObservableProperty]
-    public partial int? MaximumUploadRateBytesPerSecond { get; set; }
+    public partial string? MaximumUploadRateText { get; set; }
 
     [ObservableProperty]
     public partial bool SequentialDownload { get; set; }
@@ -55,8 +54,8 @@ public partial class TorrentDetailsViewModel : ObservableObject
             SavePath = string.Empty;
             StatusLabel = string.Empty;
             DownloadPathOverride = null;
-            MaximumDownloadRateBytesPerSecond = null;
-            MaximumUploadRateBytesPerSecond = null;
+            MaximumDownloadRateText = null;
+            MaximumUploadRateText = null;
             SequentialDownload = false;
             OnPropertyChanged(nameof(HasTorrent));
             return;
@@ -67,10 +66,28 @@ public partial class TorrentDetailsViewModel : ObservableObject
         SavePath = details.Snapshot.SavePath;
         StatusLabel = details.Snapshot.Status.Phase.ToString();
         DownloadPathOverride = details.Settings.DownloadPathOverride;
-        MaximumDownloadRateBytesPerSecond = details.Settings.MaximumDownloadRateBytesPerSecond;
-        MaximumUploadRateBytesPerSecond = details.Settings.MaximumUploadRateBytesPerSecond;
+        MaximumDownloadRateText = details.Settings.MaximumDownloadRateBytesPerSecond?.ToString();
+        MaximumUploadRateText = details.Settings.MaximumUploadRateBytesPerSecond?.ToString();
         SequentialDownload = details.Settings.SequentialDownload;
         OnPropertyChanged(nameof(HasTorrent));
+    }
+
+    private static bool TryParseNullableInt(string? value, out int? parsed)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            parsed = null;
+            return true;
+        }
+
+        if (int.TryParse(value, out var parsedValue) && parsedValue >= 0)
+        {
+            parsed = parsedValue;
+            return true;
+        }
+
+        parsed = null;
+        return false;
     }
 
     [RelayCommand]
@@ -79,11 +96,14 @@ public partial class TorrentDetailsViewModel : ObservableObject
         if (_currentTorrentId == TorrentId.Empty)
             return Task.CompletedTask;
 
+        if (!TryParseNullableInt(MaximumDownloadRateText, out var maxDownload) || !TryParseNullableInt(MaximumUploadRateText, out var maxUpload))
+            return _dialogs.ShowTextAsync("Настройки торрента", "Лимиты скоростей должны быть пустыми или целыми числами.");
+
         var settings = new TorrentEntrySettings
         {
             DownloadPathOverride = string.IsNullOrWhiteSpace(DownloadPathOverride) ? null : DownloadPathOverride,
-            MaximumDownloadRateBytesPerSecond = MaximumDownloadRateBytesPerSecond,
-            MaximumUploadRateBytesPerSecond = MaximumUploadRateBytesPerSecond,
+            MaximumDownloadRateBytesPerSecond = maxDownload,
+            MaximumUploadRateBytesPerSecond = maxUpload,
             SequentialDownload = SequentialDownload
         };
 
