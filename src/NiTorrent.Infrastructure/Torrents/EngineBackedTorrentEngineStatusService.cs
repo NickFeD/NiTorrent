@@ -4,7 +4,7 @@ namespace NiTorrent.Infrastructure.Torrents;
 
 /// <summary>
 /// Transitional engine status service that starts the engine through infrastructure startup components
-/// instead of delegating to the legacy ITorrentService facade.
+/// instead of delegating to the legacy compatibility facade.
 /// </summary>
 public sealed class EngineBackedTorrentEngineStatusService : ITorrentEngineStatusService, IDisposable
 {

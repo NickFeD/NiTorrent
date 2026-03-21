@@ -5,7 +5,7 @@ namespace NiTorrent.Infrastructure.Torrents;
 
 /// <summary>
 /// Transitional read feed that listens to the infrastructure event orchestrator directly
-/// and rebuilds snapshots from infrastructure-owned sources instead of calling ITorrentService.
+/// and rebuilds snapshots from infrastructure-owned sources instead of calling the removed legacy service facade.
 /// </summary>
 public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, IDisposable
 {

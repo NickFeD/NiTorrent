@@ -40,3 +40,5 @@
 ## Phase 18
 - `MonoTorrentService` reduced to a thin compatibility layer over application read/status/write/maintenance services.
 - `TorrentMonitor` and runtime settings refresh no longer depend on `ITorrentService`.
+
+- [x] Phase 19 — remove legacy `ITorrentService` and `MonoTorrentService` from the active runtime path

@@ -61,7 +61,6 @@ The codebase is now at a practical pause point for system testing after a final 
 Refactoring should pause after the pre-test checklist is accepted and the full system test is executed.
 Only bug fixes found during testing should happen before the next large architectural step.
 
-
 ## Settings system note
 - Torrent settings page uses a unified staged-edit model: edit values in the form, then apply with the `Применить` button.
 - `MinimizeToTrayOnClose` follows the same save/apply flow as all other settings on the page.
@@ -90,6 +89,7 @@ Only bug fixes found during testing should happen before the next large architec
 
 
 ## Phase 8 completed: product-owned torrent settings subsystem (`PHASE8_SETTINGS_SUBSYSTEM.md`).
+
 
 
 ## Phase 9
@@ -136,3 +136,7 @@ Phase 14 — write path decoupling from legacy `ITorrentService`.
 ## Phase 18
 - `MonoTorrentService` reduced to a thin compatibility layer over application read/status/write/maintenance services.
 - `TorrentMonitor` and runtime settings refresh no longer depend on `ITorrentService`.
+
+
+## Latest milestone
+- Phase 19 completed: removed `ITorrentService`, deleted `MonoTorrentService`, and removed the last runtime registration of the legacy service facade.

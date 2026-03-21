@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Infrastructure.Torrents;
@@ -35,7 +34,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TorrentNotifier>();
         services.AddSingleton<TorrentStartupCoordinator>();
         services.AddSingleton<TorrentRuntimeContext>();
-        services.AddSingleton<ITorrentService, MonoTorrentService>();
         services.AddSingleton<ITorrentReadModelFeed, EngineBackedTorrentReadModelFeed>();
         services.AddSingleton<ITorrentWriteService, EngineBackedTorrentWriteService>();
         services.AddSingleton<ITorrentEngineStatusService, EngineBackedTorrentEngineStatusService>();

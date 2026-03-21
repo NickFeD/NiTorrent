@@ -7,7 +7,7 @@ namespace NiTorrent.Infrastructure.Torrents;
 /// <summary>
 /// Transitional write boundary that executes torrent write scenarios directly against
 /// infrastructure-owned engine/runtime components instead of delegating to the legacy
-/// <see cref="NiTorrent.Application.Abstractions.ITorrentService"/> facade.
+/// <see cref="legacy compatibility service"/> facade.
 /// </summary>
 public sealed class EngineBackedTorrentWriteService(
     TorrentStartupCoordinator startupCoordinator,

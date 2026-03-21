@@ -4,7 +4,7 @@ namespace NiTorrent.Infrastructure.Torrents;
 
 /// <summary>
 /// Transitional maintenance service that saves/shuts down infrastructure-owned torrent state
-/// without routing through the legacy ITorrentService facade.
+/// without routing through the legacy compatibility facade.
 /// </summary>
 public sealed class EngineBackedTorrentEngineMaintenanceService : ITorrentEngineMaintenanceService
 {
