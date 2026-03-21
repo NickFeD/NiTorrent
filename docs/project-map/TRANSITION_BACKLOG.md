@@ -26,3 +26,14 @@
 
 **Критерий удаления:**
 - startup/restore и commands переходят на `TorrentEntry.Intent`.
+
+
+### 4. `LegacyMonoTorrentEngineAdapter`
+- Новые engine-порты уже введены.
+- Но они пока реализованы поверх старого `ITorrentService`.
+- Это допустимо только как переход на Этапе 3.
+
+**Критерий удаления:**
+- workflows и commands больше не зависят от `ITorrentService`;
+- `MonoTorrentService` перестаёт быть bridge-ядром;
+- engine ports получают прямые infrastructure-реализации.

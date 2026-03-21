@@ -72,3 +72,9 @@ Only bug fixes found during testing should happen before the next large architec
 - Этап 1: введены базовые domain types для product-centered модели коллекции торрентов.
 - Этап 2: введён `ITorrentCollectionRepository` и временная реализация `CatalogBackedTorrentCollectionRepository`.
 - Legacy `TorrentCatalogStore` пока остаётся backing store, но уже не должен считаться целевой моделью продукта.
+
+
+## Phase 3 — engine gateway
+- введены engine ports в `Application`;
+- добавлен transition-only `LegacyMonoTorrentEngineAdapter`;
+- `MonoTorrent` начинает отделяться от product collection как внешний engine.
