@@ -1,255 +1,86 @@
-using Microsoft.Extensions.Logging;
-using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public sealed class MonoTorrentService : ITorrentService
+/// <summary>
+/// Legacy compatibility facade kept only for consumers that still depend on ITorrentService.
+/// New read/status/write paths should go through application services directly.
+/// </summary>
+public sealed class MonoTorrentService : ITorrentService, IDisposable
 {
-    private readonly ILogger<MonoTorrentService> _logger;
-    private readonly IAppStorageService _storage;
-    private readonly TorrentCatalogStore _catalogStore;
-    private readonly TorrentRuntimeRegistry _runtimeRegistry;
-    private readonly TorrentEngineStateStore _engineStateStore;
-    private readonly TorrentCommandExecutor _commandExecutor;
-    private readonly TorrentAddExecutor _addExecutor;
-    private readonly TorrentSourceResolver _sourceResolver;
-    private readonly TorrentSettingsApplier _settingsApplier;
-    private readonly TorrentQueryService _queryService;
-    private readonly BackgroundTaskRunner _backgroundTasks;
-    private readonly TorrentEventOrchestrator _eventOrchestrator;
-    private readonly TorrentLifecycleExecutor _lifecycleExecutor;
-    private readonly TorrentNotifier _notifier;
-    private readonly TorrentStartupCoordinator _startupCoordinator;
-    private readonly TorrentRuntimeContext _runtimeContext;
-
-    private readonly string _cacheDir;
+    private readonly ITorrentReadModelFeed _readFeed;
+    private readonly ITorrentEngineStatusService _engineStatusService;
+    private readonly ITorrentEngineMaintenanceService _maintenanceService;
+    private readonly ITorrentWriteService _writeService;
 
     public MonoTorrentService(
-        ILogger<MonoTorrentService> logger,
-        IAppStorageService storage,
-        TorrentCatalogStore catalogStore,
-        TorrentRuntimeRegistry runtimeRegistry,
-        TorrentEngineStateStore engineStateStore,
-        TorrentCommandExecutor commandExecutor,
-        TorrentAddExecutor addExecutor,
-        TorrentSourceResolver sourceResolver,
-        TorrentSettingsApplier settingsApplier,
-        TorrentQueryService queryService,
-        BackgroundTaskRunner backgroundTasks,
-        TorrentEventOrchestrator eventOrchestrator,
-        TorrentLifecycleExecutor lifecycleExecutor,
-        TorrentNotifier notifier,
-        TorrentStartupCoordinator startupCoordinator,
-        TorrentRuntimeContext runtimeContext)
+        ITorrentReadModelFeed readFeed,
+        ITorrentEngineStatusService engineStatusService,
+        ITorrentEngineMaintenanceService maintenanceService,
+        ITorrentWriteService writeService)
     {
-        _logger = logger;
-        _storage = storage;
-        _catalogStore = catalogStore;
-        _runtimeRegistry = runtimeRegistry;
-        _engineStateStore = engineStateStore;
-        _commandExecutor = commandExecutor;
-        _addExecutor = addExecutor;
-        _sourceResolver = sourceResolver;
-        _settingsApplier = settingsApplier;
-        _queryService = queryService;
-        _backgroundTasks = backgroundTasks;
-        _eventOrchestrator = eventOrchestrator;
-        _lifecycleExecutor = lifecycleExecutor;
-        _notifier = notifier;
-        _startupCoordinator = startupCoordinator;
-        _runtimeContext = runtimeContext;
+        _readFeed = readFeed;
+        _engineStatusService = engineStatusService;
+        _maintenanceService = maintenanceService;
+        _writeService = writeService;
 
-        _cacheDir = _storage.GetCachePath(@"Torrents\cache");
-        _storage.EnsureDirectory(_cacheDir);
+        _engineStatusService.Ready += OnReady;
+        _readFeed.Updated += OnUpdated;
     }
 
-    private ClientEngine Engine
-        => _startupCoordinator.Engine ?? throw new InvalidOperationException("Torrent engine is not initialized yet.");
+    public event Action? Loaded;
+    public event Action<IReadOnlyList<TorrentSnapshot>>? UpdateTorrent;
 
-    public async Task InitializeAsync(CancellationToken ct = default)
-    {
-        _backgroundTasks.Run(_eventOrchestrator.PublishCachedAsync(ct), "publish-cached");
-
-        try
-        {
-            await EnsureStartedAsync(ct).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            await _notifier.NotifyAsync("Ошибка запуска торрент-движка", $"Не удалось запустить торрент-движок.\n\n{ex.Message}").ConfigureAwait(false);
-            throw;
-        }
-    }
-
-    private Task EnsureStartedAsync(CancellationToken ct = default)
-        => _startupCoordinator.EnsureStartedAsync(_runtimeContext.OperationGate, _runtimeContext.CommandQueue, _eventOrchestrator.RaiseLoaded, ct);
+    public Task InitializeAsync(CancellationToken ct = default)
+        => _engineStatusService.InitializeAsync(ct);
 
     public IReadOnlyList<TorrentSnapshot> GetAll()
-        => _queryService.GetAll(_startupCoordinator.Engine is not null);
+        => _readFeed.Current;
 
     public TorrentSnapshot? TryGet(TorrentId id)
-        => _queryService.TryGet(id);
+        => _readFeed.Current.FirstOrDefault(x => x.Id == id);
 
-    public async Task<TorrentPreview> GetPreviewAsync(TorrentSource source, CancellationToken ct = default)
-    {
-        var torrent = await _sourceResolver.ResolveAsync(source, EnsureStartedAsync, () => Engine, ct).ConfigureAwait(false);
-
-        var files = torrent.Files
-            .Select(f => new TorrentFileEntry(f.Path, f.Length, true))
-            .ToList();
-
-        return new TorrentPreview(torrent.Name, torrent.Size, files);
-    }
+    public Task<TorrentPreview> GetPreviewAsync(TorrentSource source, CancellationToken ct = default)
+        => _writeService.GetPreviewAsync(source, ct);
 
     public Task<TorrentId> AddAsync(AddTorrentRequest request, CancellationToken ct = default)
-        => _lifecycleExecutor.RunAsync(async () =>
-        {
-            await EnsureStartedAsync(ct).ConfigureAwait(false);
-
-            var id = await _addExecutor.AddAsync(
-                Engine,
-                request,
-                (source, token) => _sourceResolver.ResolveAsync(source, EnsureStartedAsync, () => Engine, token),
-                _runtimeContext.OperationGate,
-                onBackgroundTaskScheduled: null,
-                ct).ConfigureAwait(false);
-
-            _backgroundTasks.Run(SaveAsync(CancellationToken.None), "save-engine-state");
-            return id;
-        }, ct);
+        => _writeService.AddAsync(request, ct);
 
     public Task StartAsync(TorrentId id, CancellationToken ct = default)
-        => RunCommandWithNotificationAsync(
-            async token =>
-            {
-                await _commandExecutor.StartAsync(
-                    id,
-                    _startupCoordinator.IsReady,
-                    _runtimeContext.OperationGate,
-                    _runtimeContext.CommandQueue,
-                    EnsureStartedAsync,
-                    PublishTorrentUpdates,
-                    _backgroundTasks.Run,
-                    token).ConfigureAwait(false);
-            },
-            "Не удалось запустить торрент",
-            "Команда запуска завершилась ошибкой.",
-            ct);
+        => _writeService.StartAsync(id, ct);
 
     public Task PauseAsync(TorrentId id, CancellationToken ct = default)
-        => _lifecycleExecutor.RunAsync(async () =>
-        {
-            await _commandExecutor.PauseAsync(
-                id,
-                _startupCoordinator.IsReady,
-                _runtimeContext.OperationGate,
-                _runtimeContext.CommandQueue,
-                EnsureStartedAsync,
-                PublishTorrentUpdates,
-                _backgroundTasks.Run,
-                ct).ConfigureAwait(false);
-        }, ct);
+        => _writeService.PauseAsync(id, ct);
 
     public Task StopAsync(TorrentId id, CancellationToken ct = default)
-        => _lifecycleExecutor.RunAsync(async () =>
-        {
-            await _commandExecutor.StopAsync(
-                id,
-                _startupCoordinator.IsReady,
-                _runtimeContext.OperationGate,
-                _runtimeContext.CommandQueue,
-                EnsureStartedAsync,
-                PublishTorrentUpdates,
-                _backgroundTasks.Run,
-                ct).ConfigureAwait(false);
-        }, ct);
+        => _writeService.StopAsync(id, ct);
 
-    public Task RemoveAsync(TorrentId id, bool deleteDownloadedData, CancellationToken ct = default)
-        => RunCommandWithNotificationAsync(
-            async token =>
-            {
-                await _commandExecutor.RemoveAsync(
-                    id,
-                    deleteDownloadedData,
-                    _startupCoordinator.IsReady,
-                    _startupCoordinator.Engine,
-                    _runtimeContext.OperationGate,
-                    _runtimeContext.CommandQueue,
-                    EnsureStartedAsync,
-                    PublishTorrentUpdates,
-                    _backgroundTasks.Run,
-                    token).ConfigureAwait(false);
-            },
-            "Не удалось удалить торрент",
-            "Команда удаления завершилась ошибкой.",
-            ct);
-
-    public event Action? Loaded
-    {
-        add => _eventOrchestrator.Loaded += value;
-        remove => _eventOrchestrator.Loaded -= value;
-    }
-
-    public event Action<IReadOnlyList<TorrentSnapshot>>? UpdateTorrent
-    {
-        add => _eventOrchestrator.UpdateTorrent += value;
-        remove => _eventOrchestrator.UpdateTorrent -= value;
-    }
-
-    public Task PublishTorrentUpdatesAsync(CancellationToken ct = default)
-        => _eventOrchestrator.PublishUpdatesAsync(_startupCoordinator.Engine is not null, _runtimeContext.OperationGate, ct);
+    public Task RemoveAsync(TorrentId id, bool deleteData, CancellationToken ct = default)
+        => _writeService.RemoveAsync(id, deleteData, ct);
 
     public void PublishTorrentUpdates()
-        => _eventOrchestrator.PublishUpdatesInBackground(_startupCoordinator.Engine is not null, _runtimeContext.OperationGate);
-
-    public Task SaveAsync(CancellationToken ct = default)
-        => _lifecycleExecutor.RunAsync(async () =>
-        {
-            await EnsureStartedAsync(ct).ConfigureAwait(false);
-            await _engineStateStore.SaveAsync(Engine, ct).ConfigureAwait(false);
-        }, ct);
-
-    public Task ShutdownAsync(CancellationToken ct = default)
-    {
-        _logger.LogInformation("Shutting down torrent service");
-
-        return _lifecycleExecutor.RunAsync(async () =>
-        {
-            if (_startupCoordinator.Engine is null)
-                return;
-
-            await _catalogStore.SaveAsync(force: true, ct).ConfigureAwait(false);
-            await _engineStateStore.SaveAsync(Engine, ct).ConfigureAwait(false);
-        }, ct);
-    }
-
-
-    private Task RunCommandWithNotificationAsync(
-        Func<CancellationToken, Task> action,
-        string title,
-        string messagePrefix,
-        CancellationToken ct)
-        => _lifecycleExecutor.RunAsync(async () =>
-        {
-            try
-            {
-                await action(ct).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                await _notifier.NotifyAsync(title, $"{messagePrefix}\n\n{ex.Message}").ConfigureAwait(false);
-                throw;
-            }
-        }, ct);
+        => _readFeed.Refresh();
 
     public Task ApplySettingsAsync()
-        => _lifecycleExecutor.RunAsync(async () =>
-        {
-            await EnsureStartedAsync(CancellationToken.None).ConfigureAwait(false);
-            await _settingsApplier.ApplyAsync(Engine, _cacheDir).ConfigureAwait(false);
-        }, CancellationToken.None);
+        => _writeService.ApplySettingsAsync(CancellationToken.None);
 
+    public Task SaveAsync(CancellationToken ct = default)
+        => _maintenanceService.SaveStateAsync(ct);
+
+    public Task ShutdownAsync(CancellationToken ct = default)
+        => _maintenanceService.ShutdownAsync(ct);
+
+    private void OnReady()
+        => Loaded?.Invoke();
+
+    private void OnUpdated(IReadOnlyList<TorrentSnapshot> snapshots)
+        => UpdateTorrent?.Invoke(snapshots);
+
+    public void Dispose()
+    {
+        _engineStatusService.Ready -= OnReady;
+        _readFeed.Updated -= OnUpdated;
+    }
 }

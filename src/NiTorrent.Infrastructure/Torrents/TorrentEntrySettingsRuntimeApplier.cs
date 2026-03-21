@@ -1,6 +1,6 @@
 using System.Reflection;
 using MonoTorrent.Client;
-using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 
@@ -13,12 +13,12 @@ namespace NiTorrent.Infrastructure.Torrents;
 public sealed class TorrentEntrySettingsRuntimeApplier : ITorrentEntrySettingsRuntimeApplier
 {
     private readonly TorrentRuntimeRegistry _runtimeRegistry;
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentReadModelFeed _readModelFeed;
 
-    public TorrentEntrySettingsRuntimeApplier(TorrentRuntimeRegistry runtimeRegistry, ITorrentService torrentService)
+    public TorrentEntrySettingsRuntimeApplier(TorrentRuntimeRegistry runtimeRegistry, ITorrentReadModelFeed readModelFeed)
     {
         _runtimeRegistry = runtimeRegistry;
-        _torrentService = torrentService;
+        _readModelFeed = readModelFeed;
     }
 
     public async Task ApplyAsync(TorrentId torrentId, TorrentEntrySettings settings, CancellationToken ct = default)
@@ -31,7 +31,7 @@ public sealed class TorrentEntrySettingsRuntimeApplier : ITorrentEntrySettingsRu
         anyApplied |= await TryApplyRateLimitsAsync(manager, settings, ct).ConfigureAwait(false);
 
         if (anyApplied)
-            _torrentService.PublishTorrentUpdates();
+            _readModelFeed.Refresh();
     }
 
     private static bool TryApplySequentialDownload(TorrentManager manager, bool sequentialDownload)

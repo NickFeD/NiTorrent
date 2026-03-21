@@ -1,8 +1,3 @@
-# NiTorrent — TRANSITION_BACKLOG
-
-## Purpose
-Tracks transition-only bridges that must be deleted before the migration to `TARGET_ARCHITECTURE_V2.md` is considered complete.
-
 ## Active bridges
 - `CatalogBackedTorrentCollectionRepository`
   - Why it exists: new product-owned collection is still stored in legacy `TorrentCatalogStore`.
@@ -40,3 +35,8 @@ Tracks transition-only bridges that must be deleted before the migration to `TAR
 - [x] Phase 16 — engine-owned read/status path
 
 - [x] Phase 17 — engine-owned write path
+
+
+## Phase 18
+- `MonoTorrentService` reduced to a thin compatibility layer over application read/status/write/maintenance services.
+- `TorrentMonitor` and runtime settings refresh no longer depend on `ITorrentService`.

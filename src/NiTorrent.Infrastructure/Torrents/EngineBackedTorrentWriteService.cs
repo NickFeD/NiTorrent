@@ -39,12 +39,12 @@ public sealed class EngineBackedTorrentWriteService(
         return new TorrentPreview(torrent.Name, torrent.Size, files);
     }
 
-    public Task AddAsync(AddTorrentRequest request, CancellationToken ct = default)
+    public Task<TorrentId> AddAsync(AddTorrentRequest request, CancellationToken ct = default)
         => lifecycleExecutor.RunAsync(async () =>
         {
             await EnsureStartedAsync(ct).ConfigureAwait(false);
 
-            await addExecutor.AddAsync(
+            var id = await addExecutor.AddAsync(
                 Engine,
                 request,
                 (source, token) => sourceResolver.ResolveAsync(source, EnsureStartedAsync, () => Engine, token),
@@ -54,6 +54,7 @@ public sealed class EngineBackedTorrentWriteService(
 
             eventOrchestrator.PublishUpdatesInBackground(startupCoordinator.Engine is not null, runtimeContext.OperationGate);
             backgroundTasks.Run(SaveEngineStateAsync(CancellationToken.None), "save-engine-state");
+            return id;
         }, ct);
 
     public Task StartAsync(TorrentId id, CancellationToken ct = default)
@@ -78,6 +79,21 @@ public sealed class EngineBackedTorrentWriteService(
         => lifecycleExecutor.RunAsync(async () =>
         {
             await commandExecutor.PauseAsync(
+                id,
+                startupCoordinator.IsReady,
+                runtimeContext.OperationGate,
+                runtimeContext.CommandQueue,
+                EnsureStartedAsync,
+                PublishTorrentUpdates,
+                backgroundTasks.Run,
+                ct).ConfigureAwait(false);
+        }, ct);
+
+
+    public Task StopAsync(TorrentId id, CancellationToken ct = default)
+        => lifecycleExecutor.RunAsync(async () =>
+        {
+            await commandExecutor.StopAsync(
                 id,
                 startupCoordinator.IsReady,
                 runtimeContext.OperationGate,

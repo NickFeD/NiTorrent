@@ -131,3 +131,8 @@ Phase 14 — write path decoupling from legacy `ITorrentService`.
 ## Phase 17
 - `ITorrentWriteService` is now backed by `EngineBackedTorrentWriteService`.
 - Application write scenarios no longer require the legacy `ITorrentService` facade to execute add/start/pause/remove/apply-settings.
+
+
+## Phase 18
+- `MonoTorrentService` reduced to a thin compatibility layer over application read/status/write/maintenance services.
+- `TorrentMonitor` and runtime settings refresh no longer depend on `ITorrentService`.

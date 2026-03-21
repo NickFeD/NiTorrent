@@ -1,15 +1,15 @@
 ﻿using Microsoft.Extensions.Hosting;
-using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
 public sealed class TorrentMonitor : BackgroundService
 {
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentReadModelFeed _readModelFeed;
 
-    public TorrentMonitor(ITorrentService torrentService)
+    public TorrentMonitor(ITorrentReadModelFeed readModelFeed)
     {
-        _torrentService = torrentService;
+        _readModelFeed = readModelFeed;
     }
 
 
@@ -19,7 +19,7 @@ public sealed class TorrentMonitor : BackgroundService
 
         while (await timer.WaitForNextTickAsync(ct) && !ct.IsCancellationRequested)
         {
-            _torrentService.PublishTorrentUpdates();
+            _readModelFeed.Refresh();
         }
     }
 }
