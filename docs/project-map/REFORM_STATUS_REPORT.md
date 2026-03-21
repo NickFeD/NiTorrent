@@ -90,6 +90,12 @@ Only bug fixes found during testing should happen before the next large architec
 
 ## Phase 8 completed: product-owned torrent settings subsystem (`PHASE8_SETTINGS_SUBSYSTEM.md`).
 
+
 ## Phase 9
 - Introduced product-owned shell policy for close/tray behavior.
 - Close behavior is now resolved via domain policy instead of a raw UI boolean.
+
+
+## Phase 10
+- Introduced a details slice foundation for future double-click navigation.
+- Added product-owned per-torrent settings contract and JSON-backed repository.

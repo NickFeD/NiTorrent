@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Torrents;
 using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Infrastructure.Torrents;
 
@@ -12,6 +13,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(AppConfigLoader.Load());
         services.AddSingleton<IAppPreferences, JsonAppPreferences>();
         services.AddSingleton<IAppShellSettingsRepository, JsonAppShellSettingsRepository>();
+        services.AddSingleton<ITorrentEntrySettingsRepository, JsonTorrentEntrySettingsRepository>();
         services.AddHostedService<TorrentMonitor>();
         services.AddSingleton<TorrentSnapshotFactory>();
         services.AddSingleton<TorrentRuntimeRegistry>();

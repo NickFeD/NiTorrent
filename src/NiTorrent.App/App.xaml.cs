@@ -103,6 +103,7 @@ public partial class App : WinUIApplication
         services.AddTransient<RemoveTorrentUseCase>();
         services.AddTransient<OpenTorrentFolderUseCase>();
         services.AddTransient<ApplyTorrentSettingsUseCase>();
+        services.AddSingleton<ITorrentDetailsService, TorrentDetailsService>();
         services.AddTransient<ITorrentWorkflowService, TorrentWorkflowService>();
     }
 
