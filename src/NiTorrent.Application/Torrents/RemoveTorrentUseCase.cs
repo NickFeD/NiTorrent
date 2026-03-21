@@ -3,8 +3,8 @@ using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents;
 
-public sealed class RemoveTorrentUseCase(ITorrentService torrentService)
+public sealed class RemoveTorrentUseCase(ITorrentWriteService writeService)
 {
     public Task ExecuteAsync(TorrentId id, bool deleteData, CancellationToken ct = default)
-        => torrentService.RemoveAsync(id, deleteData, ct);
+        => writeService.RemoveAsync(id, deleteData, ct);
 }

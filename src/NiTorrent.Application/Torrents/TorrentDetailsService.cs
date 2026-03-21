@@ -1,4 +1,4 @@
-using NiTorrent.Application.Abstractions;
+using System.Linq;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents;
@@ -9,20 +9,21 @@ namespace NiTorrent.Application.Torrents;
 /// </summary>
 public sealed class TorrentDetailsService : ITorrentDetailsService
 {
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentReadModelFeed _readModelFeed;
     private readonly ITorrentEntrySettingsRepository _settingsRepository;
     private readonly ITorrentEntrySettingsRuntimeApplier _runtimeApplier;
 
-    public TorrentDetailsService(ITorrentService torrentService, ITorrentEntrySettingsRepository settingsRepository, ITorrentEntrySettingsRuntimeApplier runtimeApplier)
+    public TorrentDetailsService(ITorrentReadModelFeed readModelFeed, ITorrentEntrySettingsRepository settingsRepository, ITorrentEntrySettingsRuntimeApplier runtimeApplier)
     {
-        _torrentService = torrentService;
+        _readModelFeed = readModelFeed;
         _settingsRepository = settingsRepository;
         _runtimeApplier = runtimeApplier;
     }
 
     public TorrentDetailsReadModel? Get(TorrentId torrentId)
     {
-        if (!_torrentService.TryGet(torrentId, out var snapshot) || snapshot is null)
+        var snapshot = _readModelFeed.Current.FirstOrDefault(x => x.Id == torrentId);
+        if (snapshot is null)
             return null;
 
         return new TorrentDetailsReadModel(snapshot, _settingsRepository.Load(torrentId));
