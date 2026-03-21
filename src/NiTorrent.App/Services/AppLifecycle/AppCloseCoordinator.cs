@@ -1,13 +1,14 @@
 using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Domain.Settings;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
 public sealed class AppCloseCoordinator : IAppCloseCoordinator
 {
     private readonly SemaphoreSlim _exitGate = new(1, 1);
-    private readonly ITorrentPreferences _preferences;
-    private readonly ITorrentEngineMaintenanceService _engineMaintenanceService;
+    private readonly IAppShellSettingsService _appShellSettingsService;
+    private readonly ITorrentEngineMaintenanceService _torrentEngineMaintenanceService;
     private readonly IMainWindowLifecycle _mainWindowLifecycle;
     private readonly ILogger<AppCloseCoordinator> _logger;
 
@@ -15,13 +16,13 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     private int _closeRequestInProgress;
 
     public AppCloseCoordinator(
-        ITorrentPreferences preferences,
-        ITorrentEngineMaintenanceService engineMaintenanceService,
+        IAppShellSettingsService appShellSettingsService,
+        ITorrentEngineMaintenanceService torrentEngineMaintenanceService,
         IMainWindowLifecycle mainWindowLifecycle,
         ILogger<AppCloseCoordinator> logger)
     {
-        _preferences = preferences;
-        _engineMaintenanceService = engineMaintenanceService;
+        _appShellSettingsService = appShellSettingsService;
+        _torrentEngineMaintenanceService = torrentEngineMaintenanceService;
         _mainWindowLifecycle = mainWindowLifecycle;
         _logger = logger;
     }
@@ -38,7 +39,8 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
 
         try
         {
-            if (_preferences.MinimizeToTrayOnClose)
+            var closeBehavior = _appShellSettingsService.GetCloseBehavior();
+            if (closeBehavior == AppCloseBehavior.MinimizeToTray)
             {
                 await MinimizeToTrayAsync().ConfigureAwait(false);
                 return;
@@ -63,7 +65,7 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     {
         try
         {
-            await _engineMaintenanceService.SaveAsync().ConfigureAwait(false);
+            await _torrentEngineMaintenanceService.SaveAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

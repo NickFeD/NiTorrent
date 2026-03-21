@@ -5,5 +5,8 @@ namespace NiTorrent.Application.Abstractions;
 public interface ITorrentReadModelFeed
 {
     event Action<IReadOnlyList<TorrentSnapshot>>? Updated;
+
     IReadOnlyList<TorrentSnapshot> GetAll();
+    TorrentSnapshot? TryGet(TorrentId id);
+    void Refresh();
 }

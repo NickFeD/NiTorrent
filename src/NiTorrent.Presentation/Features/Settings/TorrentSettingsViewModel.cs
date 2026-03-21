@@ -2,14 +2,15 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Abstractions;
-using NiTorrent.Domain.Settings;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Domain.Settings;
 
 namespace NiTorrent.Presentation.Features.Settings;
 
 public partial class TorrentSettingsViewModel : ObservableObject
 {
     private readonly ITorrentPreferences _prefs;
+    private readonly IAppShellSettingsService _appShellSettingsService;
     private readonly IPickerHelper _picker;
     private readonly ApplyTorrentSettingsUseCase _applyTorrentSettingsUseCase;
 
@@ -19,15 +20,19 @@ public partial class TorrentSettingsViewModel : ObservableObject
     public ObservableCollection<TorrentFastResumeMode> FastResumeModes { get; } =
         new() { TorrentFastResumeMode.BestEffort, TorrentFastResumeMode.Accurate };
 
-    public TorrentSettingsViewModel(ITorrentPreferences prefs, IPickerHelper picker, ApplyTorrentSettingsUseCase applyTorrentSettingsUseCase)
+    public TorrentSettingsViewModel(
+        ITorrentPreferences prefs,
+        IAppShellSettingsService appShellSettingsService,
+        IPickerHelper picker,
+        ApplyTorrentSettingsUseCase applyTorrentSettingsUseCase)
     {
         _prefs = prefs;
+        _appShellSettingsService = appShellSettingsService;
         _picker = picker;
         _applyTorrentSettingsUseCase = applyTorrentSettingsUseCase;
         LoadFromPrefs();
     }
 
-    // --- UI поля ---
     [ObservableProperty] public partial string DefaultDownloadPath { get; set; } = "";
 
     [ObservableProperty] public partial double DownloadRateValue { get; set; }
@@ -74,7 +79,7 @@ public partial class TorrentSettingsViewModel : ObservableObject
         AutoSaveLoadFastResume = _prefs.AutoSaveLoadFastResume;
         AutoSaveLoadMagnetLinkMetadata = _prefs.AutoSaveLoadMagnetLinkMetadata;
         SelectedFastResumeMode = _prefs.FastResumeMode;
-        MinimizeToTrayOnClose = _prefs.MinimizeToTrayOnClose;
+        MinimizeToTrayOnClose = _appShellSettingsService.GetCloseBehavior() == AppCloseBehavior.MinimizeToTray;
     }
 
     [RelayCommand]
@@ -106,7 +111,10 @@ public partial class TorrentSettingsViewModel : ObservableObject
         _prefs.AutoSaveLoadFastResume = AutoSaveLoadFastResume;
         _prefs.AutoSaveLoadMagnetLinkMetadata = AutoSaveLoadMagnetLinkMetadata;
         _prefs.FastResumeMode = SelectedFastResumeMode;
-        _prefs.MinimizeToTrayOnClose = MinimizeToTrayOnClose;
+
+        await _appShellSettingsService.SaveCloseBehaviorAsync(
+            MinimizeToTrayOnClose ? AppCloseBehavior.MinimizeToTray : AppCloseBehavior.ExitApplication);
+
         await _applyTorrentSettingsUseCase.ExecuteAsync();
     }
 

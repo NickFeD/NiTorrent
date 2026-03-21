@@ -13,7 +13,8 @@ namespace NiTorrent.Presentation.Features.Torrents;
 
 public partial class TorrentViewModel : ObservableObject
 {
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentReadModelFeed _torrentReadModelFeed;
+    private readonly ITorrentEngineStatusService _torrentEngineStatusService;
     private readonly ITorrentWorkflowService _torrentWorkflowService;
     private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
@@ -39,17 +40,21 @@ public partial class TorrentViewModel : ObservableObject
     public bool CanRemove => SelectedTorrent != null;
 
     public TorrentViewModel(
-        ITorrentService torrentService,
+        ITorrentReadModelFeed torrentReadModelFeed,
+        ITorrentEngineStatusService torrentEngineStatusService,
         IDialogService dialogs,
         IUiDispatcher ui,
         ITorrentWorkflowService torrentWorkflowService)
     {
         _ui = ui;
-        _torrentService = torrentService;
+        _torrentReadModelFeed = torrentReadModelFeed;
+        _torrentEngineStatusService = torrentEngineStatusService;
         _dialogs = dialogs;
         _torrentWorkflowService = torrentWorkflowService;
-        _torrentService.UpdateTorrent += UpdateTorrent;
-        _torrentService.Loaded += TorrentServiceLoaded;
+        _torrentReadModelFeed.Updated += UpdateTorrent;
+        _torrentEngineStatusService.Loaded += TorrentServiceLoaded;
+
+        UpdateTorrent(_torrentReadModelFeed.GetAll());
     }
 
     private void TorrentServiceLoaded()

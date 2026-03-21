@@ -17,6 +17,9 @@ public sealed class LegacyTorrentReadModelFeed : ITorrentReadModelFeed
 
     public IReadOnlyList<TorrentSnapshot> GetAll() => _torrentService.GetAll();
 
-    private void OnUpdateTorrent(IReadOnlyList<TorrentSnapshot> snapshots)
-        => Updated?.Invoke(snapshots);
+    public TorrentSnapshot? TryGet(TorrentId id) => _torrentService.TryGet(id);
+
+    public void Refresh() => _torrentService.PublishTorrentUpdates();
+
+    private void OnUpdateTorrent(IReadOnlyList<TorrentSnapshot> snapshots) => Updated?.Invoke(snapshots);
 }

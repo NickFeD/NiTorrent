@@ -14,8 +14,7 @@ public sealed class LegacyTorrentEngineStatusService : ITorrentEngineStatusServi
 
     public event Action? Loaded;
 
-    public Task InitializeAsync(CancellationToken ct = default)
-        => _torrentService.InitializeAsync(ct);
+    public Task InitializeAsync(CancellationToken ct = default) => _torrentService.InitializeAsync(ct);
 
     private void OnLoaded() => Loaded?.Invoke();
 }

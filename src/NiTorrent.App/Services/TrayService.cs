@@ -1,12 +1,12 @@
 ﻿using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Torrents;
-using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using WinUIEx;
 
 public sealed partial class TrayService : ITrayService, IDisposable
 {
     private readonly ITorrentReadModelFeed _torrentReadModelFeed;
+    private readonly ITorrentSpeedSummaryService _torrentSpeedSummaryService;
     private readonly IUiDispatcher _ui;
 
     private TrayIcon? _tray;
@@ -18,9 +18,13 @@ public sealed partial class TrayService : ITrayService, IDisposable
     public event Action? OpenRequested;
     public event Func<Task>? ExitRequested;
 
-    public TrayService(ITorrentReadModelFeed torrentReadModelFeed, IUiDispatcher ui)
+    public TrayService(
+        ITorrentReadModelFeed torrentReadModelFeed,
+        ITorrentSpeedSummaryService torrentSpeedSummaryService,
+        IUiDispatcher ui)
     {
         _torrentReadModelFeed = torrentReadModelFeed;
+        _torrentSpeedSummaryService = torrentSpeedSummaryService;
         _ui = ui;
     }
 
@@ -34,17 +38,14 @@ public sealed partial class TrayService : ITrayService, IDisposable
             iconPath: "Assets\\AppIcon.ico",
             tooltip: BuildTooltip())
         {
-            IsVisible = true
+            IsVisible = false
         };
 
         _tray.Selected += (_, __) => OpenRequested?.Invoke();
         _tray.ContextMenu += (_, e) => e.Flyout = BuildMenuFlyout();
 
         _torrentReadModelFeed.Updated += OnTorrentsUpdated;
-
-        var current = _torrentReadModelFeed.GetAll();
-        if (current.Count > 0)
-            OnTorrentsUpdated(current);
+        OnTorrentsUpdated(_torrentReadModelFeed.GetAll());
     }
 
     public void SetVisible(bool visible)
@@ -55,19 +56,9 @@ public sealed partial class TrayService : ITrayService, IDisposable
 
     private void OnTorrentsUpdated(IReadOnlyList<TorrentSnapshot> snapshots)
     {
-        long totalDl = 0;
-        long totalUl = 0;
-
-        foreach (var s in snapshots)
-        {
-            totalDl += s.Status.DownloadRateBytesPerSecond;
-            totalUl += s.Status.UploadRateBytesPerSecond;
-        }
-
-        _lastDl = SizeFormatter.FormatSpeed(totalDl);
-        _lastUl = SizeFormatter.FormatSpeed(totalUl);
-
-        // Не блокируем поток события и не ждём UI-синхронно, иначе можно получить deadlock и дерганье интерфейса.
+        var summary = _torrentSpeedSummaryService.Build(snapshots);
+        _lastDl = summary.DownloadText;
+        _lastUl = summary.UploadText;
         _ = _ui.EnqueueAsync(ApplyUi);
     }
 

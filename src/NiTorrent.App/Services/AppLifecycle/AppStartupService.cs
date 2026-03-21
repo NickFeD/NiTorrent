@@ -8,16 +8,16 @@ namespace NiTorrent.App.Services.AppLifecycle;
 public sealed class AppStartupService : IAppStartupService
 {
     private readonly ContextMenuService _menuService;
-    private readonly ITorrentEngineStatusService _engineStatusService;
+    private readonly ITorrentEngineStatusService _torrentEngineStatusService;
     private readonly ILogger<AppStartupService> _logger;
 
     public AppStartupService(
         ContextMenuService menuService,
-        ITorrentEngineStatusService engineStatusService,
+        ITorrentEngineStatusService torrentEngineStatusService,
         ILogger<AppStartupService> logger)
     {
         _menuService = menuService;
-        _engineStatusService = engineStatusService;
+        _torrentEngineStatusService = torrentEngineStatusService;
         _logger = logger;
     }
 
@@ -55,7 +55,7 @@ public sealed class AppStartupService : IAppStartupService
     {
         try
         {
-            await _engineStatusService.InitializeAsync().ConfigureAwait(false);
+            await _torrentEngineStatusService.InitializeAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
