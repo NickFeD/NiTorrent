@@ -2,15 +2,30 @@ namespace NiTorrent.Domain.Torrents;
 
 public static class TorrentStatusResolver
 {
-    public static TorrentLifecycleState ResolveVisibleState(TorrentIntent intent, TorrentRuntimeState runtime)
+    public static TorrentRuntimeState ResolveExpectedRuntime(TorrentEntry entry)
     {
-        if (intent == TorrentIntent.Pause)
-            return TorrentLifecycleState.Paused;
-
-        return runtime.Lifecycle switch
+        if (entry.Intent == TorrentIntent.Paused)
         {
-            TorrentLifecycleState.Paused or TorrentLifecycleState.Stopped => TorrentLifecycleState.WaitingForEngine,
-            _ => runtime.Lifecycle
+            return entry.Runtime with
+            {
+                LifecycleState = TorrentLifecycleState.Paused,
+                DownloadRateBytesPerSecond = 0,
+                UploadRateBytesPerSecond = 0,
+                IsEngineBacked = false
+            };
+        }
+
+        if (entry.Runtime.IsEngineBacked)
+            return entry.Runtime;
+
+        return entry.Runtime with
+        {
+            LifecycleState = entry.Runtime.LifecycleState is TorrentLifecycleState.Unknown or TorrentLifecycleState.Stopped or TorrentLifecycleState.Paused
+                ? TorrentLifecycleState.WaitingForEngine
+                : entry.Runtime.LifecycleState,
+            IsEngineBacked = false,
+            DownloadRateBytesPerSecond = 0,
+            UploadRateBytesPerSecond = 0
         };
     }
 }

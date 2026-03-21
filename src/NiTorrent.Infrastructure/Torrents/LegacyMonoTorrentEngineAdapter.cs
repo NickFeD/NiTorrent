@@ -1,94 +1,57 @@
 using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
 /// <summary>
-/// Transition-only adapter that exposes the old engine-centric <see cref="ITorrentService"/>
-/// behind the new engine ports from Phase 3.
-/// Remove after application workflows stop depending on ITorrentService directly.
+/// Transition-only adapter that exposes legacy ITorrentService through the new engine ports.
+/// Remove when MonoTorrent integration is split into dedicated engine components.
 /// </summary>
-public sealed class LegacyMonoTorrentEngineAdapter :
-    ITorrentEngineGateway,
-    ITorrentEngineLifecycle,
-    ITorrentRuntimeFactsProvider,
-    ITorrentEngineStateStore
+public sealed class LegacyMonoTorrentEngineAdapter : ITorrentEngineGateway, ITorrentEngineLifecycle, ITorrentRuntimeFactsProvider, ITorrentEngineStateStore
 {
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentService _legacy;
 
-    public LegacyMonoTorrentEngineAdapter(ITorrentService torrentService)
-    {
-        _torrentService = torrentService;
-        _torrentService.Loaded += () => Loaded?.Invoke();
-        _torrentService.UpdateTorrent += HandleSnapshotUpdate;
-    }
-
-    public event Action? Loaded;
     public event Action<IReadOnlyList<TorrentRuntimeFact>>? RuntimeFactsUpdated;
 
-    public bool IsReady { get; private set; }
-
-    public async Task InitializeAsync(CancellationToken ct = default)
+    public LegacyMonoTorrentEngineAdapter(ITorrentService legacy)
     {
-        await _torrentService.InitializeAsync(ct).ConfigureAwait(false);
-        IsReady = true;
+        _legacy = legacy;
+        _legacy.UpdateTorrent += HandleLegacyUpdated;
     }
 
-    public async Task ShutdownAsync(CancellationToken ct = default)
+    public Task InitializeAsync(CancellationToken ct = default) => _legacy.InitializeAsync(ct);
+    public Task ShutdownAsync(CancellationToken ct = default) => _legacy.ShutdownAsync(ct);
+    public Task SaveAsync(CancellationToken ct = default) => _legacy.SaveAsync(ct);
+
+    public Task StartAsync(TorrentId id, CancellationToken ct = default) => _legacy.StartAsync(id, ct);
+    public Task PauseAsync(TorrentId id, CancellationToken ct = default) => _legacy.PauseAsync(id, ct);
+    public Task StopAsync(TorrentId id, CancellationToken ct = default) => _legacy.StopAsync(id, ct);
+    public Task RemoveAsync(TorrentId id, bool deleteData, CancellationToken ct = default) => _legacy.RemoveAsync(id, deleteData, ct);
+
+    public IReadOnlyList<TorrentRuntimeFact> GetAll() => _legacy.GetAll().Select(MapSnapshot).ToList();
+
+    private void HandleLegacyUpdated(IReadOnlyList<TorrentSnapshot> snapshots)
     {
-        await _torrentService.ShutdownAsync(ct).ConfigureAwait(false);
-        IsReady = false;
+        RuntimeFactsUpdated?.Invoke(snapshots.Select(MapSnapshot).ToList());
     }
 
-    public Task SaveAsync(CancellationToken ct = default)
-        => _torrentService.SaveAsync(ct);
-
-    public Task<TorrentPreview> GetPreviewAsync(TorrentSource source, CancellationToken ct = default)
-        => _torrentService.GetPreviewAsync(source, ct);
-
-    public Task<TorrentId> AddAsync(AddTorrentRequest request, CancellationToken ct = default)
-        => _torrentService.AddAsync(request, ct);
-
-    public Task StartAsync(TorrentId id, CancellationToken ct = default)
-        => _torrentService.StartAsync(id, ct);
-
-    public Task PauseAsync(TorrentId id, CancellationToken ct = default)
-        => _torrentService.PauseAsync(id, ct);
-
-    public Task StopAsync(TorrentId id, CancellationToken ct = default)
-        => _torrentService.StopAsync(id, ct);
-
-    public Task RemoveAsync(TorrentId id, bool deleteData, CancellationToken ct = default)
-        => _torrentService.RemoveAsync(id, deleteData, ct);
-
-    public void PublishUpdates()
-        => _torrentService.PublishTorrentUpdates();
-
-    public IReadOnlyList<TorrentRuntimeFact> GetAll()
-        => _torrentService.GetAll().Select(Map).ToList();
-
-    public TorrentRuntimeFact? TryGet(TorrentId id)
+    private static TorrentRuntimeFact MapSnapshot(TorrentSnapshot snapshot)
     {
-        var snapshot = _torrentService.TryGet(id);
-        return snapshot is null ? null : Map(snapshot);
-    }
+        var runtime = new TorrentRuntimeState(
+            TorrentLifecycleStateMapper.FromPhase(snapshot.Status.Phase),
+            snapshot.Status.IsComplete,
+            snapshot.Status.Progress,
+            snapshot.Status.DownloadRateBytesPerSecond,
+            snapshot.Status.UploadRateBytesPerSecond,
+            snapshot.Status.Error,
+            snapshot.Status.Source == TorrentSnapshotSource.Live);
 
-    private void HandleSnapshotUpdate(IReadOnlyList<TorrentSnapshot> snapshots)
-        => RuntimeFactsUpdated?.Invoke(snapshots.Select(Map).ToList());
-
-    private static TorrentRuntimeFact Map(TorrentSnapshot snapshot)
-        => new(
+        return new TorrentRuntimeFact(
             snapshot.Id,
-            new TorrentKey(snapshot.Key),
+            string.IsNullOrWhiteSpace(snapshot.Key) ? TorrentKey.Empty : new TorrentKey(snapshot.Key),
             snapshot.Name,
+            snapshot.Size,
             snapshot.SavePath,
-            new TorrentRuntimeState(
-                TorrentLifecycleStateMapper.FromPhase(snapshot.Status.Phase),
-                snapshot.Status.IsComplete,
-                snapshot.Status.Progress,
-                snapshot.Status.DownloadRateBytesPerSecond,
-                snapshot.Status.UploadRateBytesPerSecond,
-                snapshot.Status.Error,
-                DateTimeOffset.UtcNow));
+            runtime);
+    }
 }

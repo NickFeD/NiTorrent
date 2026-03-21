@@ -4,8 +4,6 @@ namespace NiTorrent.Application.Abstractions;
 
 public interface ITorrentRuntimeFactsProvider
 {
-    event Action<IReadOnlyList<TorrentRuntimeFact>>? RuntimeFactsUpdated;
-
     IReadOnlyList<TorrentRuntimeFact> GetAll();
-    TorrentRuntimeFact? TryGet(TorrentId id);
+    event Action<IReadOnlyList<TorrentRuntimeFact>>? RuntimeFactsUpdated;
 }

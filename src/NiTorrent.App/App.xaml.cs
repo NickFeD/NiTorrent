@@ -8,6 +8,7 @@ using NiTorrent.App.Services;
 using NiTorrent.App.Services.AppLifecycle;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
@@ -102,6 +103,7 @@ public partial class App : WinUIApplication
         services.AddTransient<OpenTorrentFolderUseCase>();
         services.AddTransient<ApplyTorrentSettingsUseCase>();
         services.AddTransient<ITorrentWorkflowService, TorrentWorkflowService>();
+        services.AddTransient<IRestoreTorrentCollectionWorkflow, RestoreTorrentCollectionWorkflow>();
     }
 
     protected override async void OnLaunched( Microsoft.UI.Xaml.LaunchActivatedEventArgs args)

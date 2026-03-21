@@ -2,8 +2,8 @@ namespace NiTorrent.Domain.Torrents;
 
 public enum DeferredActionType
 {
-    None = 0,
-    Start,
-    Pause,
-    Remove
+    Start = 0,
+    Pause = 1,
+    RemoveKeepData = 2,
+    RemoveWithData = 3
 }

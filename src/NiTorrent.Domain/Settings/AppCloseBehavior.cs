@@ -2,7 +2,7 @@ namespace NiTorrent.Domain.Settings;
 
 public enum AppCloseBehavior
 {
-    Exit = 0,
-    MinimizeToTray = 1,
-    AskUser = 2
+    AskUser = 0,
+    ExitApplication = 1,
+    MinimizeToTray = 2
 }

@@ -67,14 +67,9 @@ Only bug fixes found during testing should happen before the next large architec
 - `MinimizeToTrayOnClose` follows the same save/apply flow as all other settings on the page.
 - `nucs.JsonSettings` remains the storage backend; no additional NuGet package is required for settings persistence.
 
-## Новый статус (архитектурный переход)
+## Architecture transition progress
 
-- Этап 1: введены базовые domain types для product-centered модели коллекции торрентов.
-- Этап 2: введён `ITorrentCollectionRepository` и временная реализация `CatalogBackedTorrentCollectionRepository`.
-- Legacy `TorrentCatalogStore` пока остаётся backing store, но уже не должен считаться целевой моделью продукта.
-
-
-## Phase 3 — engine gateway
-- введены engine ports в `Application`;
-- добавлен transition-only `LegacyMonoTorrentEngineAdapter`;
-- `MonoTorrent` начинает отделяться от product collection как внешний engine.
+- Phase 1 introduced a new domain model for product-owned torrent collection.
+- Phase 2 introduced `ITorrentCollectionRepository` with a catalog-backed bridge.
+- Phase 3 introduced new engine ports with a legacy adapter over `ITorrentService`.
+- Phase 4 introduced `RestoreTorrentCollectionWorkflow` as the new application-level startup/restore scenario.

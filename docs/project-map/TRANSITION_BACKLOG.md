@@ -1,39 +1,17 @@
 # NiTorrent — TRANSITION_BACKLOG
 
-Этот файл фиксирует временные мосты, которые допустимы только на время перехода к `TARGET_ARCHITECTURE_V2.md`.
+## Purpose
+Tracks transition-only bridges that must be deleted before the migration to `TARGET_ARCHITECTURE_V2.md` is considered complete.
 
-## Активные transition-only мосты
+## Active bridges
+- `CatalogBackedTorrentCollectionRepository`
+  - Why it exists: new product-owned collection is still stored in legacy `TorrentCatalogStore`.
+  - Delete when: dedicated product collection storage replaces legacy catalog-backed bridge.
 
-### 1. `CatalogBackedTorrentCollectionRepository`
-- Новый `ITorrentCollectionRepository` уже введён.
-- Но его реализация пока сидит на старом `TorrentCatalogStore`.
-- Это допустимо только до этапа выделения отдельного product-owned storage.
+- `LegacyMonoTorrentEngineAdapter`
+  - Why it exists: new engine ports still forward to legacy `ITorrentService`.
+  - Delete when: MonoTorrent integration is split into dedicated engine components and `ITorrentService` stops being the engine boundary.
 
-**Критерий удаления:**
-- появляется отдельная storage model для `TorrentEntry`;
-- `TorrentCatalogStore` перестаёт быть источником product collection.
-
-### 2. `TorrentSnapshot` как ранняя read model
-- Snapshot остаётся для UI и engine monitoring.
-- Но он не должен стать ядром доменной модели.
-
-**Критерий удаления как central model:**
-- read-side строится из `TorrentEntry` + runtime facts.
-
-### 3. Legacy `ShouldRun`
-- В старом каталоге он ещё используется.
-- В новой модели его заменяет `TorrentIntent` и future deferred actions.
-
-**Критерий удаления:**
-- startup/restore и commands переходят на `TorrentEntry.Intent`.
-
-
-### 4. `LegacyMonoTorrentEngineAdapter`
-- Новые engine-порты уже введены.
-- Но они пока реализованы поверх старого `ITorrentService`.
-- Это допустимо только как переход на Этапе 3.
-
-**Критерий удаления:**
-- workflows и commands больше не зависят от `ITorrentService`;
-- `MonoTorrentService` перестаёт быть bridge-ядром;
-- engine ports получают прямые infrastructure-реализации.
+- `TorrentSnapshot`
+  - Why it exists: current UI and update flow still consume legacy read model.
+  - Delete when: read-side is rebuilt around application projections and `TorrentEntry`-driven queries.

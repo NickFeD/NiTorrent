@@ -31,6 +31,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TorrentStartupCoordinator>();
         services.AddSingleton<ITorrentService, MonoTorrentService>();
         services.AddSingleton<LegacyMonoTorrentEngineAdapter>();
+        services.AddSingleton<ITorrentCollectionRepository, CatalogBackedTorrentCollectionRepository>();
         services.AddSingleton<ITorrentEngineGateway>(sp => sp.GetRequiredService<LegacyMonoTorrentEngineAdapter>());
         services.AddSingleton<ITorrentEngineLifecycle>(sp => sp.GetRequiredService<LegacyMonoTorrentEngineAdapter>());
         services.AddSingleton<ITorrentRuntimeFactsProvider>(sp => sp.GetRequiredService<LegacyMonoTorrentEngineAdapter>());
@@ -38,7 +39,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(TorrentConfigLoader.Load());
         services.AddSingleton<ITorrentPreferences, JsonTorrentPreferences>();
         services.AddSingleton<TorrentCatalogStore>();
-        services.AddSingleton<ITorrentCollectionRepository, CatalogBackedTorrentCollectionRepository>();
 
         return services;
     }

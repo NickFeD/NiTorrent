@@ -9,4 +9,5 @@ public interface ITorrentCollectionRepository
     Task<TorrentEntry?> TryGetByKeyAsync(TorrentKey key, CancellationToken ct = default);
     Task UpsertAsync(TorrentEntry entry, CancellationToken ct = default);
     Task RemoveAsync(TorrentId id, CancellationToken ct = default);
+    Task SaveAsync(CancellationToken ct = default);
 }

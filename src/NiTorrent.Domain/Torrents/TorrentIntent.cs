@@ -2,6 +2,7 @@ namespace NiTorrent.Domain.Torrents;
 
 public enum TorrentIntent
 {
-    Pause = 0,
-    Start = 1
+    Paused = 0,
+    Running = 1,
+    Removed = 2
 }

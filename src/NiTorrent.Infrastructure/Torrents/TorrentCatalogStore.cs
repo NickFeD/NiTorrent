@@ -105,20 +105,31 @@ public sealed class TorrentCatalogStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var model = _catalog.Items.FirstOrDefault(x => x.Id == entry.Id.Value);
-            if (model is null && !entry.Key.IsEmpty)
+            var existing = _catalog.Items.FirstOrDefault(x => x.Id == entry.Id.Value);
+            if (existing is null && !entry.Key.IsEmpty)
             {
-                model = _catalog.Items.FirstOrDefault(x => string.Equals(x.Key, entry.Key.Value, StringComparison.OrdinalIgnoreCase));
+                existing = _catalog.Items.FirstOrDefault(x => string.Equals(x.Key, entry.Key.Value, StringComparison.OrdinalIgnoreCase));
+                if (existing is not null)
+                    existing.Id = entry.Id.Value;
             }
 
-            if (model is null)
+            if (existing is null)
             {
-                model = new TorrentCatalogEntry { Id = entry.Id.Value };
-                _catalog.Items.Add(model);
+                existing = new TorrentCatalogEntry { Id = entry.Id.Value };
+                _catalog.Items.Add(existing);
             }
 
-            ApplyEntry(model, entry);
-            DeduplicateCatalogEntries(model);
+            existing.Key = entry.Key.IsEmpty ? existing.Key : entry.Key.Value;
+            existing.Name = entry.Name;
+            existing.Size = entry.Size;
+            existing.SavePath = entry.SavePath;
+            existing.AddedAtUtc = entry.AddedAtUtc;
+            existing.ShouldRun = entry.Intent == TorrentIntent.Running;
+            existing.Progress = entry.Runtime.Progress;
+            existing.LastPhase = TorrentLifecycleStateMapper.ToPhase(entry.Runtime.LifecycleState);
+            existing.IsComplete = entry.Runtime.IsComplete;
+
+            DeduplicateCatalogEntries(existing);
         }
         finally { _gate.Release(); }
     }
@@ -487,44 +498,6 @@ public sealed class TorrentCatalogStore
             ct).ConfigureAwait(false);
     }
 
-
-    private static TorrentEntry BuildEntry(TorrentCatalogEntry e)
-    {
-        var runtimeState = new TorrentRuntimeState(
-            Lifecycle: TorrentLifecycleStateMapper.FromPhase(e.LastPhase),
-            IsComplete: e.IsComplete,
-            Progress: e.Progress,
-            DownloadRateBytesPerSecond: 0,
-            UploadRateBytesPerSecond: 0,
-            Error: null,
-            ObservedAtUtc: null);
-
-        return new TorrentEntry(
-            Id: new TorrentId(e.Id),
-            Key: string.IsNullOrWhiteSpace(e.Key) ? TorrentKey.Empty : new TorrentKey(e.Key),
-            Name: e.Name,
-            Size: e.Size,
-            SavePath: e.SavePath,
-            AddedAtUtc: e.AddedAtUtc,
-            Intent: e.ShouldRun ? TorrentIntent.Start : TorrentIntent.Pause,
-            Runtime: runtimeState,
-            DeferredAction: null);
-    }
-
-    private static void ApplyEntry(TorrentCatalogEntry target, TorrentEntry entry)
-    {
-        target.Id = entry.Id.Value;
-        target.Key = entry.Key.IsEmpty ? target.Key : entry.Key.Value;
-        target.Name = entry.Name;
-        target.Size = entry.Size;
-        target.SavePath = entry.SavePath;
-        target.AddedAtUtc = entry.AddedAtUtc;
-        target.ShouldRun = entry.Intent == TorrentIntent.Start;
-        target.Progress = entry.Runtime.Progress;
-        target.LastPhase = TorrentLifecycleStateMapper.ToPhase(entry.Runtime.Lifecycle);
-        target.IsComplete = entry.Runtime.IsComplete;
-    }
-
     private static TorrentSnapshot BuildCachedSnapshot(TorrentCatalogEntry e)
     {
         var phase = e.ShouldRun
@@ -558,5 +531,40 @@ public sealed class TorrentCatalogStore
             Status: status);
     }
 }
+
+
+    private static TorrentEntry BuildEntry(TorrentCatalogEntry e)
+    {
+        var intent = e.ShouldRun ? TorrentIntent.Running : TorrentIntent.Paused;
+        var runtime = TorrentStatusResolver.ResolveExpectedRuntime(new TorrentEntry(
+            new TorrentId(e.Id),
+            string.IsNullOrWhiteSpace(e.Key) ? TorrentKey.Empty : new TorrentKey(e.Key),
+            e.Name,
+            e.Size,
+            e.SavePath,
+            e.AddedAtUtc,
+            intent,
+            new TorrentRuntimeState(
+                TorrentLifecycleStateMapper.FromPhase(e.LastPhase),
+                e.IsComplete,
+                e.Progress,
+                0,
+                0,
+                null,
+                false),
+            Array.Empty<DeferredAction>()));
+
+        return new TorrentEntry(
+            new TorrentId(e.Id),
+            string.IsNullOrWhiteSpace(e.Key) ? TorrentKey.Empty : new TorrentKey(e.Key),
+            e.Name,
+            e.Size,
+            e.SavePath,
+            e.AddedAtUtc,
+            intent,
+            runtime,
+            Array.Empty<DeferredAction>());
+    }
+
 
 public sealed record PendingRemoval(TorrentManager Manager, string Key, bool DeleteDownloadedData);
