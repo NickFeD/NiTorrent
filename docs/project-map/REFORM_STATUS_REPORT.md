@@ -61,6 +61,7 @@ The codebase is now at a practical pause point for system testing after a final 
 Refactoring should pause after the pre-test checklist is accepted and the full system test is executed.
 Only bug fixes found during testing should happen before the next large architectural step.
 
+
 ## Settings system note
 - Torrent settings page uses a unified staged-edit model: edit values in the form, then apply with the `Применить` button.
 - `MinimizeToTrayOnClose` follows the same save/apply flow as all other settings on the page.
@@ -126,3 +127,7 @@ Phase 14 — write path decoupling from legacy `ITorrentService`.
 
 ## Latest transition step
 - Phase 16 completed: read/status/maintenance adapters now use infrastructure-owned engine components instead of routing through `ITorrentService`.
+
+## Phase 17
+- `ITorrentWriteService` is now backed by `EngineBackedTorrentWriteService`.
+- Application write scenarios no longer require the legacy `ITorrentService` facade to execute add/start/pause/remove/apply-settings.

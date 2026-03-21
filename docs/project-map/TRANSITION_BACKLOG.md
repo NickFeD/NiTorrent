@@ -38,3 +38,5 @@ Tracks transition-only bridges that must be deleted before the migration to `TAR
 - [x] Phase 15 — isolate remaining legacy `ITorrentService` adapters inside Infrastructure
 
 - [x] Phase 16 — engine-owned read/status path
+
+- [x] Phase 17 — engine-owned write path
