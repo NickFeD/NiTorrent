@@ -34,3 +34,5 @@ Tracks transition-only bridges that must be deleted before the migration to `TAR
 ## Phase 8 — settings
 - Move remaining settings consumers away from direct `ITorrentPreferences` edits.
 - Later unify torrent, app and shell settings under a broader product settings model without reintroducing UI-to-storage coupling.
+
+- [x] Phase 15 — isolate remaining legacy `ITorrentService` adapters inside Infrastructure

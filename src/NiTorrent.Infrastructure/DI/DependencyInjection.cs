@@ -3,6 +3,7 @@ using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Infrastructure.Torrents;
+using NiTorrent.Infrastructure.Torrents.LegacyAdapters;
 
 namespace NiTorrent.Infrastructure.DI;
 
@@ -34,6 +35,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TorrentNotifier>();
         services.AddSingleton<TorrentStartupCoordinator>();
         services.AddSingleton<ITorrentService, MonoTorrentService>();
+        services.AddSingleton<ITorrentReadModelFeed, LegacyTorrentReadModelFeed>();
+        services.AddSingleton<ITorrentWriteService, LegacyTorrentWriteService>();
+        services.AddSingleton<ITorrentEngineStatusService, LegacyTorrentEngineStatusService>();
+        services.AddSingleton<ITorrentEngineMaintenanceService, LegacyTorrentEngineMaintenanceService>();
         services.AddSingleton(TorrentConfigLoader.Load());
         services.AddSingleton<ITorrentPreferences, JsonTorrentPreferences>();
         services.AddSingleton<TorrentCatalogStore>();
