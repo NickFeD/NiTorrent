@@ -3,8 +3,8 @@ using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents;
 
-public sealed class PauseTorrentUseCase(ITorrentService torrentService)
+public sealed class PauseTorrentUseCase(ITorrentCommandService torrentCommandService)
 {
-    public Task ExecuteAsync(TorrentId id, CancellationToken ct = default)
-        => torrentService.PauseAsync(id, ct);
+    public async Task ExecuteAsync(TorrentId id, CancellationToken ct = default)
+        => _ = await torrentCommandService.PauseAsync(id, ct).ConfigureAwait(false);
 }

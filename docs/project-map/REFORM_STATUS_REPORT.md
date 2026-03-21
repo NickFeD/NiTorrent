@@ -73,3 +73,9 @@ Only bug fixes found during testing should happen before the next large architec
 - Phase 2 introduced `ITorrentCollectionRepository` with a catalog-backed bridge.
 - Phase 3 introduced new engine ports with a legacy adapter over `ITorrentService`.
 - Phase 4 introduced `RestoreTorrentCollectionWorkflow` as the new application-level startup/restore scenario.
+
+
+## Phase 5 progress
+- Added domain-oriented command layer for start/pause/remove.
+- Legacy add/preview flow is still pending migration.
+- See `PHASE5_COMMANDS.md`.

@@ -15,3 +15,9 @@ Tracks transition-only bridges that must be deleted before the migration to `TAR
 - `TorrentSnapshot`
   - Why it exists: current UI and update flow still consume legacy read model.
   - Delete when: read-side is rebuilt around application projections and `TorrentEntry`-driven queries.
+
+
+## Phase 5 — commands
+- Migrate add/preview commands to new product/domain model.
+- Expose product-level command results up to UI.
+- Remove direct command dependency on legacy `ITorrentService`.
