@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 

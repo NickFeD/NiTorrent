@@ -10,7 +10,6 @@ namespace NiTorrent.Presentation.Features.Settings;
 public partial class TorrentSettingsViewModel : ObservableObject
 {
     private readonly ITorrentPreferences _prefs;
-    private readonly IAppShellSettingsService _appShellSettingsService;
     private readonly IPickerHelper _picker;
     private readonly ApplyTorrentSettingsUseCase _applyTorrentSettingsUseCase;
 
@@ -20,10 +19,9 @@ public partial class TorrentSettingsViewModel : ObservableObject
     public ObservableCollection<TorrentFastResumeMode> FastResumeModes { get; } =
         new() { TorrentFastResumeMode.BestEffort, TorrentFastResumeMode.Accurate };
 
-    public TorrentSettingsViewModel(ITorrentPreferences prefs, IAppShellSettingsService appShellSettingsService, IPickerHelper picker, ApplyTorrentSettingsUseCase applyTorrentSettingsUseCase)
+    public TorrentSettingsViewModel(ITorrentPreferences prefs, IPickerHelper picker, ApplyTorrentSettingsUseCase applyTorrentSettingsUseCase)
     {
         _prefs = prefs;
-        _appShellSettingsService = appShellSettingsService;
         _picker = picker;
         _applyTorrentSettingsUseCase = applyTorrentSettingsUseCase;
         LoadFromPrefs();
@@ -76,7 +74,7 @@ public partial class TorrentSettingsViewModel : ObservableObject
         AutoSaveLoadFastResume = _prefs.AutoSaveLoadFastResume;
         AutoSaveLoadMagnetLinkMetadata = _prefs.AutoSaveLoadMagnetLinkMetadata;
         SelectedFastResumeMode = _prefs.FastResumeMode;
-        MinimizeToTrayOnClose = _appShellSettingsService.GetCloseBehavior() == AppCloseBehavior.MinimizeToTray;
+        MinimizeToTrayOnClose = _prefs.MinimizeToTrayOnClose;
     }
 
     [RelayCommand]
@@ -108,10 +106,7 @@ public partial class TorrentSettingsViewModel : ObservableObject
         _prefs.AutoSaveLoadFastResume = AutoSaveLoadFastResume;
         _prefs.AutoSaveLoadMagnetLinkMetadata = AutoSaveLoadMagnetLinkMetadata;
         _prefs.FastResumeMode = SelectedFastResumeMode;
-
-        _appShellSettingsService.SetCloseBehavior(
-            MinimizeToTrayOnClose ? AppCloseBehavior.MinimizeToTray : AppCloseBehavior.ExitApplication);
-
+        _prefs.MinimizeToTrayOnClose = MinimizeToTrayOnClose;
         await _applyTorrentSettingsUseCase.ExecuteAsync();
     }
 

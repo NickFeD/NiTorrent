@@ -1,8 +1,7 @@
-namespace NiTorrent.Application.Torrents;
+namespace NiTorrent.Application.Abstractions;
 
 public interface ITorrentEngineStatusService
 {
-    event Action? Ready;
-    bool IsReady { get; }
+    event Action? Loaded;
     Task InitializeAsync(CancellationToken ct = default);
 }

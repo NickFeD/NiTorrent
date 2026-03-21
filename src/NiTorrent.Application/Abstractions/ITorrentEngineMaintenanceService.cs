@@ -1,7 +1,7 @@
-namespace NiTorrent.Application.Torrents;
+namespace NiTorrent.Application.Abstractions;
 
 public interface ITorrentEngineMaintenanceService
 {
-    Task SaveStateAsync(CancellationToken ct = default);
+    Task SaveAsync(CancellationToken ct = default);
     Task ShutdownAsync(CancellationToken ct = default);
 }

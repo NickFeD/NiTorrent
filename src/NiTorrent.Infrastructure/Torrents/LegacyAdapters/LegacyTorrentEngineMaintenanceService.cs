@@ -1,16 +1,19 @@
 using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents.LegacyAdapters;
 
-/// <summary>
-/// Transition-only maintenance service over legacy ITorrentService.
-/// </summary>
-public sealed class LegacyTorrentEngineMaintenanceService(ITorrentService torrentService) : ITorrentEngineMaintenanceService
+public sealed class LegacyTorrentEngineMaintenanceService : ITorrentEngineMaintenanceService
 {
-    public Task SaveStateAsync(CancellationToken ct = default)
-        => torrentService.SaveAsync(ct);
+    private readonly ITorrentService _torrentService;
+
+    public LegacyTorrentEngineMaintenanceService(ITorrentService torrentService)
+    {
+        _torrentService = torrentService;
+    }
+
+    public Task SaveAsync(CancellationToken ct = default)
+        => _torrentService.SaveAsync(ct);
 
     public Task ShutdownAsync(CancellationToken ct = default)
-        => torrentService.ShutdownAsync(ct);
+        => _torrentService.ShutdownAsync(ct);
 }

@@ -1,0 +1,29 @@
+﻿using NiTorrent.Application.Torrents;
+using NiTorrent.Domain.Torrents;
+
+namespace NiTorrent.Application.Abstractions;
+
+public interface ITorrentService
+{
+    event Action? Loaded;
+    event Action<IReadOnlyList<TorrentSnapshot>>? UpdateTorrent;
+
+    Task InitializeAsync(CancellationToken ct = default);
+
+    IReadOnlyList<TorrentSnapshot> GetAll();
+    TorrentSnapshot? TryGet(TorrentId id);
+
+    Task<TorrentPreview> GetPreviewAsync(TorrentSource source, CancellationToken ct = default);
+
+    Task<TorrentId> AddAsync(AddTorrentRequest request, CancellationToken ct = default);
+
+    Task StartAsync(TorrentId id, CancellationToken ct = default);
+    Task PauseAsync(TorrentId id, CancellationToken ct = default);
+    Task StopAsync(TorrentId id, CancellationToken ct = default);
+
+    Task RemoveAsync(TorrentId id, bool deleteData, CancellationToken ct = default);
+    void PublishTorrentUpdates();
+    Task ApplySettingsAsync();
+    Task SaveAsync(CancellationToken ct = default);
+    Task ShutdownAsync(CancellationToken ct = default);
+}

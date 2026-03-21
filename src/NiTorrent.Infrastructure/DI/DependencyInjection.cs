@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Abstractions;
 using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Infrastructure.Torrents;
 using NiTorrent.Infrastructure.Torrents.LegacyAdapters;
@@ -12,9 +12,6 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton(AppConfigLoader.Load());
         services.AddSingleton<IAppPreferences, JsonAppPreferences>();
-        services.AddSingleton<IAppShellSettingsRepository, JsonAppShellSettingsRepository>();
-        services.AddSingleton<ITorrentEntrySettingsRepository, JsonTorrentEntrySettingsRepository>();
-        services.AddSingleton<ITorrentEntrySettingsRuntimeApplier, TorrentEntrySettingsRuntimeApplier>();
         services.AddHostedService<TorrentMonitor>();
         services.AddSingleton<TorrentSnapshotFactory>();
         services.AddSingleton<TorrentRuntimeRegistry>();
@@ -33,11 +30,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TorrentLifecycleExecutor>();
         services.AddSingleton<TorrentNotifier>();
         services.AddSingleton<TorrentStartupCoordinator>();
-        services.AddSingleton<TorrentRuntimeContext>();
-        services.AddSingleton<ITorrentReadModelFeed, EngineBackedTorrentReadModelFeed>();
-        services.AddSingleton<ITorrentWriteService, EngineBackedTorrentWriteService>();
-        services.AddSingleton<ITorrentEngineStatusService, EngineBackedTorrentEngineStatusService>();
-        services.AddSingleton<ITorrentEngineMaintenanceService, EngineBackedTorrentEngineMaintenanceService>();
+        services.AddSingleton<ITorrentService, MonoTorrentService>();
+        services.AddSingleton<ITorrentReadModelFeed, LegacyTorrentReadModelFeed>();
+        services.AddSingleton<ITorrentEngineStatusService, LegacyTorrentEngineStatusService>();
+        services.AddSingleton<ITorrentEngineMaintenanceService, LegacyTorrentEngineMaintenanceService>();
         services.AddSingleton(TorrentConfigLoader.Load());
         services.AddSingleton<ITorrentPreferences, JsonTorrentPreferences>();
         services.AddSingleton<TorrentCatalogStore>();

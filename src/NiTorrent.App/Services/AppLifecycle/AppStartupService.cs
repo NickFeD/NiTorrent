@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Abstractions;
 using WinUIEx;
 
 namespace NiTorrent.App.Services.AppLifecycle;

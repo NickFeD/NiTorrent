@@ -20,7 +20,6 @@ public static class DependencyInjection
         // Torrents
         services.AddTransient<TorrentViewModel>();
         services.AddTransient<TorrentPreviewViewModel>();
-        services.AddTransient<TorrentDetailsViewModel>();
         return services;
     }
 }

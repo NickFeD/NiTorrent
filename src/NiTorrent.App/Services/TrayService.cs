@@ -1,4 +1,4 @@
-﻿using NiTorrent.Application.Torrents;
+﻿using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
@@ -6,7 +6,7 @@ using WinUIEx;
 
 public sealed partial class TrayService : ITrayService, IDisposable
 {
-    private readonly ITorrentReadModelFeed _readModelFeed;
+    private readonly ITorrentReadModelFeed _torrentReadModelFeed;
     private readonly IUiDispatcher _ui;
 
     private TrayIcon? _tray;
@@ -18,9 +18,9 @@ public sealed partial class TrayService : ITrayService, IDisposable
     public event Action? OpenRequested;
     public event Func<Task>? ExitRequested;
 
-    public TrayService(ITorrentReadModelFeed readModelFeed, IUiDispatcher ui)
+    public TrayService(ITorrentReadModelFeed torrentReadModelFeed, IUiDispatcher ui)
     {
-        _readModelFeed = readModelFeed;
+        _torrentReadModelFeed = torrentReadModelFeed;
         _ui = ui;
     }
 
@@ -40,7 +40,11 @@ public sealed partial class TrayService : ITrayService, IDisposable
         _tray.Selected += (_, __) => OpenRequested?.Invoke();
         _tray.ContextMenu += (_, e) => e.Flyout = BuildMenuFlyout();
 
-        _readModelFeed.Updated += OnTorrentsUpdated;
+        _torrentReadModelFeed.Updated += OnTorrentsUpdated;
+
+        var current = _torrentReadModelFeed.GetAll();
+        if (current.Count > 0)
+            OnTorrentsUpdated(current);
     }
 
     public void SetVisible(bool visible)
@@ -63,6 +67,7 @@ public sealed partial class TrayService : ITrayService, IDisposable
         _lastDl = SizeFormatter.FormatSpeed(totalDl);
         _lastUl = SizeFormatter.FormatSpeed(totalUl);
 
+        // Не блокируем поток события и не ждём UI-синхронно, иначе можно получить deadlock и дерганье интерфейса.
         _ = _ui.EnqueueAsync(ApplyUi);
     }
 
@@ -109,7 +114,7 @@ public sealed partial class TrayService : ITrayService, IDisposable
 
     public void Dispose()
     {
-        _readModelFeed.Updated -= OnTorrentsUpdated;
+        _torrentReadModelFeed.Updated -= OnTorrentsUpdated;
 
         if (_tray != null)
         {
