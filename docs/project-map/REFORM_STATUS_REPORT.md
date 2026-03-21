@@ -110,3 +110,6 @@ Only bug fixes found during testing should happen before the next large architec
 ## Phase 12
 - Introduced a runtime applier for per-torrent settings through an application port.
 - Torrent details save flow now persists settings and applies supported values to live managers where possible.
+
+
+- Phase 13 completed: UI legacy decoupling (`PHASE13_UI_LEGACY_DECOUPLING.md`).

@@ -87,6 +87,9 @@ public partial class App : WinUIApplication
         services.AddSingleton<IUpdateService, DevWinUiUpdateService>();
         services.AddSingleton<IJsonNavigationService, JsonNavigationService>();
         services.AddSingleton<ITorrentPreviewDialogService, TorrentPreviewDialogService>();
+        services.AddSingleton<ITorrentReadModelFeed, TorrentReadModelFeed>();
+        services.AddSingleton<ITorrentEngineStatusService, TorrentEngineStatusService>();
+        services.AddSingleton<ITorrentEngineMaintenanceService, TorrentEngineMaintenanceService>();
         services.AddSingleton<IAppStartupService, AppStartupService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
         services.AddSingleton<IMainWindowLifecycle, MainWindowLifecycle>();

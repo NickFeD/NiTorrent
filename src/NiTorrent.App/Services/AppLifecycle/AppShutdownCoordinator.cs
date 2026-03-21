@@ -1,20 +1,21 @@
 using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
 public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
 {
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentEngineMaintenanceService _engineMaintenanceService;
     private readonly IMainWindowLifecycle _mainWindowLifecycle;
     private readonly ILogger<AppShutdownCoordinator> _logger;
 
     public AppShutdownCoordinator(
-        ITorrentService torrentService,
+        ITorrentEngineMaintenanceService engineMaintenanceService,
         IMainWindowLifecycle mainWindowLifecycle,
         ILogger<AppShutdownCoordinator> logger)
     {
-        _torrentService = torrentService;
+        _engineMaintenanceService = engineMaintenanceService;
         _mainWindowLifecycle = mainWindowLifecycle;
         _logger = logger;
     }
@@ -23,7 +24,7 @@ public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
     {
         try
         {
-            await _torrentService.ShutdownAsync().ConfigureAwait(false);
+            await _engineMaintenanceService.ShutdownAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

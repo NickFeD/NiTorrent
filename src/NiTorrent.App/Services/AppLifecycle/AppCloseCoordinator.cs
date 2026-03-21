@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Settings;
 
 namespace NiTorrent.App.Services.AppLifecycle;
@@ -8,7 +9,7 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
 {
     private readonly SemaphoreSlim _exitGate = new(1, 1);
     private readonly IAppShellSettingsService _shellSettings;
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentEngineMaintenanceService _engineMaintenanceService;
     private readonly IMainWindowLifecycle _mainWindowLifecycle;
     private readonly ILogger<AppCloseCoordinator> _logger;
 
@@ -17,12 +18,12 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
 
     public AppCloseCoordinator(
         IAppShellSettingsService shellSettings,
-        ITorrentService torrentService,
+        ITorrentEngineMaintenanceService engineMaintenanceService,
         IMainWindowLifecycle mainWindowLifecycle,
         ILogger<AppCloseCoordinator> logger)
     {
         _shellSettings = shellSettings;
-        _torrentService = torrentService;
+        _engineMaintenanceService = engineMaintenanceService;
         _mainWindowLifecycle = mainWindowLifecycle;
         _logger = logger;
     }
@@ -85,7 +86,7 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     {
         try
         {
-            await _torrentService.SaveAsync().ConfigureAwait(false);
+            await _engineMaintenanceService.SaveStateAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
