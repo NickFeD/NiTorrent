@@ -61,6 +61,35 @@ The codebase is now at a practical pause point for system testing after a final 
 Refactoring should pause after the pre-test checklist is accepted and the full system test is executed.
 Only bug fixes found during testing should happen before the next large architectural step.
 
+## Settings system note
+- Torrent settings page uses a unified staged-edit model: edit values in the form, then apply with the `Применить` button.
+- `MinimizeToTrayOnClose` follows the same save/apply flow as all other settings on the page.
+- `nucs.JsonSettings` remains the storage backend; no additional NuGet package is required for settings persistence.
+
+## Architecture transition progress
+
+- Phase 1 introduced a new domain model for product-owned torrent collection.
+- Phase 2 introduced `ITorrentCollectionRepository` with a catalog-backed bridge.
+- Phase 3 introduced new engine ports with a legacy adapter over `ITorrentService`.
+- Phase 4 introduced `RestoreTorrentCollectionWorkflow` as the new application-level startup/restore scenario.
+
+
+## Phase 5 progress
+- Added domain-oriented command layer for start/pause/remove.
+- Legacy add/preview flow is still pending migration.
+- See `PHASE5_COMMANDS.md`.
+
+
+## Phase 6
+- Added explicit deferred action workflow in Application.
+- Restore workflow now builds an execution plan and applies deferred actions through a dedicated workflow instead of inline procedural logic.
+
+
+## Phase 7 completed: application-owned read-side feed and projections (`PHASE7_READ_SIDE.md`).
+
+
+## Phase 8 completed: product-owned torrent settings subsystem (`PHASE8_SETTINGS_SUBSYSTEM.md`).
+
 ## Phase 9
 - Introduced product-owned shell policy for close/tray behavior.
 - Close behavior is now resolved via domain policy instead of a raw UI boolean.

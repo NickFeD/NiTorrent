@@ -118,7 +118,7 @@ public sealed class TorrentStartupCoordinator
             }
 
             await _startupRecovery.ApplyQueuedIntentAsync(commandQueue, _runtimeRegistry, ct).ConfigureAwait(false);
-            await _startupRecovery.AutoStartFromCatalogAsync(_runtimeRegistry, ct).ConfigureAwait(false);
+            _backgroundTasks.Run(_startupRecovery.AutoStartFromCatalogAsync(_runtimeRegistry, ct), "auto-start");
             onLoaded?.Invoke();
         }
         catch (Exception ex)

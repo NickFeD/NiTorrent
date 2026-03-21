@@ -34,7 +34,7 @@ public sealed partial class TrayService : ITrayService, IDisposable
             iconPath: "Assets\\AppIcon.ico",
             tooltip: BuildTooltip())
         {
-            IsVisible = false
+            IsVisible = true
         };
 
         _tray.Selected += (_, __) => OpenRequested?.Invoke();

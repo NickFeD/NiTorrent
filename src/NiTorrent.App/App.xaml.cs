@@ -8,10 +8,7 @@ using NiTorrent.App.Services;
 using NiTorrent.App.Services.AppLifecycle;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
-using NiTorrent.Application.Torrents.Commands;
-using NiTorrent.Application.Torrents.Read;
-using NiTorrent.Application.Settings;
-using NiTorrent.Application.Torrents.Restore;
+using NiTorrent.Application.Shell;
 using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
@@ -93,6 +90,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<IAppStartupService, AppStartupService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
         services.AddSingleton<IMainWindowLifecycle, MainWindowLifecycle>();
+        services.AddSingleton<IAppShellSettingsService, AppShellSettingsService>();
         services.AddSingleton<IAppCloseCoordinator, AppCloseCoordinator>();
         services.AddSingleton<IAppShutdownCoordinator, AppShutdownCoordinator>();
         services.AddTransient<AddTorrentUseCase>();
@@ -100,16 +98,12 @@ public partial class App : WinUIApplication
         services.AddTransient<PickAndAddTorrentUseCase>();
         services.AddTransient<AddTorrentFileWithPreviewUseCase>();
         services.AddTransient<AddMagnetUseCase>();
-        services.AddTransient<ITorrentCommandService, TorrentCommandService>();
-        services.AddTransient<NiTorrent.Application.Torrents.Deferred.IApplyDeferredTorrentActionsWorkflow, NiTorrent.Application.Torrents.Deferred.ApplyDeferredTorrentActionsWorkflow>();
         services.AddTransient<StartTorrentUseCase>();
         services.AddTransient<PauseTorrentUseCase>();
         services.AddTransient<RemoveTorrentUseCase>();
         services.AddTransient<OpenTorrentFolderUseCase>();
-        services.AddSingleton<ITorrentSettingsService, TorrentSettingsService>();
+        services.AddTransient<ApplyTorrentSettingsUseCase>();
         services.AddTransient<ITorrentWorkflowService, TorrentWorkflowService>();
-        services.AddSingleton<ITorrentReadModelFeed, TorrentReadModelFeed>();
-        services.AddTransient<IRestoreTorrentCollectionWorkflow, RestoreTorrentCollectionWorkflow>();
     }
 
     protected override async void OnLaunched( Microsoft.UI.Xaml.LaunchActivatedEventArgs args)

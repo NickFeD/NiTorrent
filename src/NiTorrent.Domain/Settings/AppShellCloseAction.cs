@@ -1,6 +1,6 @@
 namespace NiTorrent.Domain.Settings;
 
-public enum AppCloseBehavior
+public enum AppShellCloseAction
 {
     ExitApplication = 0,
     MinimizeToTray = 1,

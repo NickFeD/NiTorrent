@@ -40,9 +40,3 @@ Before resuming structural refactoring:
 - large changes to tray UI behavior
 - monitor/update model redesign
 - broad cleanup renames without behavioral value
-
-
-## Settings system note
-- Torrent settings page uses a unified staged-edit model: edit values in the form, then apply with the `Применить` button.
-- `MinimizeToTrayOnClose` follows the same save/apply flow as all other settings on the page.
-- `nucs.JsonSettings` remains the storage backend; no additional NuGet package is required for settings persistence.

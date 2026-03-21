@@ -1,12 +1,13 @@
 using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Domain.Settings;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
 public sealed class AppCloseCoordinator : IAppCloseCoordinator
 {
     private readonly SemaphoreSlim _exitGate = new(1, 1);
-    private readonly ITorrentPreferences _preferences;
+    private readonly IAppShellSettingsService _shellSettings;
     private readonly ITorrentService _torrentService;
     private readonly IMainWindowLifecycle _mainWindowLifecycle;
     private readonly ILogger<AppCloseCoordinator> _logger;
@@ -15,12 +16,12 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     private int _closeRequestInProgress;
 
     public AppCloseCoordinator(
-        ITorrentPreferences preferences,
+        IAppShellSettingsService shellSettings,
         ITorrentService torrentService,
         IMainWindowLifecycle mainWindowLifecycle,
         ILogger<AppCloseCoordinator> logger)
     {
-        _preferences = preferences;
+        _shellSettings = shellSettings;
         _torrentService = torrentService;
         _mainWindowLifecycle = mainWindowLifecycle;
         _logger = logger;
@@ -38,10 +39,21 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
 
         try
         {
-            if (_preferences.MinimizeToTrayOnClose)
+            var action = AppShellClosePolicy.Resolve(
+                _shellSettings.GetCloseBehavior(),
+                AppShellCloseRequestSource.MainWindow);
+
+            switch (action)
             {
-                await MinimizeToTrayAsync().ConfigureAwait(false);
-                return;
+                case AppShellCloseAction.MinimizeToTray:
+                    await MinimizeToTrayAsync().ConfigureAwait(false);
+                    return;
+                case AppShellCloseAction.AskUser:
+                    _logger.LogInformation("AskUser close behavior is not implemented yet. Falling back to exit.");
+                    break;
+                case AppShellCloseAction.ExitApplication:
+                default:
+                    break;
             }
 
             await StartExitAsync(exitAsync).ConfigureAwait(false);
@@ -57,7 +69,17 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     }
 
     public Task RequestExplicitExitAsync(Func<Task> exitAsync)
-        => StartExitAsync(exitAsync);
+    {
+        var action = AppShellClosePolicy.Resolve(
+            _shellSettings.GetCloseBehavior(),
+            AppShellCloseRequestSource.TrayExit);
+
+        return action switch
+        {
+            AppShellCloseAction.MinimizeToTray => MinimizeToTrayAsync(),
+            _ => StartExitAsync(exitAsync),
+        };
+    }
 
     private async Task MinimizeToTrayAsync()
     {

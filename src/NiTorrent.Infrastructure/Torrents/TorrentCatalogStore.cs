@@ -53,89 +53,6 @@ public sealed class TorrentCatalogStore
         }
     }
 
-
-    public async Task<IReadOnlyList<TorrentEntry>> GetEntriesAsync(CancellationToken ct = default)
-    {
-        await EnsureLoadedAsync(ct).ConfigureAwait(false);
-
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            return _catalog.Items
-                .OrderByDescending(x => x.AddedAtUtc)
-                .Select(BuildEntry)
-                .ToList();
-        }
-        finally { _gate.Release(); }
-    }
-
-    public async Task<TorrentEntry?> TryGetEntryAsync(TorrentId id, CancellationToken ct = default)
-    {
-        await EnsureLoadedAsync(ct).ConfigureAwait(false);
-
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            var entry = _catalog.Items.FirstOrDefault(x => x.Id == id.Value);
-            return entry is null ? null : BuildEntry(entry);
-        }
-        finally { _gate.Release(); }
-    }
-
-    public async Task<TorrentEntry?> TryGetEntryByKeyAsync(TorrentKey key, CancellationToken ct = default)
-    {
-        if (key.IsEmpty)
-            return null;
-
-        await EnsureLoadedAsync(ct).ConfigureAwait(false);
-
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            var entry = _catalog.Items.FirstOrDefault(x => string.Equals(x.Key, key.Value, StringComparison.OrdinalIgnoreCase));
-            return entry is null ? null : BuildEntry(entry);
-        }
-        finally { _gate.Release(); }
-    }
-
-    public async Task UpsertEntryAsync(TorrentEntry entry, CancellationToken ct = default)
-    {
-        await EnsureLoadedAsync(ct).ConfigureAwait(false);
-
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            var existing = _catalog.Items.FirstOrDefault(x => x.Id == entry.Id.Value);
-            if (existing is null && !entry.Key.IsEmpty)
-            {
-                existing = _catalog.Items.FirstOrDefault(x => string.Equals(x.Key, entry.Key.Value, StringComparison.OrdinalIgnoreCase));
-                if (existing is not null)
-                    existing.Id = entry.Id.Value;
-            }
-
-            if (existing is null)
-            {
-                existing = new TorrentCatalogEntry { Id = entry.Id.Value };
-                _catalog.Items.Add(existing);
-            }
-
-            existing.Key = entry.Key.IsEmpty ? existing.Key : entry.Key.Value;
-            existing.Name = entry.Name;
-            existing.Size = entry.Size;
-            existing.SavePath = entry.SavePath;
-            existing.AddedAtUtc = entry.AddedAtUtc;
-            existing.ShouldRun = entry.Intent == TorrentIntent.Running;
-            existing.Progress = entry.Runtime.Progress;
-            existing.LastPhase = TorrentLifecycleStateMapper.ToPhase(entry.Runtime.LifecycleState);
-            existing.IsComplete = entry.Runtime.IsComplete;
-
-            DeduplicateCatalogEntries(existing);
-        }
-        finally { _gate.Release(); }
-    }
-
-    public Task RemoveEntryAsync(TorrentId id, CancellationToken ct = default) => RemoveAsync(id, ct);
-
     public async Task<IReadOnlyList<TorrentSnapshot>> BuildCachedSnapshotsAsync(CancellationToken ct = default)
     {
         await EnsureLoadedAsync(ct).ConfigureAwait(false);
@@ -197,22 +114,6 @@ public sealed class TorrentCatalogStore
         finally { _gate.Release(); }
     }
 
-    public async Task<TorrentId?> TryGetIdByKeyAsync(string key, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-            return null;
-
-        await EnsureLoadedAsync(ct).ConfigureAwait(false);
-
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            var entry = _catalog.Items.FirstOrDefault(x => string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase));
-            return entry is null ? null : new TorrentId(entry.Id);
-        }
-        finally { _gate.Release(); }
-    }
-
     public async Task<DateTimeOffset?> TryGetAddedAtUtcAsync(TorrentId id, CancellationToken ct = default)
     {
         await EnsureLoadedAsync(ct).ConfigureAwait(false);
@@ -234,13 +135,6 @@ public sealed class TorrentCatalogStore
         try
         {
             var entry = _catalog.Items.FirstOrDefault(x => x.Id == s.Id.Value);
-            if (entry is null && !string.IsNullOrWhiteSpace(s.Key))
-            {
-                entry = _catalog.Items.FirstOrDefault(x => string.Equals(x.Key, s.Key, StringComparison.OrdinalIgnoreCase));
-                if (entry is not null)
-                    entry.Id = s.Id.Value;
-            }
-
             if (entry is null)
             {
                 entry = new TorrentCatalogEntry { Id = s.Id.Value };
@@ -258,23 +152,8 @@ public sealed class TorrentCatalogStore
             entry.Progress = s.Status.Progress;
             entry.LastPhase = s.Status.Phase;
             entry.IsComplete = s.Status.IsComplete;
-
-            DeduplicateCatalogEntries(entry);
         }
         finally { _gate.Release(); }
-    }
-
-
-    private void DeduplicateCatalogEntries(TorrentCatalogEntry canonicalEntry)
-    {
-        _catalog.Items.RemoveAll(x => !ReferenceEquals(x, canonicalEntry) && x.Id == canonicalEntry.Id);
-
-        if (string.IsNullOrWhiteSpace(canonicalEntry.Key))
-            return;
-
-        _catalog.Items.RemoveAll(x =>
-            !ReferenceEquals(x, canonicalEntry) &&
-            string.Equals(x.Key, canonicalEntry.Key, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task RemoveAsync(TorrentId id, CancellationToken ct = default)
@@ -339,10 +218,9 @@ public sealed class TorrentCatalogStore
             var byKey = _catalog.Items
                 .Where(x => !string.IsNullOrWhiteSpace(x.Key))
                 .GroupBy(x => x.Key!, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
             var pendingRemovals = new List<PendingRemoval>();
-            var usedIds = new HashSet<Guid>();
 
             foreach (var m in engine.Torrents)
             {
@@ -354,93 +232,33 @@ public sealed class TorrentCatalogStore
                     continue;
                 }
 
-                var entry = TryMatchCatalogEntry(m, key, byKey, usedIds);
-                var matchedExistingEntry = entry is not null;
-                if (entry is null)
+                TorrentId id;
+                if (!string.IsNullOrWhiteSpace(key) && byKey.TryGetValue(key, out var entry))
                 {
-                    entry = new TorrentCatalogEntry
-                    {
-                        Id = Guid.NewGuid(),
-                        AddedAtUtc = DateTimeOffset.UtcNow,
-                        ShouldRun = m.State is not TorrentState.Stopped and not TorrentState.Paused
-                    };
-                    _catalog.Items.Add(entry);
-                    if (!string.IsNullOrWhiteSpace(key))
-                    {
-                        if (!byKey.TryGetValue(key, out var bucket))
-                        {
-                            bucket = new List<TorrentCatalogEntry>();
-                            byKey[key] = bucket;
-                        }
-                        bucket.Add(entry);
-                    }
-                }
-
-                entry.Key = string.IsNullOrWhiteSpace(key) ? entry.Key : key;
-                entry.Name = m.Name;
-                entry.Size = m.Torrent?.Size ?? 0;
-                entry.SavePath = m.SavePath;
-                if (entry.AddedAtUtc == default)
-                    entry.AddedAtUtc = DateTimeOffset.UtcNow;
-                if (!matchedExistingEntry)
-                    entry.ShouldRun = m.State is not TorrentState.Stopped and not TorrentState.Paused;
-
-                var id = new TorrentId(entry.Id);
-                if (!byId.ContainsKey(id))
-                {
-                    byId[id] = m;
-                    usedIds.Add(entry.Id);
+                    id = new TorrentId(entry.Id);
                 }
                 else
                 {
-                    var fallback = CreateFallbackEntry(m, key);
-                    _catalog.Items.Add(fallback);
-                    var fallbackId = new TorrentId(fallback.Id);
-                    byId[fallbackId] = m;
-                    usedIds.Add(fallback.Id);
-                    if (!string.IsNullOrWhiteSpace(key))
+                    id = new TorrentId(Guid.NewGuid());
+                    _catalog.Items.Add(new TorrentCatalogEntry
                     {
-                        if (!byKey.TryGetValue(key, out var bucket))
-                        {
-                            bucket = new List<TorrentCatalogEntry>();
-                            byKey[key] = bucket;
-                        }
-                        bucket.Add(fallback);
-                    }
+                        Id = id.Value,
+                        Key = key,
+                        Name = m.Name,
+                        Size = m.Torrent?.Size ?? 0,
+                        SavePath = m.SavePath,
+                        AddedAtUtc = DateTimeOffset.UtcNow,
+                        ShouldRun = m.State is not TorrentState.Stopped and not TorrentState.Paused
+                    });
                 }
+
+                byId[id] = m;
             }
 
             return pendingRemovals;
         }
         finally { _gate.Release(); }
     }
-
-    private static TorrentCatalogEntry? TryMatchCatalogEntry(
-        TorrentManager manager,
-        string key,
-        Dictionary<string, List<TorrentCatalogEntry>> byKey,
-        HashSet<Guid> usedIds)
-    {
-        if (string.IsNullOrWhiteSpace(key) || !byKey.TryGetValue(key, out var candidates))
-            return null;
-
-        return candidates.FirstOrDefault(x => !usedIds.Contains(x.Id) &&
-                                              string.Equals(x.SavePath, manager.SavePath, StringComparison.OrdinalIgnoreCase) &&
-                                              string.Equals(x.Name, manager.Name, StringComparison.OrdinalIgnoreCase))
-            ?? candidates.FirstOrDefault(x => !usedIds.Contains(x.Id));
-    }
-
-    private static TorrentCatalogEntry CreateFallbackEntry(TorrentManager manager, string key)
-        => new()
-        {
-            Id = Guid.NewGuid(),
-            Key = key,
-            Name = manager.Name,
-            Size = manager.Torrent?.Size ?? 0,
-            SavePath = manager.SavePath,
-            AddedAtUtc = DateTimeOffset.UtcNow,
-            ShouldRun = manager.State is not TorrentState.Stopped and not TorrentState.Paused
-        };
 
     public async Task CompletePendingRemovalAsync(string key, CancellationToken ct = default)
     {
@@ -531,40 +349,5 @@ public sealed class TorrentCatalogStore
             Status: status);
     }
 }
-
-
-    private static TorrentEntry BuildEntry(TorrentCatalogEntry e)
-    {
-        var intent = e.ShouldRun ? TorrentIntent.Running : TorrentIntent.Paused;
-        var runtime = TorrentStatusResolver.ResolveExpectedRuntime(new TorrentEntry(
-            new TorrentId(e.Id),
-            string.IsNullOrWhiteSpace(e.Key) ? TorrentKey.Empty : new TorrentKey(e.Key),
-            e.Name,
-            e.Size,
-            e.SavePath,
-            e.AddedAtUtc,
-            intent,
-            new TorrentRuntimeState(
-                TorrentLifecycleStateMapper.FromPhase(e.LastPhase),
-                e.IsComplete,
-                e.Progress,
-                0,
-                0,
-                null,
-                false),
-            Array.Empty<DeferredAction>()));
-
-        return new TorrentEntry(
-            new TorrentId(e.Id),
-            string.IsNullOrWhiteSpace(e.Key) ? TorrentKey.Empty : new TorrentKey(e.Key),
-            e.Name,
-            e.Size,
-            e.SavePath,
-            e.AddedAtUtc,
-            intent,
-            runtime,
-            Array.Empty<DeferredAction>());
-    }
-
 
 public sealed record PendingRemoval(TorrentManager Manager, string Key, bool DeleteDownloadedData);
