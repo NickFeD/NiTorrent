@@ -53,6 +53,78 @@ public sealed class TorrentCatalogStore
         }
     }
 
+
+    public async Task<IReadOnlyList<TorrentEntry>> GetEntriesAsync(CancellationToken ct = default)
+    {
+        await EnsureLoadedAsync(ct).ConfigureAwait(false);
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            return _catalog.Items
+                .OrderByDescending(x => x.AddedAtUtc)
+                .Select(BuildEntry)
+                .ToList();
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task<TorrentEntry?> TryGetEntryAsync(TorrentId id, CancellationToken ct = default)
+    {
+        await EnsureLoadedAsync(ct).ConfigureAwait(false);
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var entry = _catalog.Items.FirstOrDefault(x => x.Id == id.Value);
+            return entry is null ? null : BuildEntry(entry);
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task<TorrentEntry?> TryGetEntryByKeyAsync(TorrentKey key, CancellationToken ct = default)
+    {
+        if (key.IsEmpty)
+            return null;
+
+        await EnsureLoadedAsync(ct).ConfigureAwait(false);
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var entry = _catalog.Items.FirstOrDefault(x => string.Equals(x.Key, key.Value, StringComparison.OrdinalIgnoreCase));
+            return entry is null ? null : BuildEntry(entry);
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task UpsertEntryAsync(TorrentEntry entry, CancellationToken ct = default)
+    {
+        await EnsureLoadedAsync(ct).ConfigureAwait(false);
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var model = _catalog.Items.FirstOrDefault(x => x.Id == entry.Id.Value);
+            if (model is null && !entry.Key.IsEmpty)
+            {
+                model = _catalog.Items.FirstOrDefault(x => string.Equals(x.Key, entry.Key.Value, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (model is null)
+            {
+                model = new TorrentCatalogEntry { Id = entry.Id.Value };
+                _catalog.Items.Add(model);
+            }
+
+            ApplyEntry(model, entry);
+            DeduplicateCatalogEntries(model);
+        }
+        finally { _gate.Release(); }
+    }
+
+    public Task RemoveEntryAsync(TorrentId id, CancellationToken ct = default) => RemoveAsync(id, ct);
+
     public async Task<IReadOnlyList<TorrentSnapshot>> BuildCachedSnapshotsAsync(CancellationToken ct = default)
     {
         await EnsureLoadedAsync(ct).ConfigureAwait(false);
@@ -413,6 +485,44 @@ public sealed class TorrentCatalogStore
         return await Task.Run(() =>
             JsonSerializer.Deserialize<TorrentCatalog>(json, TorrentCatalog.JsonOptions) ?? new TorrentCatalog(),
             ct).ConfigureAwait(false);
+    }
+
+
+    private static TorrentEntry BuildEntry(TorrentCatalogEntry e)
+    {
+        var runtimeState = new TorrentRuntimeState(
+            Lifecycle: TorrentLifecycleStateMapper.FromPhase(e.LastPhase),
+            IsComplete: e.IsComplete,
+            Progress: e.Progress,
+            DownloadRateBytesPerSecond: 0,
+            UploadRateBytesPerSecond: 0,
+            Error: null,
+            ObservedAtUtc: null);
+
+        return new TorrentEntry(
+            Id: new TorrentId(e.Id),
+            Key: string.IsNullOrWhiteSpace(e.Key) ? TorrentKey.Empty : new TorrentKey(e.Key),
+            Name: e.Name,
+            Size: e.Size,
+            SavePath: e.SavePath,
+            AddedAtUtc: e.AddedAtUtc,
+            Intent: e.ShouldRun ? TorrentIntent.Start : TorrentIntent.Pause,
+            Runtime: runtimeState,
+            DeferredAction: null);
+    }
+
+    private static void ApplyEntry(TorrentCatalogEntry target, TorrentEntry entry)
+    {
+        target.Id = entry.Id.Value;
+        target.Key = entry.Key.IsEmpty ? target.Key : entry.Key.Value;
+        target.Name = entry.Name;
+        target.Size = entry.Size;
+        target.SavePath = entry.SavePath;
+        target.AddedAtUtc = entry.AddedAtUtc;
+        target.ShouldRun = entry.Intent == TorrentIntent.Start;
+        target.Progress = entry.Runtime.Progress;
+        target.LastPhase = TorrentLifecycleStateMapper.ToPhase(entry.Runtime.Lifecycle);
+        target.IsComplete = entry.Runtime.IsComplete;
     }
 
     private static TorrentSnapshot BuildCachedSnapshot(TorrentCatalogEntry e)

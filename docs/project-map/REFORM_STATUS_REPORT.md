@@ -67,24 +67,8 @@ Only bug fixes found during testing should happen before the next large architec
 - `MinimizeToTrayOnClose` follows the same save/apply flow as all other settings on the page.
 - `nucs.JsonSettings` remains the storage backend; no additional NuGet package is required for settings persistence.
 
+## Новый статус (архитектурный переход)
 
-## Architecture transition started
-Phase 1 of `ARCHITECTURE_TRANSITION_PLAN.md` is now in progress.
-
-Completed in code:
-- a new domain-first torrent model was introduced in `NiTorrent.Domain`;
-- product concepts no longer depend only on `TorrentSnapshot` and `ShouldRun`;
-- transition-only bridges are now tracked in `TRANSITION_BACKLOG.md`.
-
-New domain model introduced:
-- `TorrentEntry`
-- `TorrentIntent`
-- `TorrentKey`
-- `TorrentRuntimeState`
-- `DeferredAction`
-- `AppCloseBehavior`
-- `GlobalTorrentSettings`
-- domain policies for duplicate detection, status resolution and deferred action replacement.
-
-This does **not** yet replace the current working runtime path.
-It establishes the target product model that later stages must migrate toward.
+- Этап 1: введены базовые domain types для product-centered модели коллекции торрентов.
+- Этап 2: введён `ITorrentCollectionRepository` и временная реализация `CatalogBackedTorrentCollectionRepository`.
+- Legacy `TorrentCatalogStore` пока остаётся backing store, но уже не должен считаться целевой моделью продукта.

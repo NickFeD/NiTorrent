@@ -33,6 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(TorrentConfigLoader.Load());
         services.AddSingleton<ITorrentPreferences, JsonTorrentPreferences>();
         services.AddSingleton<TorrentCatalogStore>();
+        services.AddSingleton<ITorrentCollectionRepository, CatalogBackedTorrentCollectionRepository>();
 
         return services;
     }

@@ -3,11 +3,12 @@ namespace NiTorrent.Domain.Torrents;
 public enum TorrentLifecycleState
 {
     Unknown = 0,
-    WaitingForMetadata,
-    Ready,
-    Running,
+    WaitingForEngine,
+    FetchingMetadata,
+    Checking,
+    Downloading,
+    Seeding,
     Paused,
-    Completed,
-    Error,
-    Removing
+    Stopped,
+    Error
 }
