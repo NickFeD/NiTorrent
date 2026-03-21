@@ -105,3 +105,8 @@ Only bug fixes found during testing should happen before the next large architec
 - Wired torrent details into the UI with double-click navigation.
 - Added `TorrentDetailsPage` backed by `TorrentDetailsViewModel`.
 - Preserved existing WinUI/DevWinUI navigation responsibilities instead of introducing custom routing abstractions.
+
+
+## Phase 12
+- Introduced a runtime applier for per-torrent settings through an application port.
+- Torrent details save flow now persists settings and applies supported values to live managers where possible.

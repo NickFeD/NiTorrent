@@ -11,11 +11,13 @@ public sealed class TorrentDetailsService : ITorrentDetailsService
 {
     private readonly ITorrentService _torrentService;
     private readonly ITorrentEntrySettingsRepository _settingsRepository;
+    private readonly ITorrentEntrySettingsRuntimeApplier _runtimeApplier;
 
-    public TorrentDetailsService(ITorrentService torrentService, ITorrentEntrySettingsRepository settingsRepository)
+    public TorrentDetailsService(ITorrentService torrentService, ITorrentEntrySettingsRepository settingsRepository, ITorrentEntrySettingsRuntimeApplier runtimeApplier)
     {
         _torrentService = torrentService;
         _settingsRepository = settingsRepository;
+        _runtimeApplier = runtimeApplier;
     }
 
     public TorrentDetailsReadModel? Get(TorrentId torrentId)
@@ -29,6 +31,9 @@ public sealed class TorrentDetailsService : ITorrentDetailsService
     public TorrentEntrySettings GetSettings(TorrentId torrentId)
         => _settingsRepository.Load(torrentId);
 
-    public void SaveSettings(TorrentId torrentId, TorrentEntrySettings settings)
-        => _settingsRepository.Save(torrentId, settings);
+    public async Task SaveSettingsAsync(TorrentId torrentId, TorrentEntrySettings settings, CancellationToken ct = default)
+    {
+        _settingsRepository.Save(torrentId, settings);
+        await _runtimeApplier.ApplyAsync(torrentId, settings, ct).ConfigureAwait(false);
+    }
 }

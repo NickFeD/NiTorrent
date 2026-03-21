@@ -14,6 +14,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAppPreferences, JsonAppPreferences>();
         services.AddSingleton<IAppShellSettingsRepository, JsonAppShellSettingsRepository>();
         services.AddSingleton<ITorrentEntrySettingsRepository, JsonTorrentEntrySettingsRepository>();
+        services.AddSingleton<ITorrentEntrySettingsRuntimeApplier, TorrentEntrySettingsRuntimeApplier>();
         services.AddHostedService<TorrentMonitor>();
         services.AddSingleton<TorrentSnapshotFactory>();
         services.AddSingleton<TorrentRuntimeRegistry>();

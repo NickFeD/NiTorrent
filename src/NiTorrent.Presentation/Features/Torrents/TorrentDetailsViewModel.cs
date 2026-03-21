@@ -107,7 +107,12 @@ public partial class TorrentDetailsViewModel : ObservableObject
             SequentialDownload = SequentialDownload
         };
 
-        _detailsService.SaveSettings(_currentTorrentId, settings);
-        return _dialogs.ShowTextAsync("Настройки торрента", "Настройки торрента сохранены.");
+                return SaveCoreAsync(settings);
     }
+    private async Task SaveCoreAsync(TorrentEntrySettings settings)
+    {
+        await _detailsService.SaveSettingsAsync(_currentTorrentId, settings).ConfigureAwait(false);
+        await _dialogs.ShowTextAsync("Настройки торрента", "Настройки торрента сохранены и применены там, где это возможно без перезапуска.").ConfigureAwait(false);
+    }
+
 }

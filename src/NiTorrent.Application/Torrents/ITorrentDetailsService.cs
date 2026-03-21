@@ -6,5 +6,5 @@ public interface ITorrentDetailsService
 {
     TorrentDetailsReadModel? Get(TorrentId torrentId);
     TorrentEntrySettings GetSettings(TorrentId torrentId);
-    void SaveSettings(TorrentId torrentId, TorrentEntrySettings settings);
+    Task SaveSettingsAsync(TorrentId torrentId, TorrentEntrySettings settings, CancellationToken ct = default);
 }
