@@ -87,3 +87,6 @@ Only bug fixes found during testing should happen before the next large architec
 
 
 - Phase 7 completed: application-owned read-side feed and projections (`PHASE7_READ_SIDE.md`).
+
+
+- Phase 8 completed: product-owned torrent settings subsystem (`PHASE8_SETTINGS_SUBSYSTEM.md`).

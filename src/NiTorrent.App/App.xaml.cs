@@ -10,6 +10,7 @@ using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.Read;
+using NiTorrent.Application.Settings;
 using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
@@ -105,7 +106,7 @@ public partial class App : WinUIApplication
         services.AddTransient<PauseTorrentUseCase>();
         services.AddTransient<RemoveTorrentUseCase>();
         services.AddTransient<OpenTorrentFolderUseCase>();
-        services.AddTransient<ApplyTorrentSettingsUseCase>();
+        services.AddSingleton<ITorrentSettingsService, TorrentSettingsService>();
         services.AddTransient<ITorrentWorkflowService, TorrentWorkflowService>();
         services.AddSingleton<ITorrentReadModelFeed, TorrentReadModelFeed>();
         services.AddTransient<IRestoreTorrentCollectionWorkflow, RestoreTorrentCollectionWorkflow>();

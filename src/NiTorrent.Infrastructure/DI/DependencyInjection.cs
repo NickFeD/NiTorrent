@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ITorrentEngineStateStore>(sp => sp.GetRequiredService<LegacyMonoTorrentEngineAdapter>());
         services.AddSingleton(TorrentConfigLoader.Load());
         services.AddSingleton<ITorrentPreferences, JsonTorrentPreferences>();
+        services.AddSingleton<ITorrentSettingsRepository, TorrentConfigSettingsRepository>();
         services.AddSingleton<TorrentCatalogStore>();
 
         return services;

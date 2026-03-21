@@ -29,3 +29,8 @@ Tracks transition-only bridges that must be deleted before the migration to `TAR
 
 
 - Phase 7 completed: application-owned read-side feed and projections (`PHASE7_READ_SIDE.md`).
+
+
+## Phase 8 — settings
+- Move remaining settings consumers away from direct `ITorrentPreferences` edits.
+- Later unify torrent, app and shell settings under a broader product settings model without reintroducing UI-to-storage coupling.
