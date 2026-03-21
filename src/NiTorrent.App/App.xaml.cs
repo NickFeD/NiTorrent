@@ -99,6 +99,7 @@ public partial class App : WinUIApplication
         services.AddTransient<AddTorrentFileWithPreviewUseCase>();
         services.AddTransient<AddMagnetUseCase>();
         services.AddTransient<ITorrentCommandService, TorrentCommandService>();
+        services.AddTransient<NiTorrent.Application.Torrents.Deferred.IApplyDeferredTorrentActionsWorkflow, NiTorrent.Application.Torrents.Deferred.ApplyDeferredTorrentActionsWorkflow>();
         services.AddTransient<StartTorrentUseCase>();
         services.AddTransient<PauseTorrentUseCase>();
         services.AddTransient<RemoveTorrentUseCase>();

@@ -1,4 +1,5 @@
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents.Restore;
@@ -8,18 +9,18 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
     private readonly ITorrentCollectionRepository _repository;
     private readonly ITorrentEngineLifecycle _engineLifecycle;
     private readonly ITorrentRuntimeFactsProvider _runtimeFactsProvider;
-    private readonly ITorrentEngineGateway _engineGateway;
+    private readonly IApplyDeferredTorrentActionsWorkflow _applyDeferredActionsWorkflow;
 
     public RestoreTorrentCollectionWorkflow(
         ITorrentCollectionRepository repository,
         ITorrentEngineLifecycle engineLifecycle,
         ITorrentRuntimeFactsProvider runtimeFactsProvider,
-        ITorrentEngineGateway engineGateway)
+        IApplyDeferredTorrentActionsWorkflow applyDeferredActionsWorkflow)
     {
         _repository = repository;
         _engineLifecycle = engineLifecycle;
         _runtimeFactsProvider = runtimeFactsProvider;
-        _engineGateway = engineGateway;
+        _applyDeferredActionsWorkflow = applyDeferredActionsWorkflow;
     }
 
     public async Task<RestoreTorrentCollectionResult> ExecuteAsync(CancellationToken ct = default)
@@ -30,7 +31,14 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
         var runtimeFacts = _runtimeFactsProvider.GetAll();
 
         var syncedCollection = TorrentCollectionRestorePolicy.ApplyRuntimeFacts(earlyCollection, runtimeFacts).ToList();
-        syncedCollection = await ApplyIntentAndDeferredActionsAsync(syncedCollection, ct).ConfigureAwait(false);
+        var executionPlan = BuildExecutionPlan(syncedCollection);
+
+        var deferredResult = await _applyDeferredActionsWorkflow.ExecuteAsync(executionPlan, ct).ConfigureAwait(false);
+        syncedCollection = deferredResult.UpdatedEntries.ToList();
+        if (deferredResult.RemovedIds.Count > 0)
+        {
+            syncedCollection.RemoveAll(x => deferredResult.RemovedIds.Contains(x.Id));
+        }
 
         foreach (var entry in syncedCollection)
         {
@@ -41,49 +49,25 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
         return new RestoreTorrentCollectionResult(earlyCollection, syncedCollection, runtimeFacts);
     }
 
-    private async Task<List<TorrentEntry>> ApplyIntentAndDeferredActionsAsync(List<TorrentEntry> entries, CancellationToken ct)
+    private static IReadOnlyList<TorrentEntry> BuildExecutionPlan(IReadOnlyList<TorrentEntry> entries)
     {
-        foreach (var entry in entries.ToList())
+        var now = DateTimeOffset.UtcNow;
+        return entries.Select(entry =>
         {
+            var planned = entry;
+
             if (entry.Intent == TorrentIntent.Running)
             {
-                await _engineGateway.StartAsync(entry.Id, ct).ConfigureAwait(false);
+                planned = planned.WithDeferredActions(
+                    DeferredActionPolicy.Merge(planned.DeferredActions, new DeferredAction(DeferredActionType.Start, now)));
             }
             else if (entry.Intent == TorrentIntent.Paused)
             {
-                await _engineGateway.PauseAsync(entry.Id, ct).ConfigureAwait(false);
+                planned = planned.WithDeferredActions(
+                    DeferredActionPolicy.Merge(planned.DeferredActions, new DeferredAction(DeferredActionType.Pause, now)));
             }
 
-            foreach (var action in entry.DeferredActions.OrderBy(x => x.RequestedAtUtc))
-            {
-                switch (action.Type)
-                {
-                    case DeferredActionType.Start:
-                        await _engineGateway.StartAsync(entry.Id, ct).ConfigureAwait(false);
-                        entry = entry.WithIntent(TorrentIntent.Running);
-                        break;
-                    case DeferredActionType.Pause:
-                        await _engineGateway.PauseAsync(entry.Id, ct).ConfigureAwait(false);
-                        entry = entry.WithIntent(TorrentIntent.Paused);
-                        break;
-                    case DeferredActionType.RemoveKeepData:
-                        await _engineGateway.RemoveAsync(entry.Id, deleteData: false, ct).ConfigureAwait(false);
-                        entry = entry.WithIntent(TorrentIntent.Removed);
-                        break;
-                    case DeferredActionType.RemoveWithData:
-                        await _engineGateway.RemoveAsync(entry.Id, deleteData: true, ct).ConfigureAwait(false);
-                        entry = entry.WithIntent(TorrentIntent.Removed);
-                        break;
-                }
-            }
-
-            entry = entry.WithDeferredActions(Array.Empty<DeferredAction>());
-            var index = entries.FindIndex(x => x.Id == entry.Id);
-            if (index >= 0)
-                entries[index] = entry;
-        }
-
-        entries.RemoveAll(x => x.Intent == TorrentIntent.Removed);
-        return entries;
+            return planned;
+        }).ToList();
     }
 }

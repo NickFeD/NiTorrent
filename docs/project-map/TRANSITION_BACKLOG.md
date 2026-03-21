@@ -21,3 +21,8 @@ Tracks transition-only bridges that must be deleted before the migration to `TAR
 - Migrate add/preview commands to new product/domain model.
 - Expose product-level command results up to UI.
 - Remove direct command dependency on legacy `ITorrentService`.
+
+
+## Phase 6 — deferred actions
+- Move deferred action storage from implicit command/startup behavior toward explicit application workflow.
+- Later split deferred queue persistence out of the legacy catalog bridge.

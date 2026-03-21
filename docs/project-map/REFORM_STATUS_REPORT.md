@@ -79,3 +79,8 @@ Only bug fixes found during testing should happen before the next large architec
 - Added domain-oriented command layer for start/pause/remove.
 - Legacy add/preview flow is still pending migration.
 - See `PHASE5_COMMANDS.md`.
+
+
+## Phase 6
+- Added explicit deferred action workflow in Application.
+- Restore workflow now builds an execution plan and applies deferred actions through a dedicated workflow instead of inline procedural logic.
