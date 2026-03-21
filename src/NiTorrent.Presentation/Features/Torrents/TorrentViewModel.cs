@@ -14,6 +14,7 @@ namespace NiTorrent.Presentation.Features.Torrents;
 public partial class TorrentViewModel : ObservableObject
 {
     private readonly ITorrentService _torrentService;
+    private readonly ITorrentReadModelFeed _readModelFeed;
     private readonly ITorrentWorkflowService _torrentWorkflowService;
     private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
@@ -40,16 +41,19 @@ public partial class TorrentViewModel : ObservableObject
 
     public TorrentViewModel(
         ITorrentService torrentService,
+        ITorrentReadModelFeed readModelFeed,
         IDialogService dialogs,
         IUiDispatcher ui,
         ITorrentWorkflowService torrentWorkflowService)
     {
         _ui = ui;
         _torrentService = torrentService;
+        _readModelFeed = readModelFeed;
         _dialogs = dialogs;
         _torrentWorkflowService = torrentWorkflowService;
-        _torrentService.UpdateTorrent += UpdateTorrent;
+        _readModelFeed.Updated += UpdateTorrent;
         _torrentService.Loaded += TorrentServiceLoaded;
+        _ = _readModelFeed.RefreshAsync();
     }
 
     private void TorrentServiceLoaded()

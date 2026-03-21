@@ -84,3 +84,6 @@ Only bug fixes found during testing should happen before the next large architec
 ## Phase 6
 - Added explicit deferred action workflow in Application.
 - Restore workflow now builds an execution plan and applies deferred actions through a dedicated workflow instead of inline procedural logic.
+
+
+- Phase 7 completed: application-owned read-side feed and projections (`PHASE7_READ_SIDE.md`).

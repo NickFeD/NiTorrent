@@ -26,3 +26,6 @@ Tracks transition-only bridges that must be deleted before the migration to `TAR
 ## Phase 6 — deferred actions
 - Move deferred action storage from implicit command/startup behavior toward explicit application workflow.
 - Later split deferred queue persistence out of the legacy catalog bridge.
+
+
+- Phase 7 completed: application-owned read-side feed and projections (`PHASE7_READ_SIDE.md`).
