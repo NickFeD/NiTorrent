@@ -34,11 +34,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TorrentLifecycleExecutor>();
         services.AddSingleton<TorrentNotifier>();
         services.AddSingleton<TorrentStartupCoordinator>();
+        services.AddSingleton<TorrentRuntimeContext>();
         services.AddSingleton<ITorrentService, MonoTorrentService>();
-        services.AddSingleton<ITorrentReadModelFeed, LegacyTorrentReadModelFeed>();
+        services.AddSingleton<ITorrentReadModelFeed, EngineBackedTorrentReadModelFeed>();
         services.AddSingleton<ITorrentWriteService, LegacyTorrentWriteService>();
-        services.AddSingleton<ITorrentEngineStatusService, LegacyTorrentEngineStatusService>();
-        services.AddSingleton<ITorrentEngineMaintenanceService, LegacyTorrentEngineMaintenanceService>();
+        services.AddSingleton<ITorrentEngineStatusService, EngineBackedTorrentEngineStatusService>();
+        services.AddSingleton<ITorrentEngineMaintenanceService, EngineBackedTorrentEngineMaintenanceService>();
         services.AddSingleton(TorrentConfigLoader.Load());
         services.AddSingleton<ITorrentPreferences, JsonTorrentPreferences>();
         services.AddSingleton<TorrentCatalogStore>();

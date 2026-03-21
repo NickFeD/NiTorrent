@@ -23,11 +23,7 @@ public sealed class MonoTorrentService : ITorrentService
     private readonly TorrentLifecycleExecutor _lifecycleExecutor;
     private readonly TorrentNotifier _notifier;
     private readonly TorrentStartupCoordinator _startupCoordinator;
-    private readonly TorrentCommandQueue _commandQueue = new();
-
-    // Single gate to guarantee consistency across:
-    // engine lifecycle, runtime registry, and catalog operations.
-    private readonly SemaphoreSlim _opGate = new(1, 1);
+    private readonly TorrentRuntimeContext _runtimeContext;
 
     private readonly string _cacheDir;
 
@@ -46,7 +42,8 @@ public sealed class MonoTorrentService : ITorrentService
         TorrentEventOrchestrator eventOrchestrator,
         TorrentLifecycleExecutor lifecycleExecutor,
         TorrentNotifier notifier,
-        TorrentStartupCoordinator startupCoordinator)
+        TorrentStartupCoordinator startupCoordinator,
+        TorrentRuntimeContext runtimeContext)
     {
         _logger = logger;
         _storage = storage;
@@ -63,6 +60,7 @@ public sealed class MonoTorrentService : ITorrentService
         _lifecycleExecutor = lifecycleExecutor;
         _notifier = notifier;
         _startupCoordinator = startupCoordinator;
+        _runtimeContext = runtimeContext;
 
         _cacheDir = _storage.GetCachePath(@"Torrents\cache");
         _storage.EnsureDirectory(_cacheDir);
@@ -87,7 +85,7 @@ public sealed class MonoTorrentService : ITorrentService
     }
 
     private Task EnsureStartedAsync(CancellationToken ct = default)
-        => _startupCoordinator.EnsureStartedAsync(_opGate, _commandQueue, _eventOrchestrator.RaiseLoaded, ct);
+        => _startupCoordinator.EnsureStartedAsync(_runtimeContext.OperationGate, _runtimeContext.CommandQueue, _eventOrchestrator.RaiseLoaded, ct);
 
     public IReadOnlyList<TorrentSnapshot> GetAll()
         => _queryService.GetAll(_startupCoordinator.Engine is not null);
@@ -115,7 +113,7 @@ public sealed class MonoTorrentService : ITorrentService
                 Engine,
                 request,
                 (source, token) => _sourceResolver.ResolveAsync(source, EnsureStartedAsync, () => Engine, token),
-                _opGate,
+                _runtimeContext.OperationGate,
                 onBackgroundTaskScheduled: null,
                 ct).ConfigureAwait(false);
 
@@ -130,8 +128,8 @@ public sealed class MonoTorrentService : ITorrentService
                 await _commandExecutor.StartAsync(
                     id,
                     _startupCoordinator.IsReady,
-                    _opGate,
-                    _commandQueue,
+                    _runtimeContext.OperationGate,
+                    _runtimeContext.CommandQueue,
                     EnsureStartedAsync,
                     PublishTorrentUpdates,
                     _backgroundTasks.Run,
@@ -147,8 +145,8 @@ public sealed class MonoTorrentService : ITorrentService
             await _commandExecutor.PauseAsync(
                 id,
                 _startupCoordinator.IsReady,
-                _opGate,
-                _commandQueue,
+                _runtimeContext.OperationGate,
+                _runtimeContext.CommandQueue,
                 EnsureStartedAsync,
                 PublishTorrentUpdates,
                 _backgroundTasks.Run,
@@ -161,8 +159,8 @@ public sealed class MonoTorrentService : ITorrentService
             await _commandExecutor.StopAsync(
                 id,
                 _startupCoordinator.IsReady,
-                _opGate,
-                _commandQueue,
+                _runtimeContext.OperationGate,
+                _runtimeContext.CommandQueue,
                 EnsureStartedAsync,
                 PublishTorrentUpdates,
                 _backgroundTasks.Run,
@@ -178,8 +176,8 @@ public sealed class MonoTorrentService : ITorrentService
                     deleteDownloadedData,
                     _startupCoordinator.IsReady,
                     _startupCoordinator.Engine,
-                    _opGate,
-                    _commandQueue,
+                    _runtimeContext.OperationGate,
+                    _runtimeContext.CommandQueue,
                     EnsureStartedAsync,
                     PublishTorrentUpdates,
                     _backgroundTasks.Run,
@@ -202,10 +200,10 @@ public sealed class MonoTorrentService : ITorrentService
     }
 
     public Task PublishTorrentUpdatesAsync(CancellationToken ct = default)
-        => _eventOrchestrator.PublishUpdatesAsync(_startupCoordinator.Engine is not null, _opGate, ct);
+        => _eventOrchestrator.PublishUpdatesAsync(_startupCoordinator.Engine is not null, _runtimeContext.OperationGate, ct);
 
     public void PublishTorrentUpdates()
-        => _eventOrchestrator.PublishUpdatesInBackground(_startupCoordinator.Engine is not null, _opGate);
+        => _eventOrchestrator.PublishUpdatesInBackground(_startupCoordinator.Engine is not null, _runtimeContext.OperationGate);
 
     public Task SaveAsync(CancellationToken ct = default)
         => _lifecycleExecutor.RunAsync(async () =>

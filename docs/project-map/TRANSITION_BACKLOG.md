@@ -36,3 +36,5 @@ Tracks transition-only bridges that must be deleted before the migration to `TAR
 - Later unify torrent, app and shell settings under a broader product settings model without reintroducing UI-to-storage coupling.
 
 - [x] Phase 15 — isolate remaining legacy `ITorrentService` adapters inside Infrastructure
+
+- [x] Phase 16 — engine-owned read/status path
