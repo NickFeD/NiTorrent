@@ -1,22 +1,14 @@
 namespace NiTorrent.Domain.Torrents;
 
 public sealed record TorrentRuntimeState(
-    TorrentPhase Phase,
+    TorrentLifecycleState LifecycleState,
     bool IsComplete,
     double Progress,
     long DownloadRateBytesPerSecond,
     long UploadRateBytesPerSecond,
-    string? Error = null,
-    bool IsAvailable = true)
+    string? Error,
+    bool IsEngineBacked)
 {
-    public static TorrentRuntimeState Unavailable { get; } = new(
-        TorrentPhase.Unknown,
-        IsComplete: false,
-        Progress: 0,
-        DownloadRateBytesPerSecond: 0,
-        UploadRateBytesPerSecond: 0,
-        Error: null,
-        IsAvailable: false);
-
-    public bool IsActive => Phase is TorrentPhase.Downloading or TorrentPhase.Seeding or TorrentPhase.Checking or TorrentPhase.FetchingMetadata;
+    public static TorrentRuntimeState WaitingForEngine(double progress, bool isComplete) =>
+        new(TorrentLifecycleState.WaitingForEngine, isComplete, progress, 0, 0, null, false);
 }

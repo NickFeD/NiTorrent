@@ -1,26 +1,26 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Common;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Abstractions;
-using static NiTorrent.Application.Torrents.TorrentSource;
-
 
 namespace NiTorrent.Presentation.Features.Torrents;
 
 public partial class TorrentViewModel : ObservableObject
 {
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentReadModelFeed _readModelFeed;
+    private readonly ITorrentEngineStatusService _engineStatusService;
     private readonly ITorrentWorkflowService _torrentWorkflowService;
     private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
 
     public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
 
-    private Dictionary<TorrentId,TorrentItemViewModel> _torrents = new();
+    private readonly Dictionary<TorrentId, TorrentItemViewModel> _torrents = new();
     public bool IsEmpty => Torrents.Count < 1;
 
     [ObservableProperty]
@@ -39,28 +39,31 @@ public partial class TorrentViewModel : ObservableObject
     public bool CanRemove => SelectedTorrent != null;
 
     public TorrentViewModel(
-        ITorrentService torrentService,
+        ITorrentReadModelFeed readModelFeed,
+        ITorrentEngineStatusService engineStatusService,
         IDialogService dialogs,
         IUiDispatcher ui,
         ITorrentWorkflowService torrentWorkflowService)
     {
         _ui = ui;
-        _torrentService = torrentService;
+        _readModelFeed = readModelFeed;
+        _engineStatusService = engineStatusService;
         _dialogs = dialogs;
         _torrentWorkflowService = torrentWorkflowService;
-        _torrentService.UpdateTorrent += UpdateTorrent;
-        _torrentService.Loaded += TorrentServiceLoaded;
-    }
 
-    private void TorrentServiceLoaded()
-    {
-        _ui.TryEnqueue(() =>
-        {
+        _readModelFeed.Updated += UpdateTorrent;
+        _engineStatusService.Ready += TorrentEngineReady;
+
+        if (_engineStatusService.IsReady)
             StatusText = "Движок торрентов готов";
-        });
     }
 
-    private void UpdateTorrent(IReadOnlyList<Domain.Torrents.TorrentSnapshot> torrents)
+    private void TorrentEngineReady()
+    {
+        _ui.TryEnqueue(() => { StatusText = "Движок торрентов готов"; });
+    }
+
+    private void UpdateTorrent(IReadOnlyList<TorrentListItemReadModel> torrents)
     {
         _ui.TryEnqueue(() =>
         {
@@ -94,6 +97,7 @@ public partial class TorrentViewModel : ObservableObject
                     Torrents.Add(newTorrent);
                 }
             }
+
             TotalDownloadSpeed = SizeFormatter.FormatSpeed(totalDownloadSpeed);
             TotalUploadSpeed = SizeFormatter.FormatSpeed(totalUploadSpeed);
             OnPropertyChanged(nameof(IsEmpty));
@@ -115,8 +119,6 @@ public partial class TorrentViewModel : ObservableObject
         RemoveTorrentCommand.NotifyCanExecuteChanged();
     }
 
-    // ---------------- ADD ----------------
-
     [RelayCommand]
     private async Task PickTorrent()
     {
@@ -127,7 +129,7 @@ public partial class TorrentViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = "Не удалось добавить торрент";
-            await _dialogs.ShowTextAsync("Ошибка добавления", ex.Message);
+            await _dialogs.ShowTextAsync("Ошибка добавления", UserErrorMapper.ToMessage(ex, "Не удалось добавить торрент."));
         }
     }
 
@@ -140,11 +142,9 @@ public partial class TorrentViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = "Не удалось добавить magnet-ссылку";
-            await _dialogs.ShowTextAsync("Ошибка добавления", ex.Message);
+            await _dialogs.ShowTextAsync("Ошибка добавления", UserErrorMapper.ToMessage(ex, "Не удалось добавить торрент."));
         }
     }
-
-    // ---------------- COMMAND LOGIC ----------------
 
     private bool CanStart()
         => SelectedTorrent != null && (SelectedTorrent.State.Phase is TorrentPhase.Stopped or TorrentPhase.Paused or TorrentPhase.Error);
@@ -168,7 +168,7 @@ public partial class TorrentViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = "Не удалось запустить торрент";
-            await _dialogs.ShowTextAsync("Ошибка запуска", ex.Message);
+            await _dialogs.ShowTextAsync("Ошибка запуска", UserErrorMapper.ToMessage(ex, "Не удалось запустить торрент."));
         }
     }
 
@@ -185,7 +185,7 @@ public partial class TorrentViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = "Не удалось поставить торрент на паузу";
-            await _dialogs.ShowTextAsync("Ошибка паузы", ex.Message);
+            await _dialogs.ShowTextAsync("Ошибка паузы", UserErrorMapper.ToMessage(ex, "Не удалось поставить торрент на паузу."));
         }
     }
 
@@ -218,8 +218,7 @@ public partial class TorrentViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = "Не удалось удалить торрент";
-            await _dialogs.ShowTextAsync("Ошибка удаления", ex.Message);
+            await _dialogs.ShowTextAsync("Ошибка удаления", UserErrorMapper.ToMessage(ex, "Не удалось удалить торрент."));
         }
     }
-
 }

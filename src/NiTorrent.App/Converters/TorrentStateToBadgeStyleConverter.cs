@@ -1,6 +1,5 @@
 ﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Data;
-using MonoTorrent.Client;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.App.Converters;

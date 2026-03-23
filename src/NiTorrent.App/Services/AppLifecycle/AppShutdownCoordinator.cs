@@ -1,27 +1,25 @@
 using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Torrents;
 using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
 public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
 {
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentEngineMaintenanceService _engineMaintenanceService;
     private readonly IMainWindowLifecycle _mainWindowLifecycle;
-    private readonly ITrayService _trayService;
-    private readonly IUiDispatcher _dispatcher;
     private readonly ILogger<AppShutdownCoordinator> _logger;
+    private readonly IUiDispatcher _dispatcher;
 
     public AppShutdownCoordinator(
-        ITorrentService torrentService,
+        ITorrentEngineMaintenanceService engineMaintenanceService,
         IMainWindowLifecycle mainWindowLifecycle,
-        ITrayService trayService,
         IUiDispatcher dispatcher,
         ILogger<AppShutdownCoordinator> logger)
     {
-        _torrentService = torrentService;
+        _engineMaintenanceService = engineMaintenanceService;
         _mainWindowLifecycle = mainWindowLifecycle;
-        _trayService = trayService;
         _dispatcher = dispatcher;
         _logger = logger;
     }
@@ -30,21 +28,11 @@ public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
     {
         try
         {
-            await _torrentService.ShutdownAsync().ConfigureAwait(false);
+            await _engineMaintenanceService.ShutdownAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Torrent service shutdown failed");
-        }
-
-        try
-        {
-            _trayService.SetVisible(false);
-            _trayService.Dispose();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Tray dispose failed");
         }
 
         try
@@ -75,14 +63,7 @@ public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
         }
         finally
         {
-            try
-            {
-                await _dispatcher.EnqueueAsync(exitApplication).ConfigureAwait(false);
-            }
-            catch
-            {
-                exitApplication();
-            }
+            await _dispatcher.EnqueueAsync(exitApplication).ConfigureAwait(false);
         }
     }
 }

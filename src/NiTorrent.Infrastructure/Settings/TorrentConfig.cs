@@ -43,5 +43,7 @@ public sealed partial class TorrentConfig : NotifiyingJsonSettings, IVersionable
     public bool AutoSaveLoadMagnetLinkMetadata { get; set; } = true;
     public TorrentFastResumeMode FastResumeMode { get; set; } = TorrentFastResumeMode.BestEffort;
 
+    public string? CloseBehavior { get; set; }
+
     public bool MinimizeToTrayOnClose { get; set; } = true;
 }

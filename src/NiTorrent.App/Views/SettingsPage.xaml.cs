@@ -1,6 +1,4 @@
-﻿using MonoTorrent;
-
-namespace NiTorrent.App.Views;
+﻿namespace NiTorrent.App.Views;
 
 public sealed partial class SettingsPage : Page
 {

@@ -14,15 +14,13 @@
 
             <TextBlock Text="Настройки торрент-движка"
                        Style="{ThemeResource TitleTextBlockStyle}" />
-            <TextBlock Text="Все настройки на этой странице работают одинаково: сначала меняются в форме, затем сохраняются кнопкой «Применить»."
+            <TextBlock Text="Изменения применяются сразу после сохранения."
                        Style="{ThemeResource BodyTextBlockStyle}"
                        Opacity="0.75" />
-
             <InfoBar IsOpen="{x:Bind ViewModel.HasUnsavedChanges, Mode=OneWay}"
                      IsClosable="False"
                      Severity="Informational"
-                     Title="Есть несохранённые изменения"
-                     Message="Нажмите «Применить», чтобы сохранить и сразу применить параметры торрент-движка и поведения окна." />
+                     Message="Есть несохранённые изменения. Нажмите «Применить», чтобы сохранить и применить настройки." />
 
             <!-- Пути -->
             <dev:SettingsCard Header="Папка загрузки по умолчанию"
@@ -208,7 +206,8 @@
                     <Button MinWidth="{StaticResource SettingActionControlMinWidth}"
                             Content="Применить"
                             Style="{ThemeResource AccentButtonStyle}"
-                            Command="{x:Bind ViewModel.SaveCommand}" />
+                            Command="{x:Bind ViewModel.SaveCommand}"
+                            IsEnabled="{x:Bind ViewModel.HasUnsavedChanges, Mode=OneWay}" />
                 </StackPanel>
             </dev:SettingsCard>
 

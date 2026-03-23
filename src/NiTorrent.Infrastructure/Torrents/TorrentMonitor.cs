@@ -1,17 +1,21 @@
-﻿using Microsoft.Extensions.Hosting;
-using NiTorrent.Application.Abstractions;
+using Microsoft.Extensions.Hosting;
+using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.Restore;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
 public sealed class TorrentMonitor : BackgroundService
 {
-    private readonly ITorrentService _torrentService;
+    private readonly ITorrentReadModelFeed _readModelFeed;
+    private readonly SyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
 
-    public TorrentMonitor(ITorrentService torrentService)
+    public TorrentMonitor(
+        ITorrentReadModelFeed readModelFeed,
+        SyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow)
     {
-        _torrentService = torrentService;
+        _readModelFeed = readModelFeed;
+        _syncRuntimeWorkflow = syncRuntimeWorkflow;
     }
-
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -19,7 +23,16 @@ public sealed class TorrentMonitor : BackgroundService
 
         while (await timer.WaitForNextTickAsync(ct) && !ct.IsCancellationRequested)
         {
-            _torrentService.PublishTorrentUpdates();
+            try
+            {
+                await _syncRuntimeWorkflow.ExecuteAsync(ct).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Background sync is best-effort; feed refresh still gives the latest query projection.
+            }
+
+            _readModelFeed.Refresh();
         }
     }
 }

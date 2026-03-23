@@ -7,7 +7,7 @@ public sealed class TorrentStartupCoordinator
 {
     private readonly ILogger<TorrentStartupCoordinator> _logger;
     private readonly TorrentCatalogStore _catalogStore;
-    private readonly TorrentSnapshotFactory _snapshotFactory;
+    private readonly TorrentStableKeyAccessor _stableKeyAccessor;
     private readonly TorrentRuntimeRegistry _runtimeRegistry;
     private readonly TorrentEngineFactory _engineFactory;
     private readonly TorrentStartupRecovery _startupRecovery;
@@ -18,7 +18,7 @@ public sealed class TorrentStartupCoordinator
     public TorrentStartupCoordinator(
         ILogger<TorrentStartupCoordinator> logger,
         TorrentCatalogStore catalogStore,
-        TorrentSnapshotFactory snapshotFactory,
+        TorrentStableKeyAccessor stableKeyAccessor,
         TorrentRuntimeRegistry runtimeRegistry,
         TorrentEngineFactory engineFactory,
         TorrentStartupRecovery startupRecovery,
@@ -26,7 +26,7 @@ public sealed class TorrentStartupCoordinator
     {
         _logger = logger;
         _catalogStore = catalogStore;
-        _snapshotFactory = snapshotFactory;
+        _stableKeyAccessor = stableKeyAccessor;
         _runtimeRegistry = runtimeRegistry;
         _engineFactory = engineFactory;
         _startupRecovery = startupRecovery;
@@ -39,7 +39,6 @@ public sealed class TorrentStartupCoordinator
 
     public Task EnsureStartedAsync(
         SemaphoreSlim opGate,
-        TorrentCommandQueue commandQueue,
         Action? onLoaded,
         CancellationToken ct = default)
     {
@@ -55,7 +54,7 @@ public sealed class TorrentStartupCoordinator
             await opGate.WaitAsync(ct2).ConfigureAwait(false);
             try
             {
-                _initTask ??= LoadEngineInternalAsync(opGate, commandQueue, onLoaded, ct2);
+                _initTask ??= LoadEngineInternalAsync(opGate, onLoaded, ct2);
                 initTask = _initTask;
             }
             finally
@@ -87,7 +86,6 @@ public sealed class TorrentStartupCoordinator
 
     private async Task LoadEngineInternalAsync(
         SemaphoreSlim opGate,
-        TorrentCommandQueue commandQueue,
         Action? onLoaded,
         CancellationToken ct)
     {
@@ -103,7 +101,7 @@ public sealed class TorrentStartupCoordinator
                 var pendingRemovals = await _startupRecovery.AttachRestoredManagersAsync(
                     Engine,
                     _runtimeRegistry,
-                    _snapshotFactory.GetStableKey,
+                    _stableKeyAccessor.GetStableKey,
                     ct).ConfigureAwait(false);
 
                 IsReady = true;
@@ -117,8 +115,6 @@ public sealed class TorrentStartupCoordinator
                 opGate.Release();
             }
 
-            await _startupRecovery.ApplyQueuedIntentAsync(commandQueue, _runtimeRegistry, ct).ConfigureAwait(false);
-            await _startupRecovery.AutoStartFromCatalogAsync(_runtimeRegistry, ct).ConfigureAwait(false);
             onLoaded?.Invoke();
         }
         catch (Exception ex)

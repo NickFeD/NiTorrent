@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Windows.AppLifecycle;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Common;
 using Windows.ApplicationModel.Activation;
 using Windows.Storage;
 
@@ -34,7 +35,7 @@ public sealed class AppActivationService : IAppActivationService
 
             try
             {
-                await _dialogService.ShowTextAsync("Не удалось открыть торрент-файл", ex.Message).ConfigureAwait(false);
+                await _dialogService.ShowTextAsync("Не удалось открыть торрент-файл", UserErrorMapper.ToMessage(ex, "Не удалось открыть торрент-файл.")).ConfigureAwait(false);
             }
             catch (Exception dialogEx)
             {

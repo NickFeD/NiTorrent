@@ -1,0 +1,105 @@
+using MonoTorrent.Client;
+using NiTorrent.Application.Abstractions;
+using NiTorrent.Domain.Torrents;
+
+namespace NiTorrent.Infrastructure.Torrents;
+
+public sealed class InfrastructureTorrentEngineGateway(
+    TorrentStartupCoordinator startupCoordinator,
+    TorrentRuntimeContext runtimeContext,
+    TorrentLifecycleExecutor lifecycleExecutor,
+    TorrentRuntimeRegistry runtimeRegistry,
+    TorrentEngineStateStore engineStateStore,
+    TorrentEventOrchestrator eventOrchestrator,
+    BackgroundTaskRunner backgroundTasks) : ITorrentEngineGateway
+{
+    private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(3);
+
+    public Task StartAsync(TorrentId id, CancellationToken ct = default)
+        => lifecycleExecutor.RunAsync(async () =>
+        {
+            await EnsureStartedAsync(ct).ConfigureAwait(false);
+
+            var manager = await GetManagerAsync(id, ct).ConfigureAwait(false);
+            if (manager is null)
+                return;
+
+            await manager.StartAsync().ConfigureAwait(false);
+            PublishRuntimeChanged();
+        }, ct);
+
+    public Task PauseAsync(TorrentId id, CancellationToken ct = default)
+        => lifecycleExecutor.RunAsync(async () =>
+        {
+            await EnsureStartedAsync(ct).ConfigureAwait(false);
+
+            var manager = await GetManagerAsync(id, ct).ConfigureAwait(false);
+            if (manager is null)
+                return;
+
+            await manager.PauseAsync().ConfigureAwait(false);
+            PublishRuntimeChanged();
+        }, ct);
+
+    public Task StopAsync(TorrentId id, CancellationToken ct = default)
+        => lifecycleExecutor.RunAsync(async () =>
+        {
+            await EnsureStartedAsync(ct).ConfigureAwait(false);
+
+            var manager = await GetManagerAsync(id, ct).ConfigureAwait(false);
+            if (manager is null)
+                return;
+
+            await manager.StopAsync(StopTimeout).ConfigureAwait(false);
+            PublishRuntimeChanged();
+        }, ct);
+
+    public Task RemoveAsync(TorrentId id, bool deleteData, CancellationToken ct = default)
+        => lifecycleExecutor.RunAsync(async () =>
+        {
+            await EnsureStartedAsync(ct).ConfigureAwait(false);
+
+            var engine = startupCoordinator.Engine ?? throw new InvalidOperationException("Torrent engine is not initialized yet.");
+            var manager = await GetManagerAsync(id, ct).ConfigureAwait(false);
+            if (manager is null)
+                return;
+
+            await manager.StopAsync(StopTimeout).ConfigureAwait(false);
+
+            var mode = deleteData ? RemoveMode.CacheDataAndDownloadedData : RemoveMode.CacheDataOnly;
+            await engine.RemoveAsync(manager, mode).ConfigureAwait(false);
+
+            await runtimeContext.OperationGate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                runtimeRegistry.Remove(id);
+            }
+            finally
+            {
+                runtimeContext.OperationGate.Release();
+            }
+
+            backgroundTasks.Run(engineStateStore.SaveAsync(engine, CancellationToken.None), "save-engine-state");
+            PublishRuntimeChanged();
+        }, ct);
+
+    private Task EnsureStartedAsync(CancellationToken ct = default)
+        => startupCoordinator.EnsureStartedAsync(runtimeContext.OperationGate, eventOrchestrator.RaiseLoaded, ct);
+
+    private async Task<TorrentManager?> GetManagerAsync(TorrentId id, CancellationToken ct)
+    {
+        await runtimeContext.OperationGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            runtimeRegistry.TryGet(id, out var manager);
+            return manager;
+        }
+        finally
+        {
+            runtimeContext.OperationGate.Release();
+        }
+    }
+
+    private void PublishRuntimeChanged()
+        => eventOrchestrator.InvalidateRuntime();
+}

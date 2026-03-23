@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Torrents.Restore;
 using WinUIEx;
 
 namespace NiTorrent.App.Services.AppLifecycle;
@@ -8,16 +8,16 @@ namespace NiTorrent.App.Services.AppLifecycle;
 public sealed class AppStartupService : IAppStartupService
 {
     private readonly ContextMenuService _menuService;
-    private readonly ITorrentService _torrentService;
+    private readonly IRestoreTorrentCollectionWorkflow _restoreWorkflow;
     private readonly ILogger<AppStartupService> _logger;
 
     public AppStartupService(
         ContextMenuService menuService,
-        ITorrentService torrentService,
+        IRestoreTorrentCollectionWorkflow restoreWorkflow,
         ILogger<AppStartupService> logger)
     {
         _menuService = menuService;
-        _torrentService = torrentService;
+        _restoreWorkflow = restoreWorkflow;
         _logger = logger;
     }
 
@@ -55,7 +55,7 @@ public sealed class AppStartupService : IAppStartupService
     {
         try
         {
-            await _torrentService.InitializeAsync().ConfigureAwait(false);
+            await _restoreWorkflow.ExecuteAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

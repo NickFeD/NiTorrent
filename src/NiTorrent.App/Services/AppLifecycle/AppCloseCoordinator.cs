@@ -1,13 +1,16 @@
 using Microsoft.Extensions.Logging;
-using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Shell;
+using NiTorrent.Application.Torrents;
+using NiTorrent.Domain.Settings;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
 public sealed class AppCloseCoordinator : IAppCloseCoordinator
 {
     private readonly SemaphoreSlim _exitGate = new(1, 1);
-    private readonly ITorrentPreferences _preferences;
-    private readonly ITorrentService _torrentService;
+    private readonly HandleWindowCloseWorkflow _handleWindowCloseWorkflow;
+    private readonly HandleTrayExitWorkflow _handleTrayExitWorkflow;
+    private readonly ITorrentEngineMaintenanceService _engineMaintenanceService;
     private readonly IMainWindowLifecycle _mainWindowLifecycle;
     private readonly ILogger<AppCloseCoordinator> _logger;
 
@@ -15,13 +18,15 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     private int _closeRequestInProgress;
 
     public AppCloseCoordinator(
-        ITorrentPreferences preferences,
-        ITorrentService torrentService,
+        HandleWindowCloseWorkflow handleWindowCloseWorkflow,
+        HandleTrayExitWorkflow handleTrayExitWorkflow,
+        ITorrentEngineMaintenanceService engineMaintenanceService,
         IMainWindowLifecycle mainWindowLifecycle,
         ILogger<AppCloseCoordinator> logger)
     {
-        _preferences = preferences;
-        _torrentService = torrentService;
+        _handleWindowCloseWorkflow = handleWindowCloseWorkflow;
+        _handleTrayExitWorkflow = handleTrayExitWorkflow;
+        _engineMaintenanceService = engineMaintenanceService;
         _mainWindowLifecycle = mainWindowLifecycle;
         _logger = logger;
     }
@@ -38,10 +43,19 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
 
         try
         {
-            if (_preferences.MinimizeToTrayOnClose)
+            var action = _handleWindowCloseWorkflow.Execute();
+
+            switch (action)
             {
-                await MinimizeToTrayAsync().ConfigureAwait(false);
-                return;
+                case AppShellCloseAction.MinimizeToTray:
+                    await MinimizeToTrayAsync().ConfigureAwait(false);
+                    return;
+                case AppShellCloseAction.AskUser:
+                    _logger.LogInformation("AskUser close behavior is not implemented yet. Falling back to exit.");
+                    break;
+                case AppShellCloseAction.ExitApplication:
+                default:
+                    break;
             }
 
             await StartExitAsync(exitAsync).ConfigureAwait(false);
@@ -57,13 +71,21 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     }
 
     public Task RequestExplicitExitAsync(Func<Task> exitAsync)
-        => StartExitAsync(exitAsync);
+    {
+        var action = _handleTrayExitWorkflow.Execute();
+
+        return action switch
+        {
+            AppShellCloseAction.MinimizeToTray => MinimizeToTrayAsync(),
+            _ => StartExitAsync(exitAsync),
+        };
+    }
 
     private async Task MinimizeToTrayAsync()
     {
         try
         {
-            await _torrentService.SaveAsync().ConfigureAwait(false);
+            await _engineMaintenanceService.SaveStateAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

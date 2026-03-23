@@ -1,18 +1,17 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Settings;
 using NiTorrent.Domain.Settings;
-using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.Presentation.Features.Settings;
 
 public partial class TorrentSettingsViewModel : ObservableObject
 {
-    private readonly ITorrentPreferences _prefs;
+    private readonly ITorrentSettingsService _settingsService;
+    private readonly GetSettingsQuery _getSettingsQuery;
     private readonly IPickerHelper _picker;
-    private readonly ApplyTorrentSettingsUseCase _applyTorrentSettingsUseCase;
-    private bool _isLoading;
 
     public ObservableCollection<SizeUnit> Units { get; } =
         new() { SizeUnit.B, SizeUnit.KB, SizeUnit.MB, SizeUnit.GB };
@@ -20,18 +19,13 @@ public partial class TorrentSettingsViewModel : ObservableObject
     public ObservableCollection<TorrentFastResumeMode> FastResumeModes { get; } =
         new() { TorrentFastResumeMode.BestEffort, TorrentFastResumeMode.Accurate };
 
-    public TorrentSettingsViewModel(ITorrentPreferences prefs, IPickerHelper picker, ApplyTorrentSettingsUseCase applyTorrentSettingsUseCase)
+    public TorrentSettingsViewModel(ITorrentSettingsService settingsService, GetSettingsQuery getSettingsQuery, IPickerHelper picker)
     {
-        _prefs = prefs;
+        _settingsService = settingsService;
+        _getSettingsQuery = getSettingsQuery;
         _picker = picker;
-        _applyTorrentSettingsUseCase = applyTorrentSettingsUseCase;
-
-        PropertyChanged += OnViewModelPropertyChanged;
-        LoadFromPrefs();
-        HasUnsavedChanges = false;
     }
 
-    // --- UI поля ---
     [ObservableProperty] public partial string DefaultDownloadPath { get; set; } = "";
 
     [ObservableProperty] public partial double DownloadRateValue { get; set; }
@@ -59,30 +53,69 @@ public partial class TorrentSettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool MinimizeToTrayOnClose { get; set; }
     [ObservableProperty] public partial bool HasUnsavedChanges { get; set; }
 
-    private void LoadFromPrefs()
+    private bool _isLoading;
+    private bool _initialized;
+
+    partial void OnDefaultDownloadPathChanged(string value) => MarkDirty();
+    partial void OnDownloadRateValueChanged(double value) => MarkDirty();
+    partial void OnSelectedDownloadUnitChanged(SizeUnit value) => MarkDirty();
+    partial void OnUploadRateValueChanged(double value) => MarkDirty();
+    partial void OnSelectedUploadUnitChanged(SizeUnit value) => MarkDirty();
+    partial void OnDiskReadRateValueChanged(double value) => MarkDirty();
+    partial void OnSelectedDiskReadUnitChanged(SizeUnit value) => MarkDirty();
+    partial void OnDiskWriteRateValueChanged(double value) => MarkDirty();
+    partial void OnSelectedDiskWriteUnitChanged(SizeUnit value) => MarkDirty();
+    partial void OnAllowDhtChanged(bool value) => MarkDirty();
+    partial void OnAllowPortForwardingChanged(bool value) => MarkDirty();
+    partial void OnAllowLocalPeerDiscoveryChanged(bool value) => MarkDirty();
+    partial void OnMaximumConnectionsChanged(int value) => MarkDirty();
+    partial void OnMaximumOpenFilesChanged(int value) => MarkDirty();
+    partial void OnAutoSaveLoadFastResumeChanged(bool value) => MarkDirty();
+    partial void OnAutoSaveLoadMagnetLinkMetadataChanged(bool value) => MarkDirty();
+    partial void OnSelectedFastResumeModeChanged(TorrentFastResumeMode value) => MarkDirty();
+    partial void OnMinimizeToTrayOnCloseChanged(bool value) => MarkDirty();
+
+    private void MarkDirty()
     {
+        if (!_isLoading)
+            HasUnsavedChanges = true;
+    }
+
+    public async Task EnsureLoadedAsync(CancellationToken ct = default)
+    {
+        if (_initialized)
+            return;
+
+        await LoadFromSettingsAsync(ct);
+        _initialized = true;
+    }
+
+    private async Task LoadFromSettingsAsync(CancellationToken ct = default)
+    {
+        var settings = await _getSettingsQuery.ExecuteAsync(ct);
+
         _isLoading = true;
         try
         {
-            DefaultDownloadPath = _prefs.DefaultDownloadPath;
+            DefaultDownloadPath = settings.DefaultDownloadPath;
 
-        DownloadRateValue = SizeFormatter.ToUnit(_prefs.MaximumDownloadRate, SelectedDownloadUnit);
-        UploadRateValue = SizeFormatter.ToUnit(_prefs.MaximumUploadRate, SelectedUploadUnit);
+            DownloadRateValue = SizeFormatter.ToUnit(settings.MaximumDownloadRate, SelectedDownloadUnit);
+            UploadRateValue = SizeFormatter.ToUnit(settings.MaximumUploadRate, SelectedUploadUnit);
+            DiskReadRateValue = SizeFormatter.ToUnit(settings.MaximumDiskReadRate, SelectedDiskReadUnit);
+            DiskWriteRateValue = SizeFormatter.ToUnit(settings.MaximumDiskWriteRate, SelectedDiskWriteUnit);
 
-        DiskReadRateValue = SizeFormatter.ToUnit(_prefs.MaximumDiskReadRate, SelectedDiskReadUnit);
-        DiskWriteRateValue = SizeFormatter.ToUnit(_prefs.MaximumDiskWriteRate, SelectedDiskWriteUnit);
+            AllowDht = settings.AllowDht;
+            AllowPortForwarding = settings.AllowPortForwarding;
+            AllowLocalPeerDiscovery = settings.AllowLocalPeerDiscovery;
 
-        AllowDht = _prefs.AllowDht;
-        AllowPortForwarding = _prefs.AllowPortForwarding;
-        AllowLocalPeerDiscovery = _prefs.AllowLocalPeerDiscovery;
+            MaximumConnections = settings.MaximumConnections;
+            MaximumOpenFiles = settings.MaximumOpenFiles;
 
-        MaximumConnections = _prefs.MaximumConnections;
-        MaximumOpenFiles = _prefs.MaximumOpenFiles;
-
-        AutoSaveLoadFastResume = _prefs.AutoSaveLoadFastResume;
-        AutoSaveLoadMagnetLinkMetadata = _prefs.AutoSaveLoadMagnetLinkMetadata;
-        SelectedFastResumeMode = _prefs.FastResumeMode;
-        MinimizeToTrayOnClose = _prefs.MinimizeToTrayOnClose;
+            AutoSaveLoadFastResume = settings.AutoSaveLoadFastResume;
+            AutoSaveLoadMagnetLinkMetadata = settings.AutoSaveLoadMagnetLinkMetadata;
+            SelectedFastResumeMode = settings.FastResumeMode;
+            MinimizeToTrayOnClose = settings.CloseBehavior == AppCloseBehavior.MinimizeToTray;
+            HasUnsavedChanges = false;
         }
         finally
         {
@@ -98,55 +131,30 @@ public partial class TorrentSettingsViewModel : ObservableObject
             DefaultDownloadPath = folder;
     }
 
-    private bool CanSave() => HasUnsavedChanges;
-
-    [RelayCommand(CanExecute = nameof(CanSave))]
+    [RelayCommand]
     private async Task Save()
     {
-        _prefs.DefaultDownloadPath = DefaultDownloadPath;
+        var settings = new TorrentSettingsDraft(
+            DefaultDownloadPath,
+            (int)Math.Max(0, SizeFormatter.Parse(DownloadRateValue, SelectedDownloadUnit)),
+            (int)Math.Max(0, SizeFormatter.Parse(UploadRateValue, SelectedUploadUnit)),
+            (int)Math.Max(0, SizeFormatter.Parse(DiskReadRateValue, SelectedDiskReadUnit)),
+            (int)Math.Max(0, SizeFormatter.Parse(DiskWriteRateValue, SelectedDiskWriteUnit)),
+            AllowDht,
+            AllowPortForwarding,
+            AllowLocalPeerDiscovery,
+            MaximumConnections,
+            MaximumOpenFiles,
+            AutoSaveLoadFastResume,
+            AutoSaveLoadMagnetLinkMetadata,
+            SelectedFastResumeMode,
+            MinimizeToTrayOnClose ? AppCloseBehavior.MinimizeToTray : AppCloseBehavior.ExitApplication);
 
-        _prefs.MaximumDownloadRate = (int)Math.Max(0, SizeFormatter.Parse(DownloadRateValue, SelectedDownloadUnit));
-        _prefs.MaximumUploadRate = (int)Math.Max(0, SizeFormatter.Parse(UploadRateValue, SelectedUploadUnit));
-
-        _prefs.MaximumDiskReadRate = (int)Math.Max(0, SizeFormatter.Parse(DiskReadRateValue, SelectedDiskReadUnit));
-        _prefs.MaximumDiskWriteRate = (int)Math.Max(0, SizeFormatter.Parse(DiskWriteRateValue, SelectedDiskWriteUnit));
-
-        _prefs.AllowDht = AllowDht;
-        _prefs.AllowPortForwarding = AllowPortForwarding;
-        _prefs.AllowLocalPeerDiscovery = AllowLocalPeerDiscovery;
-
-        _prefs.MaximumConnections = MaximumConnections;
-        _prefs.MaximumOpenFiles = MaximumOpenFiles;
-
-        _prefs.AutoSaveLoadFastResume = AutoSaveLoadFastResume;
-        _prefs.AutoSaveLoadMagnetLinkMetadata = AutoSaveLoadMagnetLinkMetadata;
-        _prefs.FastResumeMode = SelectedFastResumeMode;
-        _prefs.MinimizeToTrayOnClose = MinimizeToTrayOnClose;
-        await _applyTorrentSettingsUseCase.ExecuteAsync();
+        await _settingsService.SaveAndApplyAsync(settings);
         HasUnsavedChanges = false;
     }
 
-    [RelayCommand(CanExecute = nameof(CanSave))]
-    private void Reload()
-    {
-        LoadFromPrefs();
-        HasUnsavedChanges = false;
-    }
-
-    partial void OnHasUnsavedChangesChanged(bool value)
-    {
-        SaveCommand.NotifyCanExecuteChanged();
-        ReloadCommand.NotifyCanExecuteChanged();
-    }
-
-    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (_isLoading || string.IsNullOrWhiteSpace(e.PropertyName))
-            return;
-
-        if (e.PropertyName is nameof(HasUnsavedChanges))
-            return;
-
-        HasUnsavedChanges = true;
-    }
+    [RelayCommand]
+    private Task ReloadAsync()
+        => LoadFromSettingsAsync();
 }
