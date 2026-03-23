@@ -1,90 +1,86 @@
-# Refactor status report
+# NiTorrent — REFORM_STATUS_REPORT
 
-## Current pause point before system testing
+## Что это за checkpoint
+Этот отчёт фиксирует **реальное состояние кода в архиве**, а не целевую архитектуру.
 
-This report captures the state after:
-- `App.xaml.cs` unload and close-flow simplification
-- `MonoTorrentService` decomposition
-- `TorrentViewModel` thinning
-- application-layer consolidation around torrent workflows
-- legacy cleanup needed before the broad system test
+Точка остановки сейчас такая:
+- проект уже не монолит уровня `App.xaml.cs + raw UI calls`;
+- activation и часть сценариев вынесены в application/workflow слой;
+- но главный runtime path всё ещё центрируется вокруг `ITorrentService` и `MonoTorrentService`.
 
-## What was completed in this pass
+---
 
-### 1. Application-layer consistency pass
+## Что реально сделано
 
-The torrent UI and activation flows now converge on application scenarios instead of each caller rebuilding the orchestration itself.
+### 1. UI больше не координирует сценарии полностью самостоятельно
+Сейчас:
+- `TorrentViewModel` использует `ITorrentWorkflowService` для add/start/pause/remove/open-folder;
+- `AppActivationService` использует workflow-level file activation flow;
+- `TorrentPreviewFlow` выделяет preview + confirm + add orchestration.
 
-Current high-level shape:
-- `ITorrentWorkflowService` is the main torrent scenario entry point for UI and activation
-- `ITorrentPreviewFlow` owns preview + confirm + add orchestration
-- `TorrentViewModel` calls workflow methods instead of coordinating add/start/pause/remove itself
-- `AppActivationService` uses workflow-level file activation flow instead of talking directly to `ITorrentService`
+Это уже лучше, чем прямые orchestration-вызовы из `App.xaml.cs` и ViewModel.
 
-Additional alignment completed in this pass:
-- settings application no longer calls `ITorrentService` directly from `TorrentSettingsViewModel`
-- `ApplyTorrentSettingsUseCase` now owns the "apply engine settings after preference save" scenario
+### 2. Close-flow и startup стали чище
+Сейчас есть отдельные сервисы:
+- `AppStartupService`
+- `AppActivationService`
+- `AppCloseCoordinator`
+- `AppShutdownCoordinator`
+- `IMainWindowLifecycle`
 
-### 2. Legacy close-dialog cleanup
+Но close behavior всё ещё читается через `MinimizeToTrayOnClose`, а не через новый `AppCloseBehavior`.
 
-Removed the old `ShowCloseActionDialogOnClose` setting from the runtime configuration model.
-
-Expected close behavior now:
-- main window close respects `MinimizeToTrayOnClose`
-- tray "Exit" always performs full shutdown
-- no runtime branch uses a close-choice dialog
-
-### 3. Pre-test pause prepared
-
-The codebase is now at a practical pause point for system testing after a final manual review.
-
-## Remaining known risks to validate in testing
-
-1. Close/tray interaction after repeated open-hide-open cycles
-2. Immediate UI refresh after torrent commands
-3. File activation while the app is cold-starting
-4. Restore after previous shutdown and after interrupted shutdown
-5. Settings save + engine reapply path
-
-## Files intentionally reviewed for this checkpoint
-
-- `src/NiTorrent.App/App.xaml.cs`
-- `src/NiTorrent.App/Services/AppLifecycle/*`
-- `src/NiTorrent.Application/Torrents/*`
-- `src/NiTorrent.Presentation/Features/Torrents/TorrentViewModel.cs`
-- `src/NiTorrent.Presentation/Features/Settings/TorrentSettingsViewModel.cs`
-- `src/NiTorrent.Infrastructure/Torrents/*`
-- `src/NiTorrent.Infrastructure/Settings/TorrentConfig.cs`
-
-## Decision
-
-Refactoring should pause after the pre-test checklist is accepted and the full system test is executed.
-Only bug fixes found during testing should happen before the next large architectural step.
-
-
-## Settings system note
-- Torrent settings page uses a unified staged-edit model: edit values in the form, then apply with the `Применить` button.
-- `MinimizeToTrayOnClose` follows the same save/apply flow as all other settings on the page.
-- `nucs.JsonSettings` remains the storage backend; no additional NuGet package is required for settings persistence.
-
-
-## Architecture transition started
-Phase 1 of `ARCHITECTURE_TRANSITION_PLAN.md` is now in progress.
-
-Completed in code:
-- a new domain-first torrent model was introduced in `NiTorrent.Domain`;
-- product concepts no longer depend only on `TorrentSnapshot` and `ShouldRun`;
-- transition-only bridges are now tracked in `TRANSITION_BACKLOG.md`.
-
-New domain model introduced:
+### 3. Domain-first модель уже присутствует, но не управляет рабочим кодом
+В домене добавлены:
 - `TorrentEntry`
 - `TorrentIntent`
 - `TorrentKey`
 - `TorrentRuntimeState`
 - `DeferredAction`
-- `AppCloseBehavior`
-- `GlobalTorrentSettings`
-- domain policies for duplicate detection, status resolution and deferred action replacement.
+- политики duplicate/status/deferred
 
-This does **not** yet replace the current working runtime path.
-It establishes the target product model that later stages must migrate toward.
+Но они пока почти не встроены в рабочий runtime path.
+
+---
+
+## Что остаётся главным ограничением
+
+### Главный активный runtime boundary
+- `ITorrentService`
+- `MonoTorrentService`
+
+### Главный активный read-side
+- `TorrentSnapshot`
+- `ITorrentService.UpdateTorrent`
+- `TorrentUpdatePublisher`
+- `TorrentCatalogSnapshotSynchronizer`
+- `TorrentMonitor`
+
+### Что это означает
+Код уже стал слоистее, но целевая product-centered архитектура из `TARGET_ARCHITECTURE_V2.md` пока не достигнута.
+
+---
+
+## Честная оценка состояния
+
+### Сильные стороны
+- слои уже разделены по проектам;
+- activation вынесен из entry point;
+- UI работает через use case/workflow слой;
+- startup и shutdown стали читаемее;
+- есть seed следующей архитектуры в `Domain`.
+
+### Ограничения
+- `MonoTorrentService` остаётся слишком центральным;
+- snapshot pipeline остаётся главным read-side;
+- polling + publish + catalog sync образуют смешанную update-модель;
+- целевая доменная модель лежит рядом, но ещё не является источником истины.
+
+---
+
+## Что считать следующими большими шагами
+1. перестать расширять `MonoTorrentService` как главный фасад;
+2. вытащить product decisions из snapshot/update pipeline;
+3. перевести read-side от snapshot-потока к product read model;
+4. заменить bool-настройки close behavior на продуктовую модель;
+5. синхронизировать target docs с реальными шагами миграции.
