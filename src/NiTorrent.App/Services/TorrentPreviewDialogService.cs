@@ -1,31 +1,29 @@
-﻿using NiTorrent.App.Services.Windowing;
+﻿using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Torrents;
-using NiTorrent.Presentation.Abstractions;
 using NiTorrent.Presentation.Features.Torrents;
+using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.App.Services;
 
-public sealed class TorrentPreviewDialogService(
-    IServiceProvider services,
-    IUiDispatcher uiDispatcher,
-    IMainWindowAccessor mainWindowAccessor) : ITorrentPreviewDialogService
+public sealed class TorrentPreviewDialogService(IServiceProvider services, IUiDispatcher uiDispatcher) : ITorrentPreviewDialogService
 {
     private readonly IServiceProvider _services = services;
     private readonly IUiDispatcher _uiDispatcher = uiDispatcher;
-    private readonly IMainWindowAccessor _mainWindowAccessor = mainWindowAccessor;
 
     public Task<TorrentPreviewDialogResult?> ShowAsync(
         TorrentPreview preview,
         CancellationToken ct = default)
     {
+
         var tcs = new TaskCompletionSource<TorrentPreviewDialogResult?>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-
         _uiDispatcher.EnqueueAsync(() =>
         {
+            // создаём VM через DI, передавая preview параметром
             var vm = ActivatorUtilities.CreateInstance<TorrentPreviewViewModel>(_services, preview);
             var window = new Views.TorrentPreviewWindow(vm);
+
+            // окно — чистая WinUI-деталь (только App слой)
 
             void ClosedHandler(object? s, WindowEventArgs e)
             {
@@ -45,19 +43,22 @@ public sealed class TorrentPreviewDialogService(
 
             window.Closed += ClosedHandler;
 
+            // необязательно, но приятно: отмена -> закрыть окно
             if (ct.CanBeCanceled)
             {
                 ct.Register(() =>
                 {
-                    _mainWindowAccessor.Current?.DispatcherQueue.TryEnqueue(() =>
+                    // закрытие окна должно быть на UI thread
+                    App.MainWindow.DispatcherQueue.TryEnqueue(() =>
                     {
-                        try { window.Close(); } catch { }
+                        try { window.Close(); } catch { /* ignore */ }
                     });
                 });
             }
-
             window.BringToFront();
             window.Activate();
+
+
         });
 
         return tcs.Task;

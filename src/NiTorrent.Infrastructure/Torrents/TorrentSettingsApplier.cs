@@ -39,6 +39,30 @@ public sealed class TorrentSettingsApplier
                 : MonoTorrent.Client.FastResumeMode.BestEffort
         };
 
+        TryApplyOptionalProperty(builder, new[] { "AllowDht", "AutoSaveLoadDhtCache" }, _prefs.AllowDht);
+
         return engine.UpdateSettingsAsync(builder.ToSettings());
+    }
+
+    private static void TryApplyOptionalProperty(object target, IReadOnlyList<string> propertyNames, object value)
+    {
+        var type = target.GetType();
+        foreach (var propertyName in propertyNames)
+        {
+            var property = type.GetProperty(propertyName);
+            if (property is null || !property.CanWrite)
+                continue;
+
+            if (value is not null && !property.PropertyType.IsInstanceOfType(value))
+            {
+                if (property.PropertyType.IsEnum && value is string enumText)
+                    value = Enum.Parse(property.PropertyType, enumText, true);
+                else
+                    value = Convert.ChangeType(value, property.PropertyType);
+            }
+
+            property.SetValue(target, value);
+            return;
+        }
     }
 }

@@ -1,12 +1,11 @@
-﻿using NiTorrent.Application.Abstractions;
-using NiTorrent.Domain.Torrents;
+﻿using NiTorrent.Application.Torrents;
+using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using WinUIEx;
 
 public sealed partial class TrayService : ITrayService, IDisposable
 {
-    private readonly ITorrentReadModelFeed _torrentReadModelFeed;
-    private readonly ITorrentSpeedSummaryService _torrentSpeedSummaryService;
+    private readonly ITorrentReadModelFeed _readModelFeed;
     private readonly IUiDispatcher _ui;
 
     private TrayIcon? _tray;
@@ -18,13 +17,9 @@ public sealed partial class TrayService : ITrayService, IDisposable
     public event Action? OpenRequested;
     public event Func<Task>? ExitRequested;
 
-    public TrayService(
-        ITorrentReadModelFeed torrentReadModelFeed,
-        ITorrentSpeedSummaryService torrentSpeedSummaryService,
-        IUiDispatcher ui)
+    public TrayService(ITorrentReadModelFeed readModelFeed, IUiDispatcher ui)
     {
-        _torrentReadModelFeed = torrentReadModelFeed;
-        _torrentSpeedSummaryService = torrentSpeedSummaryService;
+        _readModelFeed = readModelFeed;
         _ui = ui;
     }
 
@@ -38,14 +33,13 @@ public sealed partial class TrayService : ITrayService, IDisposable
             iconPath: "Assets\\AppIcon.ico",
             tooltip: BuildTooltip())
         {
-            IsVisible = false
+            IsVisible = true
         };
 
         _tray.Selected += (_, __) => OpenRequested?.Invoke();
         _tray.ContextMenu += (_, e) => e.Flyout = BuildMenuFlyout();
 
-        _torrentReadModelFeed.Updated += OnTorrentsUpdated;
-        OnTorrentsUpdated(_torrentReadModelFeed.GetAll());
+        _readModelFeed.Updated += OnTorrentsUpdated;
     }
 
     public void SetVisible(bool visible)
@@ -54,11 +48,20 @@ public sealed partial class TrayService : ITrayService, IDisposable
             _tray.IsVisible = visible;
     }
 
-    private void OnTorrentsUpdated(IReadOnlyList<TorrentSnapshot> snapshots)
+    private void OnTorrentsUpdated(IReadOnlyList<TorrentListItemReadModel> items)
     {
-        var summary = _torrentSpeedSummaryService.Build(snapshots);
-        _lastDl = summary.DownloadText;
-        _lastUl = summary.UploadText;
+        long totalDl = 0;
+        long totalUl = 0;
+
+        foreach (var item in items)
+        {
+            totalDl += item.Status.DownloadRateBytesPerSecond;
+            totalUl += item.Status.UploadRateBytesPerSecond;
+        }
+
+        _lastDl = SizeFormatter.FormatSpeed(totalDl);
+        _lastUl = SizeFormatter.FormatSpeed(totalUl);
+
         _ = _ui.EnqueueAsync(ApplyUi);
     }
 
@@ -105,7 +108,7 @@ public sealed partial class TrayService : ITrayService, IDisposable
 
     public void Dispose()
     {
-        _torrentReadModelFeed.Updated -= OnTorrentsUpdated;
+        _readModelFeed.Updated -= OnTorrentsUpdated;
 
         if (_tray != null)
         {

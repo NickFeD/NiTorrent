@@ -1,20 +1,19 @@
 ﻿using Microsoft.Windows.Storage.Pickers;
-using NiTorrent.App.Services.Windowing;
 using NiTorrent.Application.Abstractions;
 using WinRT.Interop;
 
 namespace NiTorrent.App.Services;
 
-public sealed class WinPickerHelper(IMainWindowAccessor mainWindowAccessor) : IPickerHelper
+public sealed class WinPickerHelper : IPickerHelper
 {
     public async Task<string?> PickSingleFilePathAsync(params string[] fileTypes)
     {
-        var window = mainWindowAccessor.Current ?? throw new InvalidOperationException("Main window is not initialized");
-        var hwnd = WindowNative.GetWindowHandle(window);
+        var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
         var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
 
         var picker = new FileOpenPicker(windowId);
 
+        // если не передали фильтры — разрешаем всё
         if (fileTypes is null || fileTypes.Length == 0)
             fileTypes = ["*"];
 
@@ -27,11 +26,11 @@ public sealed class WinPickerHelper(IMainWindowAccessor mainWindowAccessor) : IP
 
     public async Task<string?> PickSingleFolderPathAsync(CancellationToken ct = default)
     {
-        var window = mainWindowAccessor.Current ?? throw new InvalidOperationException("Main window is not initialized");
-        var hwnd = WindowNative.GetWindowHandle(window);
+        var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
         var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
 
         var picker = new FolderPicker(windowId);
+
         var result = await picker.PickSingleFolderAsync();
         return result?.Path;
     }

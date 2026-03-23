@@ -1,15 +1,13 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using NiTorrent.App.Services.Windowing;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.App.Services;
 
-public sealed class WinUiDialogService(IUiDispatcher uiDispatcher, IMainWindowAccessor mainWindowAccessor) : IDialogService
+public sealed class WinUiDialogService(IUiDispatcher uiDispatcher) : IDialogService
 {
     private readonly IUiDispatcher _uiDispatcher = uiDispatcher;
-    private readonly IMainWindowAccessor _mainWindowAccessor = mainWindowAccessor;
 
     public Task ShowTextAsync(string title, string text, CancellationToken ct = default)
     {
@@ -25,7 +23,7 @@ public sealed class WinUiDialogService(IUiDispatcher uiDispatcher, IMainWindowAc
                         return;
                     }
 
-                    var xamlRoot = _mainWindowAccessor.Current?.Content?.XamlRoot;
+                    var xamlRoot = App.MainWindow?.Content?.XamlRoot;
                     if (xamlRoot is null)
                     {
                         tcs.TrySetResult(null);
@@ -84,7 +82,7 @@ public sealed class WinUiDialogService(IUiDispatcher uiDispatcher, IMainWindowAc
                         return;
                     }
 
-                    var xamlRoot = _mainWindowAccessor.Current?.Content?.XamlRoot;
+                    var xamlRoot = App.MainWindow?.Content?.XamlRoot;
                     if (xamlRoot is null)
                     {
                         tcs.TrySetResult(null);

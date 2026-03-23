@@ -1,4 +1,4 @@
-﻿using NiTorrent.Presentation.Features.Settings;
+using NiTorrent.Presentation.Features.Settings;
 
 namespace NiTorrent.App.Views;
 
@@ -12,6 +12,13 @@ public sealed partial class TorrentSettingPage : Page
         DataContext = ViewModel;
 
         InitializeComponent();
+        Loaded += OnLoaded;
         Bindings.Update();
+    }
+
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnLoaded;
+        await ViewModel.EnsureLoadedAsync();
     }
 }

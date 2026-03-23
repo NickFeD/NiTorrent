@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Common;
 
 namespace NiTorrent.Presentation.Features.Settings;
 
@@ -68,7 +69,7 @@ public partial class AppUpdateSettingViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            LoadingStatus = ex.Message;
+            LoadingStatus = UserErrorMapper.ToMessage(ex, "Не удалось проверить обновления.");
         }
         finally
         {

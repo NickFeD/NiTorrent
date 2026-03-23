@@ -179,7 +179,8 @@
                               Background="Transparent"
                               BorderThickness="0"
                               HorizontalContentAlignment="Stretch"
-                              SelectionChanged="ListView_SelectionChanged">
+                              SelectionChanged="ListView_SelectionChanged"
+                              DoubleTapped="TorrentList_DoubleTapped">
 
                         <ListView.ItemContainerStyle>
                             <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">

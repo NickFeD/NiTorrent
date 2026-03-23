@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
-using NiTorrent.App.Services.Windowing;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using WinUIEx;
@@ -12,7 +11,6 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
     private readonly IThemeService _themeService;
     private readonly ITrayService _trayService;
     private readonly IUiDispatcher _dispatcher;
-    private readonly IMainWindowAccessor _mainWindowAccessor;
     private readonly ILogger<MainWindowLifecycle> _logger;
 
     private MainWindow? _window;
@@ -23,13 +21,11 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
         IThemeService themeService,
         ITrayService trayService,
         IUiDispatcher dispatcher,
-        IMainWindowAccessor mainWindowAccessor,
         ILogger<MainWindowLifecycle> logger)
     {
         _themeService = themeService;
         _trayService = trayService;
         _dispatcher = dispatcher;
-        _mainWindowAccessor = mainWindowAccessor;
         _logger = logger;
     }
 
@@ -48,7 +44,7 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
 
         _themeService.Initialize(_window);
         InitializeTray();
-        _mainWindowAccessor.Set(_window);
+
         App.MainWindow = _window;
         return _window;
     }
@@ -60,7 +56,6 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
         => _dispatcher.EnqueueAsync(() =>
         {
             EnsureWindowCreated();
-            _trayService.SetVisible(false);
             _window!.Show();
             _window.Activate();
         });
@@ -79,11 +74,7 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
 
         try
         {
-            await _dispatcher.EnqueueAsync(() =>
-            {
-                _trayService.SetVisible(false);
-                _window?.Close();
-            }).ConfigureAwait(false);
+            await _dispatcher.EnqueueAsync(() => _window?.Close()).ConfigureAwait(false);
         }
         catch
         {
@@ -98,7 +89,6 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
             return;
 
         _trayService.Initialize();
-        _trayService.SetVisible(false);
         _trayService.OpenRequested += OnTrayOpenRequested;
         _trayService.ExitRequested += OnTrayExitRequestedAsync;
         _trayInitialized = true;

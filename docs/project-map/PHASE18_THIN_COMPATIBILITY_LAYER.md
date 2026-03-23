@@ -1,21 +1,6 @@
-# Phase 18 — Thin compatibility layer
+# PHASE18 THIN COMPATIBILITY LAYER
 
-## Goal
-Reduce `MonoTorrentService` from a coordination-heavy legacy facade to a thin compatibility layer that only forwards calls to application-owned read/status/write/maintenance services.
+Статус: **archived migration note**.
 
-## What changed
-- `MonoTorrentService` now delegates to:
-  - `ITorrentReadModelFeed`
-  - `ITorrentEngineStatusService`
-  - `ITorrentEngineMaintenanceService`
-  - `ITorrentWriteService`
-- `ITorrentWriteService` now supports `AddAsync` returning `TorrentId` and explicit `StopAsync`.
-- `TorrentMonitor` now refreshes the application read feed instead of calling the legacy facade.
-- `TorrentEntrySettingsRuntimeApplier` refreshes the read feed directly instead of depending on `ITorrentService`.
-
-## Architectural impact
-This phase turns `ITorrentService` into a true legacy boundary for remaining consumers. It is no longer the owner of orchestration, startup, read updates, or write execution.
-
-## Remaining legacy status
-- `ITorrentService` still exists for compatibility.
-- Future phases can delete it once no consumers remain.
+Этот документ сохранён только как историческая отметка этапа.
+Текущее состояние проекта нужно читать по `CURRENT_ARCHITECTURE_STATE.md`, а не по phase notes.

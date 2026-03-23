@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Presentation.Features.Torrents;
@@ -6,12 +7,12 @@ namespace NiTorrent.Presentation.Features.Torrents;
 public partial class TorrentItemViewModel : ObservableObject, IDisposable
 {
     private bool _isDisposed;
-    public TorrentId Id => _torrentSnapshot.Id;
+    public TorrentId Id => _item.Id;
 
-    private TorrentSnapshot _torrentSnapshot;
-    public string Size => SizeFormatter.FormatBytes(_torrentSnapshot.Size);
-    public string Name => _torrentSnapshot.Name;
-    public string SavePath => _torrentSnapshot.SavePath;
+    private TorrentListItemReadModel _item;
+    public string Size => SizeFormatter.FormatBytes(_item.Size);
+    public string Name => _item.Name;
+    public string SavePath => _item.SavePath;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProgressText))]
@@ -34,25 +35,28 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial string UploadSpeed { get; set; } = "0 B";
 
-    public TorrentItemViewModel(TorrentSnapshot torrentSnapshot)
+    public TorrentItemViewModel(TorrentListItemReadModel item)
     {
-        _torrentSnapshot = torrentSnapshot;
-        Update(torrentSnapshot);
+        _item = item;
+        Update(item);
     }
 
-    public void Update(TorrentSnapshot torrentSnapshot)
+    public void Update(TorrentListItemReadModel item)
     {
         if (_isDisposed)
             return;
 
-        _torrentSnapshot = torrentSnapshot;
+        _item = item;
 
-        State = _torrentSnapshot.Status;
-        Progress = _torrentSnapshot.Status.Progress;
-        IsCompleted = _torrentSnapshot.Status.IsComplete;
-        DownloadSpeed = SizeFormatter.FormatSpeed(_torrentSnapshot.Status.DownloadRateBytesPerSecond);
-        UploadSpeed = SizeFormatter.FormatSpeed(_torrentSnapshot.Status.UploadRateBytesPerSecond);
-        StateText = BuildStateText(_torrentSnapshot.Status);
+        State = _item.Status;
+        Progress = _item.Status.Progress;
+        IsCompleted = _item.Status.IsComplete;
+        DownloadSpeed = SizeFormatter.FormatSpeed(_item.Status.DownloadRateBytesPerSecond);
+        UploadSpeed = SizeFormatter.FormatSpeed(_item.Status.UploadRateBytesPerSecond);
+        StateText = BuildStateText(_item.Status);
+        OnPropertyChanged(nameof(Name));
+        OnPropertyChanged(nameof(Size));
+        OnPropertyChanged(nameof(SavePath));
     }
 
     private static string BuildStateText(TorrentStatus status)
@@ -60,7 +64,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         if (!string.IsNullOrWhiteSpace(status.Error) && status.Phase == TorrentPhase.Error)
             return $"Ошибка: {status.Error}";
 
-        var sourceSuffix = status.Source == TorrentSnapshotSource.Cached ? " (кэш)" : string.Empty;
+        var sourceSuffix = status.Source == TorrentStatusSource.Cached ? " (кэш)" : string.Empty;
 
         return status.Phase switch
         {

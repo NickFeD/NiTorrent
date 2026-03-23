@@ -1,4 +1,5 @@
-﻿using NiTorrent.Presentation.Features.Torrents;
+﻿using Microsoft.UI.Xaml.Input;
+using NiTorrent.Presentation.Features.Torrents;
 
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
@@ -14,9 +15,8 @@ public sealed partial class TorrentPage : Page
 
     public TorrentPage()
     {
-        InitializeComponent();
         ViewModel = App.GetService<TorrentViewModel>();
-
+        InitializeComponent();
     }
 
 
@@ -48,6 +48,15 @@ public sealed partial class TorrentPage : Page
     {
         ViewModel.RefreshCommands();
     }
+
+    private void TorrentList_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (ViewModel.SelectedTorrent is null)
+            return;
+
+        Frame?.Navigate(typeof(TorrentDetailsPage), ViewModel.SelectedTorrent.Id.ToString());
+    }
+
 }
 
 

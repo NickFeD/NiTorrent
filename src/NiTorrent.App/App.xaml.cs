@@ -4,11 +4,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
-using NiTorrent.App.DI;
 using NiTorrent.App.Services;
 using NiTorrent.App.Services.AppLifecycle;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Settings;
+using NiTorrent.Application.Shell;
+using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
@@ -51,6 +53,10 @@ public partial class App : WinUIApplication
 
     private static void ConfigureServices(HostBuilderContext contexts, IServiceCollection services)
     {
+        services.AddSingleton<IThemeService, ThemeService>();
+        services.AddSingleton<ContextMenuService>();
+        services.AddSingleton<IAppStorageService, AppStorageService>();
+
         var logsPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "NiTorrent",
@@ -59,8 +65,55 @@ public partial class App : WinUIApplication
 
         services.AddNiTorrentInfrastructure();
         services.AddNiTorrentPresentation();
-        services.AddNiTorrentAppServices(logsPath);
-        services.AddNiTorrentApplicationWorkflows();
+
+        services.AddLogging(builder =>
+        {
+            builder.ClearProviders();
+            builder.AddDebug();
+            builder.AddProvider(new FileLoggerProvider(logsPath));
+            builder.SetMinimumLevel(LogLevel.Information);
+        });
+
+        services.AddSingleton<UiDispatcherHolder>();
+        services.AddSingleton<IUiDispatcher>(sp =>
+        {
+            var holder = sp.GetRequiredService<UiDispatcherHolder>();
+            return new WinUiDispatcher(holder.Queue ?? throw new InvalidOperationException("UI Dispatcher not initialized"));
+        });
+        services.AddSingleton<IAppInfo, DevWinAppInfo>();
+        services.AddSingleton<ITrayService, TrayService>();
+        services.AddSingleton<IUriLauncher, WinUriLauncher>();
+        services.AddSingleton<IFolderLauncher, FolderLauncher>();
+        services.AddSingleton<IPickerHelper, WinPickerHelper>();
+        services.AddSingleton<IDialogService, WinUiDialogService>();
+        services.AddSingleton<IUpdateService, DevWinUiUpdateService>();
+        services.AddSingleton<IJsonNavigationService, JsonNavigationService>();
+        services.AddSingleton<ITorrentPreviewDialogService, TorrentPreviewDialogService>();
+        services.AddSingleton<IAppStartupService, AppStartupService>();
+        services.AddSingleton<IAppActivationService, AppActivationService>();
+        services.AddSingleton<IMainWindowLifecycle, MainWindowLifecycle>();
+        services.AddSingleton<IAppShellSettingsService, AppShellSettingsService>();
+        services.AddSingleton<GetTorrentListQuery>();
+        services.AddSingleton<GetTorrentDetailsQuery>();
+        services.AddSingleton<GetSettingsQuery>();
+        services.AddSingleton<GetShellStateQuery>();
+        services.AddSingleton<HandleWindowCloseWorkflow>();
+        services.AddSingleton<HandleTrayExitWorkflow>();
+        services.AddSingleton<UpdatePerTorrentSettingsWorkflow>();
+        //services.AddSingleton<SyncTorrentCollectionFromRuntimeWorkflow>();
+        services.AddSingleton<IAppCloseCoordinator, AppCloseCoordinator>();
+        services.AddSingleton<IAppShutdownCoordinator, AppShutdownCoordinator>();
+        services.AddTransient<AddTorrentUseCase>();
+        services.AddTransient<ITorrentPreviewFlow, TorrentPreviewFlow>();
+        services.AddTransient<PickAndAddTorrentUseCase>();
+        services.AddTransient<AddTorrentFileWithPreviewUseCase>();
+        services.AddTransient<AddMagnetUseCase>();
+        services.AddTransient<StartTorrentUseCase>();
+        services.AddTransient<PauseTorrentUseCase>();
+        services.AddTransient<RemoveTorrentUseCase>();
+        services.AddTransient<OpenTorrentFolderUseCase>();
+        services.AddTransient<ApplyTorrentSettingsUseCase>();
+        services.AddTransient<ITorrentWorkflowService, TorrentWorkflowService>();
     }
 
     protected override async void OnLaunched( Microsoft.UI.Xaml.LaunchActivatedEventArgs args)

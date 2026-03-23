@@ -27,4 +27,6 @@ public interface ITorrentPreferences
     bool AutoSaveLoadMagnetLinkMetadata { get; set; }
     TorrentFastResumeMode FastResumeMode { get; set; }
 
+    // Window close behavior
+    bool MinimizeToTrayOnClose { get; set; }
 }

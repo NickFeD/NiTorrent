@@ -4,6 +4,8 @@ namespace NiTorrent.Application.Abstractions;
 
 public interface IAppShellSettingsService
 {
+    AppShellSettings GetCurrent();
     AppCloseBehavior GetCloseBehavior();
-    Task SaveCloseBehaviorAsync(AppCloseBehavior behavior, CancellationToken ct = default);
+    void Save(AppShellSettings settings);
+    void SetCloseBehavior(AppCloseBehavior behavior);
 }

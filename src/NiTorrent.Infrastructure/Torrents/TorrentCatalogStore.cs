@@ -53,7 +53,8 @@ public sealed class TorrentCatalogStore
         }
     }
 
-    public async Task<IReadOnlyList<TorrentSnapshot>> BuildCachedSnapshotsAsync(CancellationToken ct = default)
+
+    public async Task<IReadOnlyList<TorrentEntry>> GetEntriesAsync(CancellationToken ct = default)
     {
         await EnsureLoadedAsync(ct).ConfigureAwait(false);
 
@@ -62,13 +63,13 @@ public sealed class TorrentCatalogStore
         {
             return _catalog.Items
                 .OrderByDescending(x => x.AddedAtUtc)
-                .Select(BuildCachedSnapshot)
+                .Select(MapEntry)
                 .ToList();
         }
         finally { _gate.Release(); }
     }
 
-    public async Task<TorrentSnapshot?> TryGetCachedAsync(TorrentId id, CancellationToken ct = default)
+    public async Task<TorrentEntry?> TryGetEntryAsync(TorrentId id, CancellationToken ct = default)
     {
         await EnsureLoadedAsync(ct).ConfigureAwait(false);
 
@@ -76,10 +77,58 @@ public sealed class TorrentCatalogStore
         try
         {
             var entry = _catalog.Items.FirstOrDefault(x => x.Id == id.Value);
-            return entry is null ? null : BuildCachedSnapshot(entry);
+            return entry is null ? null : MapEntry(entry);
         }
         finally { _gate.Release(); }
     }
+
+    public async Task<TorrentEntry?> TryGetEntryByKeyAsync(TorrentKey key, CancellationToken ct = default)
+    {
+        if (key.IsEmpty)
+            return null;
+
+        await EnsureLoadedAsync(ct).ConfigureAwait(false);
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var entry = _catalog.Items.FirstOrDefault(x =>
+                !string.IsNullOrWhiteSpace(x.Key)
+                && string.Equals(x.Key, key.Value, StringComparison.OrdinalIgnoreCase));
+            return entry is null ? null : MapEntry(entry);
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task UpsertEntryAsync(TorrentEntry entry, CancellationToken ct = default)
+    {
+        await EnsureLoadedAsync(ct).ConfigureAwait(false);
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            var existing = _catalog.Items.FirstOrDefault(x => x.Id == entry.Id.Value);
+            if (existing is null)
+            {
+                existing = new TorrentCatalogEntry { Id = entry.Id.Value };
+                _catalog.Items.Add(existing);
+            }
+
+            existing.Key = entry.Key.IsEmpty ? existing.Key : entry.Key.Value;
+            existing.Name = entry.Name;
+            existing.Size = entry.Size;
+            existing.SavePath = entry.SavePath;
+            existing.AddedAtUtc = entry.AddedAtUtc;
+            existing.Progress = entry.LastKnownStatus.Progress;
+            existing.LastPhase = entry.LastKnownStatus.Phase;
+            existing.IsComplete = entry.LastKnownStatus.IsComplete;
+            existing.ShouldRun = entry.Intent == TorrentIntent.Running;
+        }
+        finally { _gate.Release(); }
+    }
+
+    public Task RemoveEntryAsync(TorrentId id, CancellationToken ct = default) =>
+        RemoveAsync(id, ct);
 
     public async Task SetShouldRunAsync(TorrentId id, bool shouldRun, CancellationToken ct = default)
     {
@@ -123,35 +172,6 @@ public sealed class TorrentCatalogStore
         {
             var entry = _catalog.Items.FirstOrDefault(x => x.Id == id.Value);
             return entry?.AddedAtUtc;
-        }
-        finally { _gate.Release(); }
-    }
-
-    public async Task UpsertFromSnapshotAsync(TorrentSnapshot s, CancellationToken ct = default)
-    {
-        await EnsureLoadedAsync(ct).ConfigureAwait(false);
-
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            var entry = _catalog.Items.FirstOrDefault(x => x.Id == s.Id.Value);
-            if (entry is null)
-            {
-                entry = new TorrentCatalogEntry { Id = s.Id.Value };
-                _catalog.Items.Add(entry);
-            }
-
-            entry.Key = string.IsNullOrWhiteSpace(s.Key) ? entry.Key : s.Key;
-            entry.Name = s.Name;
-            entry.Size = s.Size;
-            entry.SavePath = s.SavePath;
-
-            if (entry.AddedAtUtc == default)
-                entry.AddedAtUtc = s.AddedAtUtc;
-
-            entry.Progress = s.Status.Progress;
-            entry.LastPhase = s.Status.Phase;
-            entry.IsComplete = s.Status.IsComplete;
         }
         finally { _gate.Release(); }
     }
@@ -316,38 +336,44 @@ public sealed class TorrentCatalogStore
             ct).ConfigureAwait(false);
     }
 
-    private static TorrentSnapshot BuildCachedSnapshot(TorrentCatalogEntry e)
+
+    private static TorrentEntry MapEntry(TorrentCatalogEntry entry)
     {
-        var phase = e.ShouldRun
-            ? e.LastPhase switch
-            {
-                TorrentPhase.Stopped or TorrentPhase.Paused or TorrentPhase.Unknown or TorrentPhase.EngineStarting or TorrentPhase.WaitingForEngine => TorrentPhase.WaitingForEngine,
-                _ => e.LastPhase
-            }
-            : e.LastPhase switch
-            {
-                TorrentPhase.Downloading or TorrentPhase.Seeding or TorrentPhase.Checking or TorrentPhase.FetchingMetadata or TorrentPhase.WaitingForEngine or TorrentPhase.EngineStarting or TorrentPhase.Unknown => TorrentPhase.Paused,
-                _ => e.LastPhase
-            };
+        var runtime = new TorrentRuntimeState(
+            TorrentLifecycleStateMapper.FromPhase(entry.LastPhase),
+            entry.IsComplete,
+            entry.Progress,
+            0,
+            0,
+            null,
+            false);
 
-        var status = new TorrentStatus(
-            phase,
-            e.IsComplete,
-            e.Progress,
-            DownloadRateBytesPerSecond: 0,
-            UploadRateBytesPerSecond: 0,
-            Error: null,
-            Source: TorrentSnapshotSource.Cached);
+        var lastKnownStatus = new TorrentStatus(
+            entry.LastPhase,
+            entry.IsComplete,
+            entry.Progress,
+            0,
+            0,
+            null,
+            TorrentStatusSource.Cached);
 
-        return new TorrentSnapshot(
-            new TorrentId(e.Id),
-            Key: e.Key ?? string.Empty,
-            Name: e.Name,
-            Size: e.Size,
-            SavePath: e.SavePath,
-            AddedAtUtc: e.AddedAtUtc,
-            Status: status);
+        return new TorrentEntry(
+            new TorrentId(entry.Id),
+            string.IsNullOrWhiteSpace(entry.Key) ? TorrentKey.Empty : new TorrentKey(entry.Key),
+            entry.Name,
+            entry.Size,
+            entry.SavePath,
+            entry.AddedAtUtc,
+            entry.ShouldRun ? TorrentIntent.Running : TorrentIntent.Paused,
+            runtime.LifecycleState,
+            runtime,
+            lastKnownStatus,
+            HasMetadata: true,
+            SelectedFiles: Array.Empty<string>(),
+            PerTorrentSettings: null,
+            DeferredActions: Array.Empty<DeferredAction>());
     }
+
 }
 
 public sealed record PendingRemoval(TorrentManager Manager, string Key, bool DeleteDownloadedData);
