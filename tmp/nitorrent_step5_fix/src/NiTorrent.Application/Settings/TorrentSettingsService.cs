@@ -7,8 +7,7 @@ namespace NiTorrent.Application.Settings;
 
 public sealed class TorrentSettingsService(
     ITorrentSettingsRepository repository,
-    ITorrentWriteService writeService,
-    IAppShellSettingsService shellSettingsService) : ITorrentSettingsService
+    ITorrentWriteService writeService) : ITorrentSettingsService
 {
     public Task<TorrentSettingsDraft> LoadAsync(CancellationToken ct = default)
         => repository.LoadAsync(ct);
@@ -19,8 +18,6 @@ public sealed class TorrentSettingsService(
 
         await repository.SaveAsync(settings, ct).ConfigureAwait(false);
 
-        shellSettingsService.SetCloseBehavior(settings.CloseBehavior);
-
         try
         {
             await writeService.ApplySettingsAsync(ct).ConfigureAwait(false);
@@ -28,7 +25,6 @@ public sealed class TorrentSettingsService(
         catch (Exception ex)
         {
             await repository.SaveAsync(previous, ct).ConfigureAwait(false);
-            shellSettingsService.SetCloseBehavior(previous.CloseBehavior);
             throw new UserVisibleException("Не удалось применить настройки.", ex);
         }
     }

@@ -170,5 +170,6 @@ public partial class App : WinUIApplication
             await _hostStartTask.ConfigureAwait(false);
 
         await _host.StopAsync().ConfigureAwait(false);
+        _host.Dispose();
     }
 }

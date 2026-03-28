@@ -46,6 +46,8 @@ public static class DependencyInjection
         services.AddSingleton<ITorrentEngineMaintenanceService, EngineBackedTorrentEngineMaintenanceService>();
         services.AddSingleton(TorrentConfigLoader.Load());
         services.AddSingleton<ITorrentPreferences, JsonTorrentPreferences>();
+        services.AddSingleton<ITorrentSettingsRepository, TorrentConfigSettingsRepository>();
+        services.AddSingleton<IAppShellSettingsRepository, JsonAppShellSettingsRepository>();
         services.AddSingleton<TorrentCatalogStore>();
 
         return services;

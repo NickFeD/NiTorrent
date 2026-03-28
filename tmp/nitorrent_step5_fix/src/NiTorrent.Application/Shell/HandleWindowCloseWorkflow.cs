@@ -3,10 +3,10 @@ using NiTorrent.Domain.Settings;
 
 namespace NiTorrent.Application.Shell;
 
-public sealed class HandleWindowCloseWorkflow(IAppShellSettingsService shellSettings)
+public sealed class HandleWindowCloseWorkflow(ITorrentSettingsRepository settingsRepository)
 {
     public AppShellCloseAction Execute()
         => AppShellClosePolicy.Resolve(
-            shellSettings.GetCloseBehavior(),
+            settingsRepository.LoadAsync().GetAwaiter().GetResult().CloseBehavior,
             AppShellCloseRequestSource.MainWindow);
 }

@@ -6,9 +6,9 @@ namespace NiTorrent.Application.Shell;
 public sealed record ShellStateReadModel(AppCloseBehavior CloseBehavior, bool IsEngineReady);
 
 public sealed class GetShellStateQuery(
-    IAppShellSettingsService shellSettings,
+    ITorrentSettingsRepository settingsRepository,
     NiTorrent.Application.Torrents.ITorrentEngineStatusService engineStatusService)
 {
     public ShellStateReadModel Execute()
-        => new(shellSettings.GetCloseBehavior(), engineStatusService.IsReady);
+        => new(settingsRepository.LoadAsync().GetAwaiter().GetResult().CloseBehavior, engineStatusService.IsReady);
 }
