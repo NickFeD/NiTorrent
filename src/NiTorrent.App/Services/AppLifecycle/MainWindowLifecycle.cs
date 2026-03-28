@@ -56,6 +56,7 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
         => _dispatcher.EnqueueAsync(() =>
         {
             EnsureWindowCreated();
+            _trayService.SetVisible(false);
             _window!.Show();
             _window.Activate();
         });
@@ -74,7 +75,11 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
 
         try
         {
-            await _dispatcher.EnqueueAsync(() => _window?.Close()).ConfigureAwait(false);
+            await _dispatcher.EnqueueAsync(() =>
+            {
+                _trayService.SetVisible(false);
+                _window?.Close();
+            }).ConfigureAwait(false);
         }
         catch
         {
@@ -144,5 +149,7 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
 
         if (_window is not null)
             _window.AppWindow.Closing -= OnMainWindowClosing;
+
+        _trayService.Dispose();
     }
 }
