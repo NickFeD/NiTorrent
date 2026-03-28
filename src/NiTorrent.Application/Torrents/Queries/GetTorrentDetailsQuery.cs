@@ -10,7 +10,7 @@ public sealed class GetTorrentDetailsQuery(
     public async Task<TorrentDetailsReadModel?> ExecuteAsync(TorrentId torrentId, CancellationToken ct = default)
     {
         var entry = await collectionRepository.TryGetAsync(torrentId, ct).ConfigureAwait(false);
-        if (entry is null)
+        if (entry is null || entry.Intent == TorrentIntent.Removed)
             return null;
 
         var status = TorrentListProjection.ResolveStatus(entry);

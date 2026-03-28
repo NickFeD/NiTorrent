@@ -4,6 +4,18 @@ public static class TorrentStatusResolver
 {
     public static TorrentRuntimeState ResolveExpectedRuntime(TorrentEntry entry)
     {
+        if (entry.Intent == TorrentIntent.Removed)
+        {
+            return entry.Runtime with
+            {
+                LifecycleState = TorrentLifecycleState.Stopped,
+                DownloadRateBytesPerSecond = 0,
+                UploadRateBytesPerSecond = 0,
+                Error = null,
+                IsEngineBacked = false
+            };
+        }
+
         if (entry.Intent == TorrentIntent.Paused)
         {
             return entry.Runtime with

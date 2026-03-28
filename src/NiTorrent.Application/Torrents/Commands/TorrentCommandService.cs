@@ -5,7 +5,6 @@ namespace NiTorrent.Application.Torrents.Commands;
 
 public sealed class TorrentCommandService(
     ITorrentCollectionRepository collectionRepository,
-    ITorrentRuntimeFactsProvider runtimeFactsProvider,
     ITorrentEngineGateway engineGateway) : ITorrentCommandService
 {
     public Task<TorrentCommandResult> StartAsync(TorrentId id, CancellationToken ct = default) =>
@@ -23,85 +22,70 @@ public sealed class TorrentCommandService(
         if (entry is null)
             return TorrentCommandResult.NotFound(id);
 
-        var engineReady = HasRuntimeFact(entry, runtimeFactsProvider.GetAll());
         var now = DateTimeOffset.UtcNow;
-
         var updated = commandType switch
         {
-            CommandType.Start => TorrentEntryCommandPolicy.RequestStart(entry, now, engineReady),
-            CommandType.Pause => TorrentEntryCommandPolicy.RequestPause(entry, now, engineReady),
-            CommandType.Remove => TorrentEntryCommandPolicy.RequestRemove(entry, deleteData, now, engineReady),
+            CommandType.Start => TorrentEntryCommandPolicy.RequestStart(entry, now),
+            CommandType.Pause => TorrentEntryCommandPolicy.RequestPause(entry, now),
+            CommandType.Remove => TorrentEntryCommandPolicy.RequestRemove(entry, deleteData, now),
             _ => entry
         };
-
-        if (commandType == CommandType.Remove && engineReady)
-        {
-            try
-            {
-                await engineGateway.RemoveAsync(id, deleteData, ct).ConfigureAwait(false);
-                await collectionRepository.RemoveAsync(id, ct).ConfigureAwait(false);
-                await collectionRepository.SaveAsync(ct).ConfigureAwait(false);
-                return TorrentCommandResult.Success(id);
-            }
-            catch
-            {
-                return TorrentCommandResult.Failed(id, "Не удалось удалить торрент.");
-            }
-        }
 
         await collectionRepository.UpsertAsync(updated, ct).ConfigureAwait(false);
         await collectionRepository.SaveAsync(ct).ConfigureAwait(false);
 
-        if (!engineReady)
+        bool appliedImmediately;
+        try
+        {
+            appliedImmediately = commandType switch
+            {
+                CommandType.Start => await engineGateway.StartAsync(id, ct).ConfigureAwait(false),
+                CommandType.Pause => await engineGateway.PauseAsync(id, ct).ConfigureAwait(false),
+                CommandType.Remove => await engineGateway.RemoveAsync(id, deleteData, ct).ConfigureAwait(false),
+                _ => false
+            };
+        }
+        catch
+        {
+            appliedImmediately = false;
+        }
+
+        if (!appliedImmediately)
         {
             return TorrentCommandResult.Deferred(id, commandType switch
             {
-                CommandType.Start => "Команда запуска сохранена и будет применена после готовности движка.",
-                CommandType.Pause => "Команда паузы сохранена и будет применена после готовности движка.",
-                CommandType.Remove => "Команда удаления сохранена и будет применена после готовности движка.",
+                CommandType.Start => "Команда запуска сохранена и будет применена, когда движок будет готов.",
+                CommandType.Pause => "Команда паузы сохранена и будет применена, когда движок будет готов.",
+                CommandType.Remove => "Команда удаления сохранена и будет применена, когда движок будет готов.",
                 _ => null
             });
         }
 
-        try
+        if (commandType == CommandType.Remove)
         {
-            switch (commandType)
-            {
-                case CommandType.Start:
-                    await engineGateway.StartAsync(id, ct).ConfigureAwait(false);
-                    break;
-                case CommandType.Pause:
-                    await engineGateway.PauseAsync(id, ct).ConfigureAwait(false);
-                    break;
-            }
+            await collectionRepository.RemoveAsync(id, ct).ConfigureAwait(false);
+            await collectionRepository.SaveAsync(ct).ConfigureAwait(false);
+            return TorrentCommandResult.Success(id);
         }
-        catch
-        {
-            return TorrentCommandResult.Failed(id, commandType switch
-            {
-                CommandType.Start => "Не удалось запустить торрент.",
-                CommandType.Pause => "Не удалось поставить торрент на паузу.",
-                CommandType.Remove => "Не удалось удалить торрент.",
-                _ => "Не удалось выполнить команду."
-            });
-        }
+
+        var finalized = FinalizeAppliedExecution(updated, commandType);
+        await collectionRepository.UpsertAsync(finalized, ct).ConfigureAwait(false);
+        await collectionRepository.SaveAsync(ct).ConfigureAwait(false);
 
         return TorrentCommandResult.Success(id);
     }
 
-    private static bool HasRuntimeFact(TorrentEntry entry, IReadOnlyList<TorrentRuntimeFact> facts)
+    private static TorrentEntry FinalizeAppliedExecution(TorrentEntry entry, CommandType commandType)
     {
-        foreach (var fact in facts)
+        var remaining = commandType switch
         {
-            if (fact.Id is TorrentId id && id == entry.Id)
-                return true;
+            CommandType.Start => entry.DeferredActions.Where(x => x.Type != DeferredActionType.Start).ToList(),
+            CommandType.Pause => entry.DeferredActions.Where(x => x.Type != DeferredActionType.Pause).ToList(),
+            _ => entry.DeferredActions.ToList()
+        };
 
-            if (!entry.Key.IsEmpty && !fact.Key.IsEmpty &&
-                string.Equals(entry.Key.Value, fact.Key.Value, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
+        var updated = entry.WithDeferredActions(remaining);
+        return updated.WithRuntime(TorrentStatusResolver.ResolveExpectedRuntime(updated));
     }
 
     private enum CommandType

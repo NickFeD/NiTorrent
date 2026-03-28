@@ -9,6 +9,7 @@ public sealed class GetTorrentListQuery(ITorrentCollectionRepository collectionR
         var entries = await collectionRepository.GetAllAsync(ct).ConfigureAwait(false);
 
         return entries
+            .Where(x => x.Intent != NiTorrent.Domain.Torrents.TorrentIntent.Removed)
             .Select(TorrentListProjection.Project)
             .OrderByDescending(x => x.AddedAtUtc)
             .ToList();
