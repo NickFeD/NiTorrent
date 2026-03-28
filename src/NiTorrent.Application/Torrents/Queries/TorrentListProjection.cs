@@ -4,9 +4,9 @@ namespace NiTorrent.Application.Torrents.Queries;
 
 internal static class TorrentListProjection
 {
-    public static TorrentListItemReadModel Project(TorrentEntry entry, TorrentRuntimeFact? runtimeFact)
+    public static TorrentListItemReadModel Project(TorrentEntry entry)
     {
-        var status = ResolveStatus(entry, runtimeFact);
+        var status = ResolveStatus(entry);
 
         return new TorrentListItemReadModel(
             entry.Id,
@@ -18,9 +18,9 @@ internal static class TorrentListProjection
             status);
     }
 
-    public static TorrentStatus ResolveStatus(TorrentEntry entry, TorrentRuntimeFact? runtimeFact)
+    public static TorrentStatus ResolveStatus(TorrentEntry entry)
     {
-        var runtime = runtimeFact?.Runtime ?? TorrentStatusResolver.ResolveExpectedRuntime(entry);
+        var runtime = entry.Runtime;
 
         return entry.LastKnownStatus with
         {

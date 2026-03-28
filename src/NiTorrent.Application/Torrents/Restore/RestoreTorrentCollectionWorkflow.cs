@@ -8,18 +8,18 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
 {
     private readonly ITorrentCollectionRepository _repository;
     private readonly ITorrentEngineLifecycle _engineLifecycle;
-    private readonly ITorrentRuntimeFactsProvider _runtimeFactsProvider;
+    private readonly SyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
     private readonly IApplyDeferredTorrentActionsWorkflow _applyDeferredActionsWorkflow;
 
     public RestoreTorrentCollectionWorkflow(
         ITorrentCollectionRepository repository,
         ITorrentEngineLifecycle engineLifecycle,
-        ITorrentRuntimeFactsProvider runtimeFactsProvider,
+        SyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow,
         IApplyDeferredTorrentActionsWorkflow applyDeferredActionsWorkflow)
     {
         _repository = repository;
         _engineLifecycle = engineLifecycle;
-        _runtimeFactsProvider = runtimeFactsProvider;
+        _syncRuntimeWorkflow = syncRuntimeWorkflow;
         _applyDeferredActionsWorkflow = applyDeferredActionsWorkflow;
     }
 
@@ -28,9 +28,9 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
         var earlyCollection = await _repository.GetAllAsync(ct).ConfigureAwait(false);
 
         await _engineLifecycle.InitializeAsync(ct).ConfigureAwait(false);
-        var runtimeFacts = _runtimeFactsProvider.GetAll();
+        var syncResult = await _syncRuntimeWorkflow.ExecuteAsync(ct).ConfigureAwait(false);
+        var syncedCollection = syncResult.Entries.ToList();
 
-        var syncedCollection = TorrentCollectionRestorePolicy.ApplyRuntimeFacts(earlyCollection, runtimeFacts).ToList();
         var executionPlan = BuildExecutionPlan(syncedCollection);
 
         var deferredResult = await _applyDeferredActionsWorkflow.ExecuteAsync(executionPlan, ct).ConfigureAwait(false);
@@ -46,7 +46,7 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
         }
         await _repository.SaveAsync(ct).ConfigureAwait(false);
 
-        return new RestoreTorrentCollectionResult(earlyCollection, syncedCollection, runtimeFacts);
+        return new RestoreTorrentCollectionResult(earlyCollection, syncedCollection, syncResult.RuntimeFacts);
     }
 
     private static IReadOnlyList<TorrentEntry> BuildExecutionPlan(IReadOnlyList<TorrentEntry> entries)

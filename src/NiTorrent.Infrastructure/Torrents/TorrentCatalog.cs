@@ -5,12 +5,12 @@ using NiTorrent.Domain.Torrents;
 namespace NiTorrent.Infrastructure.Torrents;
 
 /// <summary>
-/// Persisted list of torrents shown by UI on app start (even before the torrent engine is ready).
-/// This makes startup smooth: UI can render the list immediately, then MonoTorrent “attaches” later.
+/// Persisted product-owned torrent collection shown by UI on app start.
+/// Runtime engine state may attach to these entries later, but it does not define the collection.
 /// </summary>
 internal sealed class TorrentCatalog
 {
-    public int SchemaVersion { get; set; } = 3;
+    public int SchemaVersion { get; set; } = 4;
     public List<TorrentCatalogEntry> Items { get; set; } = new();
     public List<TorrentPendingRemovalEntry> PendingRemovals { get; set; } = new();
 
@@ -37,19 +37,29 @@ internal sealed class TorrentCatalogEntry
     public string SavePath { get; set; } = "";
     public DateTimeOffset AddedAtUtc { get; set; }
 
-    // Cached UI data (last known state from previous run)
+    // Persisted product state.
+    public TorrentIntent? Intent { get; set; }
+    public bool? HasMetadata { get; set; }
+    public string? Error { get; set; }
+    public List<string> SelectedFiles { get; set; } = new();
+    public List<TorrentCatalogDeferredActionEntry> DeferredActions { get; set; } = new();
+
+    // Cached UI data (last known state from previous run).
     public double Progress { get; set; }
     public TorrentPhase LastPhase { get; set; } = TorrentPhase.Stopped;
     public bool IsComplete { get; set; }
 
     /// <summary>
-    /// User intent: should this torrent be running.
-    /// If true, and the torrent engine is still starting, UI can show "waiting" state.
-    /// After the engine is ready, those torrents will be started automatically.
+    /// Legacy v3 field kept only for migration. New saves write Intent instead.
     /// </summary>
-    public bool ShouldRun { get; set; }
+    public bool? ShouldRun { get; set; }
 }
 
+internal sealed class TorrentCatalogDeferredActionEntry
+{
+    public DeferredActionType Type { get; set; }
+    public DateTimeOffset RequestedAtUtc { get; set; }
+}
 
 internal sealed class TorrentPendingRemovalEntry
 {

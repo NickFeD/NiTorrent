@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using MonoTorrent.Client;
-using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
@@ -15,12 +14,29 @@ public sealed class TorrentStartupRecovery
         _catalogStore = catalogStore;
     }
 
-    public Task<IReadOnlyList<PendingRemoval>> AttachRestoredManagersAsync(
+    public async Task<IReadOnlyList<PendingRemoval>> AttachRestoredManagersAsync(
         ClientEngine engine,
         TorrentRuntimeRegistry runtimeRegistry,
         Func<TorrentManager, string> stableKey,
         CancellationToken ct = default)
-        => _catalogStore.AttachRestoredManagersAsync(engine, runtimeRegistry.AsDictionary(), stableKey, ct);
+    {
+        var result = await _catalogStore.AttachRestoredManagersAsync(engine, stableKey, ct).ConfigureAwait(false);
+
+        runtimeRegistry.Clear();
+        foreach (var matched in result.MatchedManagers)
+            runtimeRegistry.Set(matched.Id, matched.Manager);
+
+        foreach (var unmatched in result.UnmatchedManagers)
+        {
+            _logger.LogInformation(
+                "Ignoring restored runtime torrent without matching user entry. Key={TorrentKey}; Name={TorrentName}; SavePath={SavePath}",
+                unmatched.Key,
+                unmatched.Name,
+                unmatched.SavePath);
+        }
+
+        return result.PendingRemovals;
+    }
 
     public async Task CompletePendingRemovalsAsync(
         ClientEngine engine,

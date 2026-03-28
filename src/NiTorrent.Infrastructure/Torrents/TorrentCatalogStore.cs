@@ -7,7 +7,7 @@ using NiTorrent.Domain.Torrents;
 namespace NiTorrent.Infrastructure.Torrents;
 
 /// <summary>
-/// Owns persisted torrent list (JSON) used to render UI instantly on app start.
+/// Owns persisted product-owned torrent collection used to render UI instantly on app start.
 /// Thread-safe: all access to the in-memory catalog is guarded by _gate.
 /// </summary>
 public sealed class TorrentCatalogStore
@@ -52,7 +52,6 @@ public sealed class TorrentCatalogStore
             _gate.Release();
         }
     }
-
 
     public async Task<IReadOnlyList<TorrentEntry>> GetEntriesAsync(CancellationToken ct = default)
     {
@@ -119,10 +118,23 @@ public sealed class TorrentCatalogStore
             existing.Size = entry.Size;
             existing.SavePath = entry.SavePath;
             existing.AddedAtUtc = entry.AddedAtUtc;
+            existing.Intent = entry.Intent;
+            existing.HasMetadata = entry.HasMetadata;
             existing.Progress = entry.LastKnownStatus.Progress;
             existing.LastPhase = entry.LastKnownStatus.Phase;
             existing.IsComplete = entry.LastKnownStatus.IsComplete;
-            existing.ShouldRun = entry.Intent == TorrentIntent.Running;
+            existing.Error = entry.LastKnownStatus.Error;
+            existing.SelectedFiles = entry.SelectedFiles?.ToList() ?? new List<string>();
+            existing.DeferredActions = entry.DeferredActions?
+                .Select(x => new TorrentCatalogDeferredActionEntry
+                {
+                    Type = x.Type,
+                    RequestedAtUtc = x.RequestedAtUtc
+                })
+                .ToList() ?? new List<TorrentCatalogDeferredActionEntry>();
+
+            // Keep legacy field out of new saves.
+            existing.ShouldRun = null;
         }
         finally { _gate.Release(); }
     }
@@ -140,7 +152,8 @@ public sealed class TorrentCatalogStore
             var entry = _catalog.Items.FirstOrDefault(x => x.Id == id.Value);
             if (entry is null) return;
 
-            entry.ShouldRun = shouldRun;
+            entry.Intent = shouldRun ? TorrentIntent.Running : TorrentIntent.Paused;
+            entry.ShouldRun = null;
 
             if (!shouldRun && entry.LastPhase is TorrentPhase.Downloading or TorrentPhase.Seeding or TorrentPhase.Checking or TorrentPhase.FetchingMetadata or TorrentPhase.WaitingForEngine)
                 entry.LastPhase = TorrentPhase.Paused;
@@ -158,7 +171,8 @@ public sealed class TorrentCatalogStore
             var entry = _catalog.Items.FirstOrDefault(x => x.Id == id.Value);
             if (entry is null) return (false, false);
 
-            return (true, entry.ShouldRun);
+            var intent = ResolveIntent(entry);
+            return (true, intent == TorrentIntent.Running);
         }
         finally { _gate.Release(); }
     }
@@ -217,9 +231,8 @@ public sealed class TorrentCatalogStore
         finally { _gate.Release(); }
     }
 
-    public async Task<IReadOnlyList<PendingRemoval>> AttachRestoredManagersAsync(
+    public async Task<RuntimeAttachmentResult> AttachRestoredManagersAsync(
         ClientEngine engine,
-        Dictionary<TorrentId, TorrentManager> byId,
         Func<TorrentManager, string> stableKey,
         CancellationToken ct = default)
     {
@@ -228,54 +241,42 @@ public sealed class TorrentCatalogStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            byId.Clear();
-
             var pendingRemovalByKey = _catalog.PendingRemovals
                 .Where(x => !string.IsNullOrWhiteSpace(x.Key))
                 .GroupBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            var byKey = _catalog.Items
-                .Where(x => !string.IsNullOrWhiteSpace(x.Key))
-                .GroupBy(x => x.Key!, StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
+            var matchedManagers = new List<MatchedRuntimeManager>();
             var pendingRemovals = new List<PendingRemoval>();
+            var unmatchedManagers = new List<UnmatchedRuntimeManager>();
+            var usedIds = new HashSet<Guid>();
 
-            foreach (var m in engine.Torrents)
+            foreach (var manager in engine.Torrents)
             {
-                var key = stableKey(m);
+                var key = stableKey(manager);
 
                 if (!string.IsNullOrWhiteSpace(key) && pendingRemovalByKey.TryGetValue(key, out var pendingRemoval))
                 {
-                    pendingRemovals.Add(new PendingRemoval(m, key, pendingRemoval.DeleteDownloadedData));
+                    pendingRemovals.Add(new PendingRemoval(manager, key, pendingRemoval.DeleteDownloadedData));
                     continue;
                 }
 
-                TorrentId id;
-                if (!string.IsNullOrWhiteSpace(key) && byKey.TryGetValue(key, out var entry))
+                var matchedEntry = TryFindExistingEntry(manager, key, usedIds);
+                if (matchedEntry is null)
                 {
-                    id = new TorrentId(entry.Id);
-                }
-                else
-                {
-                    id = new TorrentId(Guid.NewGuid());
-                    _catalog.Items.Add(new TorrentCatalogEntry
-                    {
-                        Id = id.Value,
-                        Key = key,
-                        Name = m.Name,
-                        Size = m.Torrent?.Size ?? 0,
-                        SavePath = m.SavePath,
-                        AddedAtUtc = DateTimeOffset.UtcNow,
-                        ShouldRun = m.State is not TorrentState.Stopped and not TorrentState.Paused
-                    });
+                    unmatchedManagers.Add(new UnmatchedRuntimeManager(
+                        Key: key,
+                        Name: manager.Name,
+                        SavePath: manager.SavePath,
+                        Manager: manager));
+                    continue;
                 }
 
-                byId[id] = m;
+                usedIds.Add(matchedEntry.Id);
+                matchedManagers.Add(new MatchedRuntimeManager(new TorrentId(matchedEntry.Id), manager));
             }
 
-            return pendingRemovals;
+            return new RuntimeAttachmentResult(matchedManagers, pendingRemovals, unmatchedManagers);
         }
         finally { _gate.Release(); }
     }
@@ -331,11 +332,48 @@ public sealed class TorrentCatalogStore
 
         var json = await File.ReadAllTextAsync(_catalogFilePath, ct).ConfigureAwait(false);
 
-        return await Task.Run(() =>
+        var catalog = await Task.Run(() =>
             JsonSerializer.Deserialize<TorrentCatalog>(json, TorrentCatalog.JsonOptions) ?? new TorrentCatalog(),
             ct).ConfigureAwait(false);
+
+        MigrateToCurrentSchema(catalog);
+        return catalog;
     }
 
+    private static void MigrateToCurrentSchema(TorrentCatalog catalog)
+    {
+        foreach (var entry in catalog.Items)
+        {
+            entry.Intent ??= entry.ShouldRun == true ? TorrentIntent.Running : TorrentIntent.Paused;
+            entry.HasMetadata ??= !string.IsNullOrWhiteSpace(entry.Key) || !string.IsNullOrWhiteSpace(entry.Name);
+            entry.SelectedFiles ??= new List<string>();
+            entry.DeferredActions ??= new List<TorrentCatalogDeferredActionEntry>();
+        }
+
+        catalog.SchemaVersion = 4;
+    }
+
+    private TorrentCatalogEntry? TryFindExistingEntry(TorrentManager manager, string key, HashSet<Guid> usedIds)
+    {
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            var byKey = _catalog.Items.FirstOrDefault(x =>
+                !usedIds.Contains(x.Id)
+                && !string.IsNullOrWhiteSpace(x.Key)
+                && string.Equals(x.Key, key, StringComparison.OrdinalIgnoreCase));
+
+            if (byKey is not null)
+                return byKey;
+        }
+
+        var savePath = manager.SavePath ?? string.Empty;
+        var name = manager.Name ?? string.Empty;
+
+        return _catalog.Items.FirstOrDefault(x =>
+            !usedIds.Contains(x.Id)
+            && string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(x.SavePath, savePath, StringComparison.OrdinalIgnoreCase));
+    }
 
     private static TorrentEntry MapEntry(TorrentCatalogEntry entry)
     {
@@ -345,7 +383,7 @@ public sealed class TorrentCatalogStore
             entry.Progress,
             0,
             0,
-            null,
+            entry.Error,
             false);
 
         var lastKnownStatus = new TorrentStatus(
@@ -354,7 +392,7 @@ public sealed class TorrentCatalogStore
             entry.Progress,
             0,
             0,
-            null,
+            entry.Error,
             TorrentStatusSource.Cached);
 
         return new TorrentEntry(
@@ -364,16 +402,26 @@ public sealed class TorrentCatalogStore
             entry.Size,
             entry.SavePath,
             entry.AddedAtUtc,
-            entry.ShouldRun ? TorrentIntent.Running : TorrentIntent.Paused,
+            ResolveIntent(entry),
             runtime.LifecycleState,
             runtime,
             lastKnownStatus,
-            HasMetadata: true,
-            SelectedFiles: Array.Empty<string>(),
+            HasMetadata: entry.HasMetadata ?? (!string.IsNullOrWhiteSpace(entry.Key) || !string.IsNullOrWhiteSpace(entry.Name)),
+            SelectedFiles: entry.SelectedFiles ?? Array.Empty<string>(),
             PerTorrentSettings: null,
-            DeferredActions: Array.Empty<DeferredAction>());
+            DeferredActions: (entry.DeferredActions ?? new List<TorrentCatalogDeferredActionEntry>())
+                .Select(x => new DeferredAction(x.Type, x.RequestedAtUtc))
+                .ToList());
     }
 
+    private static TorrentIntent ResolveIntent(TorrentCatalogEntry entry)
+        => entry.Intent ?? (entry.ShouldRun == true ? TorrentIntent.Running : TorrentIntent.Paused);
 }
 
 public sealed record PendingRemoval(TorrentManager Manager, string Key, bool DeleteDownloadedData);
+public sealed record MatchedRuntimeManager(TorrentId Id, TorrentManager Manager);
+public sealed record UnmatchedRuntimeManager(string Key, string Name, string SavePath, TorrentManager Manager);
+public sealed record RuntimeAttachmentResult(
+    IReadOnlyList<MatchedRuntimeManager> MatchedManagers,
+    IReadOnlyList<PendingRemoval> PendingRemovals,
+    IReadOnlyList<UnmatchedRuntimeManager> UnmatchedManagers);
