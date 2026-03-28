@@ -16,6 +16,7 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
     private MainWindow? _window;
     private bool _allowClose;
     private bool _trayInitialized;
+    private bool _disposed;
 
     public MainWindowLifecycle(
         IThemeService themeService,
@@ -135,11 +136,25 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
 
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+
         if (_trayInitialized)
         {
             _trayService.OpenRequested -= OnTrayOpenRequested;
             _trayService.ExitRequested -= OnTrayExitRequestedAsync;
             _trayInitialized = false;
+        }
+
+        try
+        {
+            _trayService.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Tray service dispose failed");
         }
 
         if (_window is not null)

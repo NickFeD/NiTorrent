@@ -26,6 +26,7 @@ public partial class App : WinUIApplication
     private readonly IHost _host;
     private Task? _hostStartTask;
     private Task? _engineInitTask;
+    private bool _hostDisposed;
 
     public new static App Current => (App)WinUIApplication.Current;
     public static Window MainWindow = Window.Current;
@@ -166,9 +167,14 @@ public partial class App : WinUIApplication
 
     private async Task StopHostAsync()
     {
+        if (_hostDisposed)
+            return;
+
         if (_hostStartTask is not null)
             await _hostStartTask.ConfigureAwait(false);
 
         await _host.StopAsync().ConfigureAwait(false);
+        _host.Dispose();
+        _hostDisposed = true;
     }
 }
