@@ -1,4 +1,4 @@
-﻿using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using WinUIEx;
@@ -30,7 +30,7 @@ public sealed partial class TrayService : ITrayService, IDisposable
 
         _tray = new TrayIcon(
             trayiconId: 1,
-            iconPath: "Assets\\AppIcon.ico",
+            iconPath: "Assets\AppIcon.ico",
             tooltip: BuildTooltip())
         {
             IsVisible = true

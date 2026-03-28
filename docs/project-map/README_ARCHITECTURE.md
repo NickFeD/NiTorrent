@@ -1,163 +1,30 @@
-# NiTorrent — README_ARCHITECTURE
+# Architecture README
 
-## Как читать этот документ
-Этот файл описывает **текущую рабочую архитектуру**.
+Читайте документы в таком порядке:
+1. `USER_APP_LOGIC.md` — продуктовые правила и поведение.
+2. `CURRENT_ARCHITECTURE_STATE.md` — текущее живое устройство проекта.
+3. `ANTI_PATTERNS.md` — чего нельзя делать в дальнейшем рефакторинге.
+4. `REGRESSION_CHECKLIST.md` — что проверять после изменений.
 
-Он не равен:
-- `TARGET_ARCHITECTURE.md`
-- `TARGET_ARCHITECTURE_V2.md`
+## Коротко о текущей архитектуре
+- UI работает через `ITorrentWorkflowService`.
+- Start/Pause/Remove выполняются через `ITorrentCommandService` и intent/deferred policies.
+- Add/Preview/ApplySettings выполняются через `ITorrentWriteService`.
+- Startup restore идёт через `IRestoreTorrentCollectionWorkflow`.
+- Read-side приходит через `ITorrentReadModelFeed`, который проецирует `TorrentEntry` + runtime facts в UI read models.
+- MonoTorrent и файловое хранение остаются внутри Infrastructure.
+- Настройки хранятся через `nucs.JsonSettings`-based config classes.
 
-За текущий статус отвечает:
-- `CURRENT_ARCHITECTURE_STATE.md`
+## Какая command-архитектура считается правильной
+Правильная command-архитектура проекта — это `ITorrentCommandService` + restore/deferred workflows.
+Историческая infrastructure-очередь команд (`TorrentCommandQueue` / queued intent inside startup) удалена и не должна возвращаться.
 
----
 
-## 1. Слои решения
+## 2026-03 alignment update
+- `ITorrentCommandService` остаётся единственным центром пользовательских команд.
+- `ITorrentWriteService` ограничен сценариями add/preview/apply-settings.
+- UI list/read-side теперь строится через `GetTorrentListQuery` и `TorrentListItemReadModel`, а не через прямую публикацию runtime snapshot'ов в Presentation.
+- Details screen переведён на отдельный `GetTorrentDetailsQuery` + `UpdatePerTorrentSettingsWorkflow`.
+- Close-flow проходит через application workflows `HandleWindowCloseWorkflow` и `HandleTrayExitWorkflow`, а `AppCloseCoordinator` стал thin shell adapter.
 
-```text
-NiTorrent.App
- ├─> NiTorrent.Presentation
- │    └─> NiTorrent.Application
- │         └─> NiTorrent.Domain
- └─> NiTorrent.Infrastructure
-      └─> NiTorrent.Application
-           └─> NiTorrent.Domain
-```
-
-### `NiTorrent.App`
-Отвечает за:
-- WinUI host;
-- окно и shell lifecycle;
-- activation;
-- platform adapters;
-- composition root.
-
-Ключевые файлы:
-- `src/NiTorrent.App/App.xaml.cs`
-- `src/NiTorrent.App/Services/AppLifecycle/*`
-- `src/NiTorrent.App/Services/*`
-
-### `NiTorrent.Presentation`
-Отвечает за:
-- ViewModel;
-- observable UI state;
-- UI-команды;
-- presentation mapping.
-
-Ключевые файлы:
-- `src/NiTorrent.Presentation/Features/Torrents/TorrentViewModel.cs`
-- `src/NiTorrent.Presentation/Features/Torrents/TorrentItemViewModel.cs`
-- `src/NiTorrent.Presentation/Features/Settings/TorrentSettingsViewModel.cs`
-
-### `NiTorrent.Application`
-Отвечает за:
-- boundary interfaces;
-- use case'ы;
-- workflow-сервисы.
-
-Ключевые файлы:
-- `src/NiTorrent.Application/Abstractions/ITorrentService.cs`
-- `src/NiTorrent.Application/Abstractions/ITorrentWorkflowService.cs`
-- `src/NiTorrent.Application/Torrents/*`
-
-### `NiTorrent.Domain`
-Отвечает за:
-- доменные типы snapshot-based рабочего пути;
-- и одновременно за seed будущей product-centered модели.
-
-Ключевые файлы:
-- `src/NiTorrent.Domain/Torrents/TorrentSnapshot.cs`
-- `src/NiTorrent.Domain/Torrents/TorrentStatus.cs`
-- `src/NiTorrent.Domain/Torrents/TorrentEntry.cs`
-- `src/NiTorrent.Domain/Torrents/Policies/*`
-
-### `NiTorrent.Infrastructure`
-Отвечает за:
-- интеграцию с MonoTorrent;
-- persistence каталога и runtime state;
-- мониторинг и публикацию updates;
-- применение настроек.
-
-Ключевые файлы:
-- `src/NiTorrent.Infrastructure/Torrents/MonoTorrentService.cs`
-- `src/NiTorrent.Infrastructure/Torrents/TorrentCatalogStore.cs`
-- `src/NiTorrent.Infrastructure/Torrents/TorrentUpdatePublisher.cs`
-- `src/NiTorrent.Infrastructure/Torrents/TorrentMonitor.cs`
-
----
-
-## 2. Текущая активная архитектурная ось
-
-### Главный boundary
-Текущая система по факту центрируется вокруг:
-- `ITorrentService`
-- `MonoTorrentService`
-
-Это значит, что именно этот контракт сейчас является главным runtime boundary между UI/application-слоем и движком/пersistence.
-
-### Поверх него уже есть workflow-слой
-Поверх `ITorrentService` построен application-level orchestration:
-- `ITorrentWorkflowService`
-- `TorrentWorkflowService`
-- набор use case'ов в `src/NiTorrent.Application/Torrents/`
-
-Это уже полезный шаг к более чистой архитектуре, но он **не заменяет** `ITorrentService` как главный центр работы с торрентами.
-
----
-
-## 3. Основные потоки
-
-## 3.1. Startup
-1. `App.xaml.cs` строит host и регистрирует слои.
-2. `IAppStartupService.StartHostAndShellAsync()` стартует host.
-3. `IAppStartupService.InitializeTorrentEngineAsync()` вызывает `ITorrentService.InitializeAsync()`.
-4. `MonoTorrentService.InitializeAsync()` сначала публикует cached список, потом запускает engine.
-
-## 3.2. Add torrent / magnet
-1. UI вызывает `ITorrentWorkflowService`.
-2. `TorrentPreviewFlow` получает preview через `ITorrentService.GetPreviewAsync(...)`.
-3. После подтверждения вызывается `ITorrentService.AddAsync(...)`.
-4. Инфраструктура сохраняет изменения и публикует snapshots.
-
-## 3.3. Обновление списка
-1. `TorrentMonitor` каждые 2 секунды вызывает `PublishTorrentUpdates()`.
-2. `TorrentEventOrchestrator` собирает merged snapshots.
-3. `TorrentViewModel` обновляет `ObservableCollection<TorrentItemViewModel>`.
-
-## 3.4. Shutdown / tray
-1. `AppCloseCoordinator` принимает решение hide vs exit.
-2. При hide вызывает `ITorrentService.SaveAsync()`.
-3. При полном выходе `IAppShutdownCoordinator` завершает host и приложение.
-
----
-
-## 4. Что важно понимать про текущую архитектуру
-
-### Это не финальная product-centered архитектура
-В проекте уже есть `TorrentEntry`, `TorrentIntent`, `DeferredAction`, `AppCloseBehavior` и политики в `Domain`, но они пока не являются главным центром работающей системы.
-
-### Snapshot-модель остаётся активной
-Текущий список и update-flow построены вокруг:
-- `TorrentSnapshot`
-- `ITorrentService.UpdateTorrent`
-- `TorrentUpdatePublisher`
-- `TorrentCatalogSnapshotSynchronizer`
-
-### Архитектура сейчас — переходная, но рабочая
-Сильные стороны текущего состояния:
-- слои уже разделены;
-- activation вынесен из `App.xaml.cs` в отдельный сервис;
-- UI команды идут через workflow/use case слой;
-- startup/close-flow стали чище.
-
-Основные ограничения:
-- `MonoTorrentService` всё ещё слишком центральный;
-- read-side смешивает polling и event-публикацию;
-- domain-first модель лежит рядом, но не ведёт рабочий путь.
-
----
-
-## 5. Что не стоит путать
-- `README_ARCHITECTURE.md` — про **сейчас**.
-- `TARGET_ARCHITECTURE_V2.md` — про **цель**.
-- `TRANSITION_BACKLOG.md` — про **мосты между ними**.
+- Periodic runtime reconciliation проходит через `SyncTorrentCollectionFromRuntimeWorkflow`, а не через snapshot-publisher внутри infrastructure.

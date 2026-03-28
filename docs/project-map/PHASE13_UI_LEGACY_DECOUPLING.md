@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE13 UI LEGACY DECOUPLING
 
 Статус: **archived migration note**.
 

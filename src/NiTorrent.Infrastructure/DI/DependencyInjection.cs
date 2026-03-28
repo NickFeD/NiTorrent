@@ -1,11 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Infrastructure.Settings;
-using NiTorrent.Infrastructure.Torrents;
 
 namespace NiTorrent.Infrastructure.DI;
 

@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE10 DETAILS SLICE
 
 Статус: **archived migration note**.
 

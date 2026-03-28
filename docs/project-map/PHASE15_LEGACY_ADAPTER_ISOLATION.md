@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE15 LEGACY ADAPTER ISOLATION
 
 Статус: **archived migration note**.
 

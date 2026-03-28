@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE7 READ SIDE
 
 Статус: **archived migration note**.
 

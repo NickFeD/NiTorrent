@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
@@ -88,7 +88,7 @@ public sealed class TorrentAddExecutor
             manager.Monitor.DownloadRate,
             manager.Monitor.UploadRate,
             manager.Error?.ToString(),
-            true);
+            isEngineBacked: true);
 
         var status = new TorrentStatus(
             phase,

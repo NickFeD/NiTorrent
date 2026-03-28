@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE14 WRITE PATH DECOUPLING
 
 Статус: **archived migration note**.
 

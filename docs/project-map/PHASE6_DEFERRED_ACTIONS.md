@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE6 DEFERRED ACTIONS
 
 Статус: **archived migration note**.
 

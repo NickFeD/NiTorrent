@@ -15,9 +15,16 @@ public sealed class GetTorrentDetailsQuery(
             return null;
 
         var facts = runtimeFactsProvider.GetAll();
-        var matches = TorrentRuntimeFactMatcher.MatchEntries(new[] { entry }, facts);
+        var byId = facts
+            .Where(x => x.Id is not null)
+            .GroupBy(x => x.Id!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
+        var byKey = facts
+            .Where(x => !x.Key.IsEmpty)
+            .GroupBy(x => x.Key.Value, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-        var fact = GetTorrentListQuery.FindFact(entry, matches);
+        var fact = GetTorrentListQuery.FindFact(entry, byId, byKey);
         var status = TorrentListProjection.ResolveStatus(entry, fact);
         var effectiveSettings = entry.PerTorrentSettings ?? settingsRepository.Load(torrentId);
 

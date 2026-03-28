@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE12 PER TORRENT RUNTIME SETTINGS
 
 Статус: **archived migration note**.
 

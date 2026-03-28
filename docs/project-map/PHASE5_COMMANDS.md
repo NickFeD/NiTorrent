@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE5 COMMANDS
 
 Статус: **archived migration note**.
 

@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE18 THIN COMPATIBILITY LAYER
 
 Статус: **archived migration note**.
 

@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE19 REMOVE LEGACY SERVICE
 
 Статус: **archived migration note**.
 

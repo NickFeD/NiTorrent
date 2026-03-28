@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE11 DETAILS WIRING
 
 Статус: **archived migration note**.
 

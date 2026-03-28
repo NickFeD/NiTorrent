@@ -6,12 +6,25 @@ public static class TorrentCollectionRestorePolicy
         IReadOnlyList<TorrentEntry> entries,
         IReadOnlyList<TorrentRuntimeFact> runtimeFacts)
     {
-        var matches = TorrentRuntimeFactMatcher.MatchEntries(entries, runtimeFacts);
+        var factsById = runtimeFacts.Where(x => x.Id is not null)
+            .ToDictionary(x => x.Id!.Value, x => x);
+
+        var factsByKey = runtimeFacts.Where(x => !x.Key.IsEmpty)
+            .GroupBy(x => x.Key.Value, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var result = new List<TorrentEntry>(entries.Count);
         foreach (var entry in entries)
         {
-            matches.TryGetValue(entry.Id, out var fact);
+            TorrentRuntimeFact? fact = null;
+            if (factsById.TryGetValue(entry.Id, out var byId))
+            {
+                fact = byId;
+            }
+            else if (!entry.Key.IsEmpty && factsByKey.TryGetValue(entry.Key.Value, out var byKey))
+            {
+                fact = byKey;
+            }
 
             if (fact is null)
             {

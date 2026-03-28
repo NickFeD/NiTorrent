@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE2 PRODUCT REPOSITORY
 
 Статус: **archived migration note**.
 

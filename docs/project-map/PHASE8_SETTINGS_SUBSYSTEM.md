@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE8 SETTINGS SUBSYSTEM
 
 Статус: **archived migration note**.
 

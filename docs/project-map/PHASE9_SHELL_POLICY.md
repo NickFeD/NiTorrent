@@ -1,4 +1,4 @@
-# PHASE1 DOMAIN IMPLEMENTATION
+# PHASE9 SHELL POLICY
 
 Статус: **archived migration note**.
 
