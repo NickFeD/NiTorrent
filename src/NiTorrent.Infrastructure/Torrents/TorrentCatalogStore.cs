@@ -410,7 +410,7 @@ public sealed class TorrentCatalogStore
             runtime,
             lastKnownStatus,
             HasMetadata: entry.HasMetadata ?? (!string.IsNullOrWhiteSpace(entry.Key) || !string.IsNullOrWhiteSpace(entry.Name)),
-            SelectedFiles: entry.SelectedFiles ?? Array.Empty<string>(),
+            SelectedFiles: entry.SelectedFiles?.ToList() ?? new List<string>(),
             PerTorrentSettings: CloneSettingsOrNull(entry.PerTorrentSettings),
             DeferredActions: (entry.DeferredActions ?? new List<TorrentCatalogDeferredActionEntry>())
                 .Select(x => new DeferredAction(x.Type, x.RequestedAtUtc))

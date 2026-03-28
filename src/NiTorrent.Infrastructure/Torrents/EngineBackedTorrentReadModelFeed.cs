@@ -60,7 +60,7 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
         OnUpdated(items);
     }
 
-    private void OnRuntimeFactsUpdated(IReadOnlyList<TorrentRuntimeFact> _)
+    private void OnRuntimeFactsUpdated(IReadOnlyList<TorrentRuntimeFact> runtimeFacts)
         => _ = SynchronizeAndRefreshAsync();
 
     private async Task SynchronizeAndRefreshAsync()

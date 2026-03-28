@@ -1,7 +1,6 @@
 using System.Reflection;
 using MonoTorrent.Client;
 using NiTorrent.Application.Torrents;
-using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;

@@ -82,7 +82,7 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
             manager.Monitor.DownloadRate,
             manager.Monitor.UploadRate,
             manager.Error?.ToString(),
-            isEngineBacked: true);
+            IsEngineBacked: true);
 
         return new TorrentRuntimeFact(
             id,
