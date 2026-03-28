@@ -1,10 +1,11 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Infrastructure.Settings;
+using NiTorrent.Infrastructure.Torrents;
 
 namespace NiTorrent.Infrastructure.DI;
 
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddSingleton<TorrentStartupRecovery>();
         services.AddSingleton<TorrentAddExecutor>();
         services.AddSingleton<TorrentSourceResolver>();
+        services.AddSingleton<ITorrentSourcePreparationService>(sp => sp.GetRequiredService<TorrentSourceResolver>());
         services.AddSingleton<TorrentSettingsApplier>();
         services.AddSingleton<TorrentEventOrchestrator>();
         services.AddSingleton<BackgroundTaskRunner>();

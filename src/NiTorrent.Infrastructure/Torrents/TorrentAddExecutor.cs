@@ -1,8 +1,6 @@
 using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
-using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Common;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 
@@ -12,47 +10,27 @@ public sealed class TorrentAddExecutor
 {
     private readonly ILogger<TorrentAddExecutor> _logger;
     private readonly TorrentRuntimeRegistry _runtimeRegistry;
-    private readonly ITorrentCollectionRepository _collectionRepository;
-    private readonly TorrentStableKeyAccessor _stableKeyAccessor;
 
     public TorrentAddExecutor(
         ILogger<TorrentAddExecutor> logger,
-        TorrentRuntimeRegistry runtimeRegistry,
-        ITorrentCollectionRepository collectionRepository,
-        TorrentStableKeyAccessor stableKeyAccessor)
+        TorrentRuntimeRegistry runtimeRegistry)
     {
         _logger = logger;
         _runtimeRegistry = runtimeRegistry;
-        _collectionRepository = collectionRepository;
-        _stableKeyAccessor = stableKeyAccessor;
     }
 
-    public async Task<TorrentId> AddAsync(
+    public async Task<TorrentRuntimeState> AddAsync(
         ClientEngine engine,
+        TorrentId id,
         AddTorrentRequest request,
-        Func<TorrentSource, CancellationToken, Task<Torrent>> resolveTorrentAsync,
         SemaphoreSlim opGate,
         CancellationToken ct)
     {
-        _logger.LogInformation("Adding torrent");
+        _logger.LogInformation("Adding torrent {TorrentId}", id.Value);
 
-        var torrent = await resolveTorrentAsync(request.Source, ct).ConfigureAwait(false);
-        var stableKey = new TorrentKey(_stableKeyAccessor.GetStableKey(torrent));
-
-        var existing = TorrentDuplicatePolicy.FindDuplicate(
-            await _collectionRepository.GetAllAsync(ct).ConfigureAwait(false),
-            stableKey,
-            torrent.Name,
-            request.SavePath);
-
-        if (existing is not null)
-            throw new UserVisibleException("Этот торрент уже добавлен в приложение.");
-
+        var torrent = await Torrent.LoadAsync(request.PreparedSource.TorrentBytes).ConfigureAwait(false);
         var manager = await engine.AddAsync(torrent, request.SavePath).ConfigureAwait(false);
         await ApplyFileSelectionAsync(manager, request.SelectedFilePaths).ConfigureAwait(false);
-
-        var id = new TorrentId(Guid.NewGuid());
-        var addedAt = DateTimeOffset.UtcNow;
 
         await opGate.WaitAsync(ct).ConfigureAwait(false);
         try
@@ -64,9 +42,8 @@ public sealed class TorrentAddExecutor
             opGate.Release();
         }
 
-        var selectedFiles = request.SelectedFilePaths is { Count: > 0 }
-            ? request.SelectedFilePaths.OrderBy(x => x, StringComparer.OrdinalIgnoreCase).ToArray()
-            : Array.Empty<string>();
+        _logger.LogInformation("Starting torrent {TorrentId}", id.Value);
+        await manager.StartAsync().ConfigureAwait(false);
 
         var phase = manager.State switch
         {
@@ -81,47 +58,14 @@ public sealed class TorrentAddExecutor
         };
 
         var progress = manager.PartialProgress;
-        var runtime = new TorrentRuntimeState(
+        return new TorrentRuntimeState(
             TorrentLifecycleStateMapper.FromPhase(phase),
             progress >= 100.0,
             progress,
             manager.Monitor.DownloadRate,
             manager.Monitor.UploadRate,
             manager.Error?.ToString(),
-            isEngineBacked: true);
-
-        var status = new TorrentStatus(
-            phase,
-            runtime.IsComplete,
-            runtime.Progress,
-            runtime.DownloadRateBytesPerSecond,
-            runtime.UploadRateBytesPerSecond,
-            runtime.Error,
-            TorrentStatusSource.Live);
-
-        var entry = new TorrentEntry(
-            id,
-            stableKey,
-            manager.Name,
-            manager.Torrent?.Size ?? torrent.Size,
-            request.SavePath,
-            addedAt,
-            TorrentIntent.Running,
-            runtime.LifecycleState,
-            runtime,
-            status,
-            HasMetadata: true,
-            SelectedFiles: selectedFiles,
-            PerTorrentSettings: null,
-            DeferredActions: Array.Empty<DeferredAction>());
-
-        await _collectionRepository.UpsertAsync(entry, ct).ConfigureAwait(false);
-        await _collectionRepository.SaveAsync(ct).ConfigureAwait(false);
-
-        _logger.LogInformation("Starting torrent {TorrentId}", id.Value);
-        await manager.StartAsync().ConfigureAwait(false);
-
-        return id;
+            true);
     }
 
     private static async Task ApplyFileSelectionAsync(TorrentManager manager, IReadOnlySet<string>? selectedFilePaths)
