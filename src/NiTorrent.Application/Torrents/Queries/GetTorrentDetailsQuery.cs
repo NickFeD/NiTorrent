@@ -4,8 +4,7 @@ using NiTorrent.Domain.Torrents;
 namespace NiTorrent.Application.Torrents.Queries;
 
 public sealed class GetTorrentDetailsQuery(
-    ITorrentCollectionRepository collectionRepository,
-    ITorrentEntrySettingsRepository settingsRepository)
+    ITorrentCollectionRepository collectionRepository)
 {
     public async Task<TorrentDetailsReadModel?> ExecuteAsync(TorrentId torrentId, CancellationToken ct = default)
     {
@@ -14,7 +13,7 @@ public sealed class GetTorrentDetailsQuery(
             return null;
 
         var status = TorrentListProjection.ResolveStatus(entry);
-        var effectiveSettings = entry.PerTorrentSettings ?? settingsRepository.Load(torrentId);
+        var effectiveSettings = entry.PerTorrentSettings ?? TorrentEntrySettings.Default;
 
         return new TorrentDetailsReadModel(
             entry.Id,

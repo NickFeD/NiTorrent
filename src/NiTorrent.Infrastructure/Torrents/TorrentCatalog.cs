@@ -10,7 +10,7 @@ namespace NiTorrent.Infrastructure.Torrents;
 /// </summary>
 internal sealed class TorrentCatalog
 {
-    public int SchemaVersion { get; set; } = 4;
+    public int SchemaVersion { get; set; } = 5;
     public List<TorrentCatalogEntry> Items { get; set; } = new();
     public List<TorrentPendingRemovalEntry> PendingRemovals { get; set; } = new();
 
@@ -43,6 +43,11 @@ internal sealed class TorrentCatalogEntry
     public string? Error { get; set; }
     public List<string> SelectedFiles { get; set; } = new();
     public List<TorrentCatalogDeferredActionEntry> DeferredActions { get; set; } = new();
+
+    /// <summary>
+    /// Product-owned per-torrent settings. Null or default means "inherit global defaults".
+    /// </summary>
+    public TorrentEntrySettings? PerTorrentSettings { get; set; }
 
     // Cached UI data (last known state from previous run).
     public double Progress { get; set; }

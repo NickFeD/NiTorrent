@@ -132,6 +132,7 @@ public sealed class TorrentCatalogStore
                     RequestedAtUtc = x.RequestedAtUtc
                 })
                 .ToList() ?? new List<TorrentCatalogDeferredActionEntry>();
+            existing.PerTorrentSettings = CloneSettingsOrNull(entry.PerTorrentSettings);
 
             // Keep legacy field out of new saves.
             existing.ShouldRun = null;
@@ -348,9 +349,11 @@ public sealed class TorrentCatalogStore
             entry.HasMetadata ??= !string.IsNullOrWhiteSpace(entry.Key) || !string.IsNullOrWhiteSpace(entry.Name);
             entry.SelectedFiles ??= new List<string>();
             entry.DeferredActions ??= new List<TorrentCatalogDeferredActionEntry>();
+            if (entry.PerTorrentSettings is { } settings && settings.IsDefault())
+                entry.PerTorrentSettings = null;
         }
 
-        catalog.SchemaVersion = 4;
+        catalog.SchemaVersion = 5;
     }
 
     private TorrentCatalogEntry? TryFindExistingEntry(TorrentManager manager, string key, HashSet<Guid> usedIds)
@@ -408,10 +411,25 @@ public sealed class TorrentCatalogStore
             lastKnownStatus,
             HasMetadata: entry.HasMetadata ?? (!string.IsNullOrWhiteSpace(entry.Key) || !string.IsNullOrWhiteSpace(entry.Name)),
             SelectedFiles: entry.SelectedFiles ?? Array.Empty<string>(),
-            PerTorrentSettings: null,
+            PerTorrentSettings: CloneSettingsOrNull(entry.PerTorrentSettings),
             DeferredActions: (entry.DeferredActions ?? new List<TorrentCatalogDeferredActionEntry>())
                 .Select(x => new DeferredAction(x.Type, x.RequestedAtUtc))
                 .ToList());
+    }
+
+
+    private static TorrentEntrySettings? CloneSettingsOrNull(TorrentEntrySettings? settings)
+    {
+        if (settings is null || settings.IsDefault())
+            return null;
+
+        return new TorrentEntrySettings
+        {
+            DownloadPathOverride = settings.DownloadPathOverride,
+            MaximumDownloadRateBytesPerSecond = settings.MaximumDownloadRateBytesPerSecond,
+            MaximumUploadRateBytesPerSecond = settings.MaximumUploadRateBytesPerSecond,
+            SequentialDownload = settings.SequentialDownload
+        };
     }
 
     private static TorrentIntent ResolveIntent(TorrentCatalogEntry entry)

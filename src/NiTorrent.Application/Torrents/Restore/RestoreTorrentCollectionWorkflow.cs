@@ -10,21 +10,25 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
     private readonly ITorrentEngineLifecycle _engineLifecycle;
     private readonly SyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
     private readonly IApplyDeferredTorrentActionsWorkflow _applyDeferredActionsWorkflow;
+    private readonly ILegacyTorrentEntrySettingsMigrationSource _legacySettingsRepository;
 
     public RestoreTorrentCollectionWorkflow(
         ITorrentCollectionRepository repository,
         ITorrentEngineLifecycle engineLifecycle,
         SyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow,
-        IApplyDeferredTorrentActionsWorkflow applyDeferredActionsWorkflow)
+        IApplyDeferredTorrentActionsWorkflow applyDeferredActionsWorkflow,
+        ILegacyTorrentEntrySettingsMigrationSource legacySettingsRepository)
     {
         _repository = repository;
         _engineLifecycle = engineLifecycle;
         _syncRuntimeWorkflow = syncRuntimeWorkflow;
         _applyDeferredActionsWorkflow = applyDeferredActionsWorkflow;
+        _legacySettingsRepository = legacySettingsRepository;
     }
 
     public async Task<RestoreTorrentCollectionResult> ExecuteAsync(CancellationToken ct = default)
     {
+        await MigrateLegacyPerTorrentSettingsAsync(ct).ConfigureAwait(false);
         var earlyCollection = await _repository.GetAllAsync(ct).ConfigureAwait(false);
 
         await _engineLifecycle.InitializeAsync(ct).ConfigureAwait(false);
@@ -47,6 +51,33 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
         await _repository.SaveAsync(ct).ConfigureAwait(false);
 
         return new RestoreTorrentCollectionResult(earlyCollection, syncedCollection, syncResult.RuntimeFacts);
+    }
+
+
+    private async Task MigrateLegacyPerTorrentSettingsAsync(CancellationToken ct)
+    {
+        var entries = await _repository.GetAllAsync(ct).ConfigureAwait(false);
+        var changed = false;
+
+        foreach (var entry in entries)
+        {
+            var legacySettings = _legacySettingsRepository.Load(entry.Id);
+            var hasLegacySettings = !legacySettings.IsDefault();
+
+            if (entry.PerTorrentSettings is null && hasLegacySettings)
+            {
+                await _repository.UpsertAsync(entry.WithPerTorrentSettings(legacySettings), ct).ConfigureAwait(false);
+                changed = true;
+            }
+
+            if (hasLegacySettings)
+            {
+                _legacySettingsRepository.Remove(entry.Id);
+            }
+        }
+
+        if (changed)
+            await _repository.SaveAsync(ct).ConfigureAwait(false);
     }
 
     private static IReadOnlyList<TorrentEntry> BuildExecutionPlan(IReadOnlyList<TorrentEntry> entries)
