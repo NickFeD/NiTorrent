@@ -2,9 +2,11 @@
 
 public sealed partial class SettingsPage : Page
 {
+    public IJsonNavigationService NavService { get; }
+
     public SettingsPage()
     {
-        this.InitializeComponent();
+        NavService = App.GetService<IJsonNavigationService>();
+        InitializeComponent();
     }
 }
-

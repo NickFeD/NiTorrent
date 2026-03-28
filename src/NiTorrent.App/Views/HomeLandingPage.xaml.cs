@@ -2,9 +2,11 @@
 
 public sealed partial class HomeLandingPage : Page
 {
+    public IJsonNavigationService NavService { get; }
+
     public HomeLandingPage()
     {
-        this.InitializeComponent();
+        NavService = App.GetService<IJsonNavigationService>();
+        InitializeComponent();
     }
 }
-

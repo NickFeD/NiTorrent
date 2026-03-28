@@ -4,12 +4,11 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:dev="using:DevWinUI"
-      xmlns:local="using:NiTorrent.App"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       mc:Ignorable="d">
     <dev:AllLandingPage HeaderImage="{ThemeResource HeaderCover}"
                         HeaderSubtitleText="{x:Bind dev:ProcessInfoHelper.Version}"
                         HeaderText="{x:Bind dev:ProcessInfoHelper.ProductName}"
-                        JsonNavigationService="{x:Bind local:App.Current.NavService}" />
+                        JsonNavigationService="{x:Bind NavService}" />
 </Page>
 

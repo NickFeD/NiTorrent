@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
@@ -90,6 +90,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<IAppStartupService, AppStartupService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
         services.AddSingleton<IMainWindowLifecycle, MainWindowLifecycle>();
+        services.AddSingleton<ITorrentSettingsService, TorrentSettingsService>();
         services.AddSingleton<GetTorrentListQuery>();
         services.AddSingleton<GetTorrentDetailsQuery>();
         services.AddSingleton<GetSettingsQuery>();
