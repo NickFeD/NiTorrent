@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
+using NiTorrent.App.Views;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
-using WinUIEx;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
@@ -147,9 +147,9 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
             _trayInitialized = false;
         }
 
+        _trayService.Dispose();
+
         if (_window is not null)
             _window.AppWindow.Closing -= OnMainWindowClosing;
-
-        _trayService.Dispose();
     }
 }

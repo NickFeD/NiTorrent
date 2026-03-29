@@ -37,6 +37,70 @@ public sealed class TorrentStartupCoordinator
 
     public bool IsReady { get; private set; }
 
+
+    public async Task ShutdownAsync(
+        SemaphoreSlim opGate,
+        CancellationToken ct = default)
+    {
+        var pendingInit = _initTask;
+        if (pendingInit is not null)
+        {
+            try
+            {
+                await pendingInit.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Torrent engine init failed before shutdown");
+            }
+        }
+
+        ClientEngine? engineToDispose = null;
+
+        await opGate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (Engine is null)
+            {
+                IsReady = false;
+                _initTask = null;
+                _runtimeRegistry.Clear();
+                return;
+            }
+
+            try
+            {
+                await Engine.StopAllAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to stop torrent engine cleanly");
+            }
+
+            engineToDispose = Engine;
+            Engine = null;
+            IsReady = false;
+            _initTask = null;
+            _runtimeRegistry.Clear();
+        }
+        finally
+        {
+            opGate.Release();
+        }
+
+        if (engineToDispose is not null)
+        {
+            try
+            {
+                engineToDispose.Dispose();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to dispose torrent engine cleanly");
+            }
+        }
+    }
+
     public Task EnsureStartedAsync(
         SemaphoreSlim opGate,
         Action? onLoaded,

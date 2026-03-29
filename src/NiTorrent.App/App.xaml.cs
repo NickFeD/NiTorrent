@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
@@ -12,9 +12,10 @@ using NiTorrent.Application.Shell;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.Restore;
-using NiTorrent.Infrastructure;
+using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
+using WinUIEx;
 using WinUIApplication = Microsoft.UI.Xaml.Application;
 
 namespace NiTorrent.App;
@@ -26,13 +27,14 @@ public partial class App : WinUIApplication
     private Task? _engineInitTask;
 
     public new static App Current => (App)WinUIApplication.Current;
-    public static Window MainWindow { get; internal set; } = null!;
-    public static IntPtr Hwnd => MainWindow is null ? IntPtr.Zero : WinRT.Interop.WindowNative.GetWindowHandle(MainWindow);
+    public static Window MainWindow = Window.Current;
+    public static IntPtr Hwnd => WinRT.Interop.WindowNative.GetWindowHandle(MainWindow);
     public IServiceProvider Services { get; }
+    public IJsonNavigationService NavService => GetService<IJsonNavigationService>();
 
     public static T GetService<T>() where T : class
     {
-        if (Current.Services.GetService(typeof(T)) is not T service)
+        if ((Current as App)!.Services.GetService(typeof(T)) is not T service)
             throw new ArgumentException($"{typeof(T)} needs to be registered in ConfigureServices within App.xaml.cs.");
 
         return service;
@@ -49,7 +51,7 @@ public partial class App : WinUIApplication
         InitializeComponent();
     }
 
-    private static void ConfigureServices(HostBuilderContext _, IServiceCollection services)
+    private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
     {
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<ContextMenuService>();
@@ -94,6 +96,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<GetTorrentListQuery>();
         services.AddSingleton<GetTorrentDetailsQuery>();
         services.AddSingleton<GetSettingsQuery>();
+        services.AddSingleton<GetShellStateQuery>();
         services.AddSingleton<HandleWindowCloseWorkflow>();
         services.AddSingleton<HandleTrayExitWorkflow>();
         services.AddSingleton<SyncTorrentCollectionFromRuntimeWorkflow>();

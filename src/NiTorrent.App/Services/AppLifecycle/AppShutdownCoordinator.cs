@@ -8,17 +8,20 @@ namespace NiTorrent.App.Services.AppLifecycle;
 public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
 {
     private readonly ITorrentEngineMaintenanceService _engineMaintenanceService;
+    private readonly ITorrentEngineLifecycle _engineLifecycle;
     private readonly IMainWindowLifecycle _mainWindowLifecycle;
     private readonly ILogger<AppShutdownCoordinator> _logger;
     private readonly IUiDispatcher _dispatcher;
 
     public AppShutdownCoordinator(
         ITorrentEngineMaintenanceService engineMaintenanceService,
+        ITorrentEngineLifecycle engineLifecycle,
         IMainWindowLifecycle mainWindowLifecycle,
         IUiDispatcher dispatcher,
         ILogger<AppShutdownCoordinator> logger)
     {
         _engineMaintenanceService = engineMaintenanceService;
+        _engineLifecycle = engineLifecycle;
         _mainWindowLifecycle = mainWindowLifecycle;
         _dispatcher = dispatcher;
         _logger = logger;
@@ -37,11 +40,20 @@ public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
 
         try
         {
-            await _mainWindowLifecycle.CloseForShutdownAsync().ConfigureAwait(false);
+            await _engineLifecycle.ShutdownAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exit failed while closing main window");
+            _logger.LogWarning(ex, "Torrent engine lifecycle shutdown failed");
+        }
+
+        try
+        {
+            _mainWindowLifecycle.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Window lifecycle dispose failed");
         }
 
         try
@@ -55,11 +67,11 @@ public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
 
         try
         {
-            _mainWindowLifecycle.Dispose();
+            await _mainWindowLifecycle.CloseForShutdownAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Window lifecycle dispose failed");
+            _logger.LogError(ex, "Exit failed while closing main window");
         }
         finally
         {

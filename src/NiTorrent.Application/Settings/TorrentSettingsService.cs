@@ -1,4 +1,4 @@
-﻿using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Common;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Settings;

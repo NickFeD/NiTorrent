@@ -6,8 +6,7 @@ namespace NiTorrent.Application.Shell;
 public sealed class HandleWindowCloseWorkflow(ITorrentSettingsRepository settingsRepository)
 {
     public AppShellCloseAction Execute()
-    {
-        var settings = settingsRepository.LoadAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-        return AppShellClosePolicy.Resolve(settings.CloseBehavior, AppShellCloseRequestSource.MainWindow);
-    }
+        => AppShellClosePolicy.Resolve(
+            settingsRepository.LoadAsync().GetAwaiter().GetResult().CloseBehavior,
+            AppShellCloseRequestSource.MainWindow);
 }
