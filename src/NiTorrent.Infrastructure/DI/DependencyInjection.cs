@@ -9,6 +9,11 @@ using NiTorrent.Infrastructure.Torrents;
 
 namespace NiTorrent.Infrastructure.DI;
 
+/// <summary>
+/// Authoritative infrastructure composition root.
+/// Keep all runtime registrations here and treat the legacy shim in
+/// <c>NiTorrent.Infrastructure.DependencyInjection</c> as compatibility-only.
+/// </summary>
 public static class DependencyInjection
 {
     public static IServiceCollection AddNiTorrentInfrastructure(this IServiceCollection services)

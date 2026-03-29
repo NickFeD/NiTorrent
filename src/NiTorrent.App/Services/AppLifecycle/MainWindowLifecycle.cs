@@ -1,8 +1,9 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using NiTorrent.App.Views;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
+using WinUIEx;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 

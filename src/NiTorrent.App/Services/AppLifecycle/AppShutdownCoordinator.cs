@@ -49,11 +49,11 @@ public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
 
         try
         {
-            _mainWindowLifecycle.Dispose();
+            await _mainWindowLifecycle.CloseForShutdownAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Window lifecycle dispose failed");
+            _logger.LogError(ex, "Exit failed while closing main window");
         }
 
         try
@@ -67,11 +67,11 @@ public sealed class AppShutdownCoordinator : IAppShutdownCoordinator
 
         try
         {
-            await _mainWindowLifecycle.CloseForShutdownAsync().ConfigureAwait(false);
+            _mainWindowLifecycle.Dispose();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exit failed while closing main window");
+            _logger.LogWarning(ex, "Window lifecycle dispose failed");
         }
         finally
         {
