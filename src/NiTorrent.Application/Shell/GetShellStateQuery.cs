@@ -10,6 +10,9 @@ public sealed class GetShellStateQuery(
     ITorrentSettingsRepository settingsRepository,
     ITorrentEngineStatusService engineStatusService)
 {
-    public ShellStateReadModel Execute()
-        => new(settingsRepository.LoadAsync().GetAwaiter().GetResult().CloseBehavior, engineStatusService.IsReady);
+    public async Task<ShellStateReadModel> ExecuteAsync(CancellationToken ct = default)
+    {
+        var settings = await settingsRepository.LoadAsync(ct).ConfigureAwait(false);
+        return new ShellStateReadModel(settings.CloseBehavior, engineStatusService.IsReady);
+    }
 }

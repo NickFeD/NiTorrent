@@ -43,7 +43,7 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
 
         try
         {
-            var action = _handleWindowCloseWorkflow.Execute();
+            var action = await _handleWindowCloseWorkflow.ExecuteAsync().ConfigureAwait(false);
 
             switch (action)
             {
