@@ -1,4 +1,4 @@
-using MonoTorrent;
+﻿using MonoTorrent;
 using MonoTorrent.Client;
 
 namespace NiTorrent.Infrastructure.Torrents;
@@ -15,10 +15,10 @@ public sealed class TorrentStableKeyAccessor
             var infoHashes = torrent.InfoHashes;
             var v1 = infoHashes?.V1;
             if (v1 is not null)
-                return v1.ToString() ?? string.Empty;
+                return v1.ToHex() ?? string.Empty;
 
             var v2 = infoHashes?.V2;
-            return v2?.ToString() ?? string.Empty;
+            return v2?.ToHex() ?? string.Empty;
         }
         catch
         {
