@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Deferred;
@@ -17,7 +18,9 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
     private readonly ITorrentRuntimeFactsProvider _runtimeFactsProvider;
     private readonly SyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
     private readonly ReplayDeferredTorrentActionsWorkflow _replayDeferredActionsWorkflow;
+    private readonly ILogger<EngineBackedTorrentReadModelFeed> _logger;
     private readonly object _sync = new();
+    private long _syncCycleId;
     private IReadOnlyList<TorrentListItemReadModel> _current = [];
     private event Action<IReadOnlyList<TorrentListItemReadModel>>? _updated;
 
@@ -25,12 +28,14 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
         GetTorrentListQuery getTorrentListQuery,
         ITorrentRuntimeFactsProvider runtimeFactsProvider,
         SyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow,
-        ReplayDeferredTorrentActionsWorkflow replayDeferredActionsWorkflow)
+        ReplayDeferredTorrentActionsWorkflow replayDeferredActionsWorkflow,
+        ILogger<EngineBackedTorrentReadModelFeed> logger)
     {
         _getTorrentListQuery = getTorrentListQuery;
         _runtimeFactsProvider = runtimeFactsProvider;
         _syncRuntimeWorkflow = syncRuntimeWorkflow;
         _replayDeferredActionsWorkflow = replayDeferredActionsWorkflow;
+        _logger = logger;
 
         _runtimeFactsProvider.RuntimeFactsUpdated += OnRuntimeFactsUpdated;
         Refresh();
@@ -65,17 +70,30 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
     }
 
     private void OnRuntimeFactsUpdated(IReadOnlyList<TorrentRuntimeFact> runtimeFacts)
-        => _ = SynchronizeAndRefreshAsync();
+        => _ = SynchronizeAndRefreshAsync(runtimeFacts);
 
-    private async Task SynchronizeAndRefreshAsync()
+    private async Task SynchronizeAndRefreshAsync(IReadOnlyList<TorrentRuntimeFact> runtimeFacts)
     {
+        var cycleId = Interlocked.Increment(ref _syncCycleId);
+        var affectedCount = runtimeFacts.Count;
+        var affectedIds = string.Join(", ", runtimeFacts
+            .Where(x => x.Id.HasValue)
+            .Select(x => x.Id!.Value.ToString())
+            .Distinct()
+            .Take(5));
+
         try
         {
             await _syncRuntimeWorkflow.ExecuteAsync(CancellationToken.None).ConfigureAwait(false);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort synchronization; still try to show the latest persisted projection.
+            _logger.LogWarning(
+                ex,
+                "Read sync cycle {CycleId} failed at runtime synchronization (affectedFacts={AffectedCount}, sampleIds={AffectedIds})",
+                cycleId,
+                affectedCount,
+                string.IsNullOrWhiteSpace(affectedIds) ? "<none>" : affectedIds);
         }
 
         try
@@ -84,9 +102,14 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
                 .ExecuteAsync(trigger: "read-feed-runtime-resync", ct: CancellationToken.None)
                 .ConfigureAwait(false);
         }
-        catch
+        catch (Exception ex)
         {
-            // Best-effort deferred replay; projection refresh continues.
+            _logger.LogWarning(
+                ex,
+                "Read sync cycle {CycleId} failed at deferred replay stage (affectedFacts={AffectedCount}, sampleIds={AffectedIds})",
+                cycleId,
+                affectedCount,
+                string.IsNullOrWhiteSpace(affectedIds) ? "<none>" : affectedIds);
         }
 
         await RefreshAsync().ConfigureAwait(false);
