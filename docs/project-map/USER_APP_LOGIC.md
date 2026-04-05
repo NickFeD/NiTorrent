@@ -130,6 +130,7 @@ Expected behavior:
 - user confirms through this single unified preview flow.
 
 Clarification: behavior for magnet and `.torrent` must be unified as early as reasonably possible and follow one shared logic path after metadata is available.
+Scope clarification: magnet handling is supported through UI input and internal application scenarios; system-level `magnet:` protocol activation is out of scope unless explicitly approved in the future.
 
 ### 3.5. Add Torrent via File Association
 The user opens a `.torrent` file from Windows Explorer.
@@ -184,6 +185,7 @@ Removal mode must be chosen by the user at removal time:
 - or remove downloaded files from disk too.
 
 Neither mode has product-level priority over the other.
+If quick remove/hotkey is introduced in future, it must still show the same removal-mode choice dialog before execution.
 
 ### 3.10. Open Torrent Folder
 User wants to open torrent download folder.

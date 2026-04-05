@@ -5,6 +5,12 @@ Last updated: **2026-04-05**.
 
 This document defines the architecture required to implement the behavior described in `USER_APP_LOGIC.md` reliably, predictably, and with low change cost over time.
 
+Companion documents:
+- `NFR_SLO.md`
+- `FAILURE_MATRIX.md`
+- `APPLICATION_CONTRACTS.md`
+- `ADR/README.md`
+
 ## 1. Architecture Intent
 
 The system is organized around user scenarios, stable application boundaries, and explicit source-of-truth models.
@@ -208,6 +214,8 @@ When adding new features:
 4. Migration-only adapters must be removed after replacement.
 5. Architectural status is tracked in `CURRENT_ARCHITECTURE_STATE.md`.
 6. Any behavior change affecting `USER_APP_LOGIC.md` requires architecture doc update in the same change set.
+7. If a requirement is ambiguous, implementation must not invent behavior that is not explicitly approved.
+8. Ambiguities must be recorded and resolved through a documented clarification before coding the affected behavior.
 
 ## 10. Mapping to USER_APP_LOGIC
 
@@ -232,6 +240,22 @@ Coverage map:
 
 3. Future per-file priority model
 - If added, define dedicated domain model + application use case + projection contract before UI work.
+
+## 12. Clarification Protocol (No Unplanned Behavior)
+
+When uncertainty appears, use this protocol:
+
+1. Stop and isolate ambiguity
+- Identify exactly which requirement text allows multiple interpretations.
+
+2. Record the question
+- Add the ambiguity and options to `OPEN_QUESTIONS.md` with impacted scenarios/contracts.
+
+3. Ask for product clarification
+- Do not implement speculative behavior while the decision is unresolved.
+
+4. Apply only approved behavior
+- After clarification, update `USER_APP_LOGIC.md`, this document, and any affected companion docs/ADRs in the same change set.
 
 ---
 
