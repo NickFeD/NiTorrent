@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 
@@ -62,22 +62,22 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     private static string BuildStateText(TorrentStatus status)
     {
         if (!string.IsNullOrWhiteSpace(status.Error) && status.Phase == TorrentPhase.Error)
-            return $"Ошибка: {status.Error}";
+            return $"РћС€РёР±РєР°: {status.Error}";
 
-        var sourceSuffix = status.Source == TorrentStatusSource.Cached ? " (кэш)" : string.Empty;
+        var sourceSuffix = status.Source == TorrentStatusSource.Cached ? " (РєСЌС€)" : string.Empty;
 
         return status.Phase switch
         {
-            TorrentPhase.EngineStarting => $"Запуск движка{sourceSuffix}",
-            TorrentPhase.WaitingForEngine => $"Ожидает запуск движка{sourceSuffix}",
-            TorrentPhase.FetchingMetadata => $"Получение метаданных{sourceSuffix}",
-            TorrentPhase.Checking => $"Проверка файлов{sourceSuffix}",
-            TorrentPhase.Downloading => $"Скачивание{sourceSuffix}",
-            TorrentPhase.Seeding => $"Раздача{sourceSuffix}",
-            TorrentPhase.Paused => $"Пауза{sourceSuffix}",
-            TorrentPhase.Stopped => $"Остановлен{sourceSuffix}",
-            TorrentPhase.Error => $"Ошибка{sourceSuffix}",
-            _ => $"Неизвестно{sourceSuffix}"
+            TorrentPhase.EngineStarting => $"Р—Р°РїСѓСЃРє РґРІРёР¶РєР°{sourceSuffix}",
+            TorrentPhase.WaitingForEngine => $"РћР¶РёРґР°РµС‚ Р·Р°РїСѓСЃРє РґРІРёР¶РєР°{sourceSuffix}",
+            TorrentPhase.FetchingMetadata => $"РџРѕР»СѓС‡РµРЅРёРµ РјРµС‚Р°РґР°РЅРЅС‹С…{sourceSuffix}",
+            TorrentPhase.Checking => $"РџСЂРѕРІРµСЂРєР° С„Р°Р№Р»РѕРІ{sourceSuffix}",
+            TorrentPhase.Downloading => $"РЎРєР°С‡РёРІР°РЅРёРµ{sourceSuffix}",
+            TorrentPhase.Seeding => $"Р Р°Р·РґР°С‡Р°{sourceSuffix}",
+            TorrentPhase.Paused => $"Пауза/остановлен{sourceSuffix}",
+            TorrentPhase.Stopped => $"Пауза/остановлен{sourceSuffix}",
+            TorrentPhase.Error => $"РћС€РёР±РєР°{sourceSuffix}",
+            _ => $"РќРµРёР·РІРµСЃС‚РЅРѕ{sourceSuffix}"
         };
     }
 
@@ -89,3 +89,5 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         GC.SuppressFinalize(this);
     }
 }
+
+
