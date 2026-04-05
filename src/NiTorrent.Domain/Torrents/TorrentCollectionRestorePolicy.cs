@@ -32,16 +32,17 @@ public static class TorrentCollectionRestorePolicy
                 continue;
             }
 
-            var updated = entry.WithRuntime(fact.Runtime) with
+            var merged = entry with
             {
                 Key = fact.Key.IsEmpty ? entry.Key : fact.Key,
                 Name = string.IsNullOrWhiteSpace(fact.Name) ? entry.Name : fact.Name,
                 Size = fact.Size == 0 ? entry.Size : fact.Size,
                 SavePath = string.IsNullOrWhiteSpace(fact.SavePath) ? entry.SavePath : fact.SavePath,
-                HasMetadata = true
+                HasMetadata = true,
+                Runtime = fact.Runtime
             };
 
-            result.Add(updated);
+            result.Add(merged.WithRuntime(TorrentStatusResolver.ResolveExpectedRuntime(merged)));
         }
 
         return result;
