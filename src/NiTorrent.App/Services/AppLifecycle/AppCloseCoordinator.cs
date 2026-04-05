@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Shell;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Settings;
@@ -12,6 +13,8 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     private readonly HandleTrayExitWorkflow _handleTrayExitWorkflow;
     private readonly ITorrentEngineMaintenanceService _engineMaintenanceService;
     private readonly IMainWindowLifecycle _mainWindowLifecycle;
+    private readonly IDialogService _dialogService;
+    private readonly ITorrentSettingsRepository _settingsRepository;
     private readonly ILogger<AppCloseCoordinator> _logger;
 
     private bool _isExiting;
@@ -22,12 +25,16 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
         HandleTrayExitWorkflow handleTrayExitWorkflow,
         ITorrentEngineMaintenanceService engineMaintenanceService,
         IMainWindowLifecycle mainWindowLifecycle,
+        IDialogService dialogService,
+        ITorrentSettingsRepository settingsRepository,
         ILogger<AppCloseCoordinator> logger)
     {
         _handleWindowCloseWorkflow = handleWindowCloseWorkflow;
         _handleTrayExitWorkflow = handleTrayExitWorkflow;
         _engineMaintenanceService = engineMaintenanceService;
         _mainWindowLifecycle = mainWindowLifecycle;
+        _dialogService = dialogService;
+        _settingsRepository = settingsRepository;
         _logger = logger;
     }
 
@@ -51,7 +58,31 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
                     await MinimizeToTrayAsync().ConfigureAwait(false);
                     return;
                 case AppShellCloseAction.AskUser:
-                    _logger.LogInformation("AskUser close behavior is not implemented yet. Falling back to exit.");
+                    var choice = await _dialogService
+                        .ShowWindowCloseChoiceAsync(defaultMinimizeToTray: false)
+                        .ConfigureAwait(false);
+
+                    if (choice is null)
+                        return;
+
+                    if (choice.RememberChoice)
+                    {
+                        var settings = await _settingsRepository.LoadAsync().ConfigureAwait(false);
+                        var updated = settings with
+                        {
+                            CloseBehavior = choice.Action == WindowCloseAction.MinimizeToTray
+                                ? AppCloseBehavior.MinimizeToTray
+                                : AppCloseBehavior.ExitApplication
+                        };
+                        await _settingsRepository.SaveAsync(updated).ConfigureAwait(false);
+                    }
+
+                    if (choice.Action == WindowCloseAction.MinimizeToTray)
+                    {
+                        await MinimizeToTrayAsync().ConfigureAwait(false);
+                        return;
+                    }
+
                     break;
                 case AppShellCloseAction.ExitApplication:
                 default:

@@ -55,6 +55,7 @@ public partial class App : WinUIApplication
     private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
     {
         services.AddSingleton<IThemeService, ThemeService>();
+        services.AddSingleton<IThemeSettingsService, ThemeSettingsService>();
         services.AddSingleton<ContextMenuService>();
         services.AddSingleton<IAppStorageService, AppStorageService>();
 
@@ -94,6 +95,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<IAppActivationService, AppActivationService>();
         services.AddSingleton<IMainWindowLifecycle, MainWindowLifecycle>();
         services.AddSingleton<ITorrentSettingsService, TorrentSettingsService>();
+        services.AddSingleton<ThemeSettingsViewModel>();
         services.AddSingleton<GetTorrentListQuery>();
         services.AddSingleton<GetTorrentDetailsQuery>();
         services.AddSingleton<GetSettingsQuery>();

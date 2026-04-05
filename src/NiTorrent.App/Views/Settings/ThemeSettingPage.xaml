@@ -14,40 +14,58 @@
                 VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="10"
                     dev:PanelAttach.ChildrenTransitions="Default"
-                    Spacing="5">
-            <dev:SettingsCard Description="Select the theme that suits your mood and preference. You can choose from dark, light, or system themes."
+                    Spacing="8">
+            <InfoBar IsOpen="{x:Bind ViewModel.HasUnsavedChanges, Mode=OneWay}"
+                     IsClosable="False"
+                     Severity="Informational"
+                     Message="Есть несохранённые изменения. Нажмите «Применить», чтобы сохранить и применить настройки внешнего вида." />
+
+            <dev:SettingsCard Description="Выберите тему приложения."
                               Header="App theme"
                               HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Theme.png}">
-                <ComboBox dev:ThemeServiceAttach.ThemeService="{x:Bind ThemeService}">
-                    <ComboBoxItem Content="Light"
-                                  Tag="Light" />
-                    <ComboBoxItem Content="Dark"
-                                  Tag="Dark" />
-                    <ComboBoxItem Content="Default"
-                                  Tag="Default" />
+                <ComboBox SelectedValuePath="Tag"
+                          SelectedValue="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}">
+                    <ComboBoxItem Content="Light" Tag="Light" />
+                    <ComboBoxItem Content="Dark" Tag="Dark" />
+                    <ComboBoxItem Content="Default" Tag="Default" />
                 </ComboBox>
             </dev:SettingsCard>
-            <dev:SettingsCard Description="Change the appearance of the backdrop material behind your app. You can choose from mica, acrylic, or transparent options."
+
+            <dev:SettingsCard Description="Выберите материал фона приложения."
                               Header="Material"
                               HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Backdrop.png}">
-                <ComboBox dev:ThemeServiceAttach.ThemeService="{x:Bind ThemeService}">
-                    <ComboBoxItem Content="Mica"
-                                  Tag="Mica" />
-                    <ComboBoxItem Content="Mica Alt"
-                                  Tag="MicaAlt" />
-                    <ComboBoxItem Content="Acrylic"
-                                  Tag="Acrylic" />
-                    <ComboBoxItem Content="Acrylic Thin"
-                                  Tag="AcrylicThin" />
+                <ComboBox SelectedValuePath="Tag"
+                          SelectedValue="{x:Bind ViewModel.SelectedBackdrop, Mode=TwoWay}">
+                    <ComboBoxItem Content="Mica" Tag="Mica" />
+                    <ComboBoxItem Content="Mica Alt" Tag="MicaAlt" />
+                    <ComboBoxItem Content="Acrylic" Tag="Acrylic" />
+                    <ComboBoxItem Content="Acrylic Thin" Tag="AcrylicThin" />
                 </ComboBox>
             </dev:SettingsCard>
+
             <dev:SettingsCard ActionIcon="{dev:BitmapIcon Source=Assets/Fluent/External.png}"
-                              Description="Sync your app’s color with your Windows accent color. You can open the Windows accent color setting by clicking this card."
+                              Description="Открыть системные настройки акцентного цвета Windows."
                               Header="Accent color"
                               HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Color.png}"
                               IsClickEnabled="True"
                               LaunchUri="ms-settings:colors" />
+
+            <dev:SettingsCard Header="Действия"
+                              Description="Изменения применяются после сохранения."
+                              HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Update.png}">
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Spacing="10">
+                    <Button MinWidth="130"
+                            Content="Перезагрузить"
+                            Command="{x:Bind ViewModel.ReloadCommand}" />
+                    <Button MinWidth="130"
+                            Content="Применить"
+                            Style="{ThemeResource AccentButtonStyle}"
+                            Command="{x:Bind ViewModel.SaveCommand}"
+                            IsEnabled="{x:Bind ViewModel.HasUnsavedChanges, Mode=OneWay}" />
+                </StackPanel>
+            </dev:SettingsCard>
         </StackPanel>
     </ScrollView>
 </Page>
-

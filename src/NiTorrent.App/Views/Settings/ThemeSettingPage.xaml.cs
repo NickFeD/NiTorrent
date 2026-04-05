@@ -1,13 +1,24 @@
-﻿namespace NiTorrent.App.Views;
+﻿using NiTorrent.Presentation.Features.Settings;
+
+namespace NiTorrent.App.Views;
 
 public sealed partial class ThemeSettingPage : Page
 {
-    public IThemeService ThemeService { get; }
+    public ThemeSettingsViewModel ViewModel { get; }
+
     public ThemeSettingPage()
     {
-        ThemeService = App.GetService<IThemeService>();
-        this.InitializeComponent();
+        ViewModel = App.GetService<ThemeSettingsViewModel>();
+        DataContext = ViewModel;
+
+        InitializeComponent();
+        Loaded += OnLoaded;
+        Bindings.Update();
+    }
+
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= OnLoaded;
+        await ViewModel.EnsureLoadedAsync();
     }
 }
-
-
