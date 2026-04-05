@@ -60,22 +60,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     }
 
     private static string BuildStateText(TorrentStatus status)
-    {        var sourceSuffix = status.Source == TorrentStatusSource.Cached ? " (РєСЌС€)" : string.Empty;
-
-        return status.Phase switch
-        {
-            TorrentPhase.EngineStarting => $"Р—Р°РїСѓСЃРє РґРІРёР¶РєР°{sourceSuffix}",
-            TorrentPhase.WaitingForEngine => $"РћР¶РёРґР°РµС‚ Р·Р°РїСѓСЃРє РґРІРёР¶РєР°{sourceSuffix}",
-            TorrentPhase.FetchingMetadata => $"РџРѕР»СѓС‡РµРЅРёРµ РјРµС‚Р°РґР°РЅРЅС‹С…{sourceSuffix}",
-            TorrentPhase.Checking => $"РџСЂРѕРІРµСЂРєР° С„Р°Р№Р»РѕРІ{sourceSuffix}",
-            TorrentPhase.Downloading => $"РЎРєР°С‡РёРІР°РЅРёРµ{sourceSuffix}",
-            TorrentPhase.Seeding => $"Р Р°Р·РґР°С‡Р°{sourceSuffix}",
-            TorrentPhase.Paused => $"Пауза/остановлен{sourceSuffix}",
-            TorrentPhase.Stopped => $"Пауза/остановлен{sourceSuffix}",
-            TorrentPhase.Error => $"РћС€РёР±РєР°{sourceSuffix}",
-            _ => $"РќРµРёР·РІРµСЃС‚РЅРѕ{sourceSuffix}"
-        };
-    }
+        => TorrentStatusTextMapper.ToUserFacingText(status);
 
     public void Dispose()
     {
@@ -85,6 +70,3 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         GC.SuppressFinalize(this);
     }
 }
-
-
-
