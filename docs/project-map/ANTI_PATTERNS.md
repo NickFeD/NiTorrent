@@ -1,15 +1,18 @@
 # Anti-Patterns
 
-## Нельзя
-- вести `start/pause/remove` мимо `ITorrentCommandService` и intent/deferred policies;
-- возвращать параллельную infrastructure-очередь команд (`TorrentCommandQueue` / queued intent in startup) как второй центр пользовательского intent;
-- публиковать UI-истину напрямую из MonoTorrent runtime минуя product-owned collection;
-- показывать пользователю сырые `ex.Message` из инфраструктуры;
-- вводить новый settings/json subsystem, если задача уже решается через `nucs.JsonSettings` или текущий catalog storage;
-- дублировать add/preview logic для `.torrent`, magnet и file-association;
-- хранить одно и то же пользовательское правило одновременно в docs и коде с разными трактовками.
+## Forbidden
+- bypass `ITorrentCommandService` and intent/deferred policies for `start/pause/remove`;
+- reintroduce a parallel infrastructure command queue (`TorrentCommandQueue` / startup queued intent) as a second user-intent center;
+- publish UI truth directly from MonoTorrent runtime, bypassing the product-owned collection;
+- show raw infrastructure `ex.Message` values to users;
+- introduce a second source of truth for settings (new settings/json subsystem without an explicit architecture migration);
+- duplicate add/preview logic across `.torrent`, magnet, and file-association flows;
+- keep the same user rule with conflicting interpretations across docs and code;
+- implement `quick remove/hotkey` without the removal-mode selection dialog;
+- add system-level `magnet:` activation without a separate approved product decision;
+- invent behavior for ambiguous requirements without recording the question in `OPEN_QUESTIONS.md`.
 
-## Допустимо
-- использовать `TorrentCatalogStore` как persisted product collection / early-start catalog;
-- хранить настройки отдельно от каталога runtime-состояния;
-- использовать инфраструктурные executors вокруг MonoTorrent, если они не становятся вторым источником пользовательской логики.
+## Allowed
+- use `TorrentCatalogStore` as the persisted product collection / early-start catalog;
+- keep settings storage separate from runtime-state catalog storage;
+- use infrastructure executors around MonoTorrent as long as they do not become a second source of user logic.
