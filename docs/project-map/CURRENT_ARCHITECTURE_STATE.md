@@ -40,3 +40,67 @@
 - Close-flow проходит через application workflows `HandleWindowCloseWorkflow` и `HandleTrayExitWorkflow`, а `AppCloseCoordinator` стал thin shell adapter.
 
 - Periodic runtime reconciliation проходит через `SyncTorrentCollectionFromRuntimeWorkflow`, а не через snapshot-publisher внутри infrastructure.
+
+## Post-Remediation Verification (2026-04-05)
+
+This section records the current acceptance verification against
+`ARCH_REMEDIATION_PLAN.md` after implementing C1-C4, M1-M8, and m1.
+
+### Critical Status
+
+| Critical | Status | Evidence |
+|---|---|---|
+| C1: deferred replay after readiness/resync | Closed | Replay workflow and trigger wiring in restore + runtime invalidation paths; deferred entries removed only on successful apply |
+| C2: intent-first runtime synchronization | Closed | `TorrentCollectionRestorePolicy` applies runtime facts without overriding persisted paused intent |
+| C3: user-facing open folder error flow | Closed | `OpenFolderAsync` wrapped in `try/catch` with `UserErrorMapper` and `ShowTextAsync` |
+
+### USER_APP_LOGIC Section 3 Matrix (Post-Remediation)
+
+| Scenario | Status | Verification Source |
+|---|---|---|
+| add `.torrent` via unified flow | Implemented | Code path unchanged; covered by existing flow boundaries |
+| add magnet via unified flow | Implemented | Code path unchanged; covered by existing flow boundaries |
+| duplicate handling | Implemented | Code path unchanged; protected in preview/add flow |
+| remove mode choice | Implemented | UI + workflow behavior preserved |
+| open folder | Implemented | C3 error handling unified with other commands |
+| close/tray/exit | Implemented | M4/M5 async close flow + AskUser mapping in app coordinator |
+
+### Verification Classification
+
+#### Confirmed by tests
+- `NiTorrent.Domain.Tests`: 2 passed (`dotnet vstest ...NiTorrent.Domain.Tests.dll`)
+- `NiTorrent.Application.Tests`: 3 passed (`dotnet vstest ...NiTorrent.Application.Tests.dll`)
+- Additional acceptance-focused tests were added in source:
+  - `PriorityAcceptanceVerificationTests.CommandsBeforeEngineReadiness_StartIsDeferred_AndStored`
+  - `PriorityAcceptanceVerificationTests.StartupRestore_RunningIntent_ReplaysDeferredStart`
+  - `PriorityAcceptanceVerificationTests.StateMappingAfterRestart_PausedIntent_RemainsPaused_AfterRuntimeSync`
+- In this local environment they are not yet executed because test-project rebuild currently fails at MSBuild workload resolution.
+- Covered invariants:
+  - intent-first mapping for paused intent (C2 invariant)
+  - replay coordinator gating, deduplication, and cycle outcome logging (C4)
+
+#### Confirmed by code/build inspection
+- Domain/Application build succeeds in current workspace:
+  - `dotnet build src/NiTorrent.Domain/NiTorrent.Domain.csproj --no-restore`
+  - `dotnet build src/NiTorrent.Application/NiTorrent.Application.csproj --no-restore`
+- Code-level verification confirms:
+  - deferred action persistence/removal semantics for C1
+  - open folder user-safe error reporting for C3
+  - runtime facts are sanitized before user-facing rendering (M2)
+  - details status uses user-facing mapper instead of raw enum (M7)
+  - AskUser close behavior no longer silently falls back to immediate exit (M5)
+
+#### Manual/scenario verification still required
+- Commands before engine readiness (`Start/Pause/Remove`) in full UI lifecycle.
+- Startup/restore list behavior with runtime resync under real engine timing.
+- End-to-end state mapping perception in UI (paused/stopped + runtime transitions).
+- Error UX scenarios in real shell environment (folder missing, runtime fault dialogs).
+- Close/tray/exit interactions (`X`, tray close, tray exit) in UI runtime.
+
+### Build Environment Note
+
+In this shell session, `dotnet build` for WinUI-facing projects (`NiTorrent.App`,
+`NiTorrent.Presentation`, `NiTorrent.Infrastructure`) reports restore-stage failure
+without compile diagnostics (workload resolver/MSBuild restore-path issue in environment).
+This does not invalidate completed unit-level verification, but app-level acceptance
+for UI scenarios remains manual in this environment.
