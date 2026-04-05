@@ -101,7 +101,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
             return Task.CompletedTask;
 
         if (!TryParseNullableInt(MaximumDownloadRateText, out var maxDownload) || !TryParseNullableInt(MaximumUploadRateText, out var maxUpload))
-            return _dialogs.ShowTextAsync("РќР°СЃС‚СЂРѕР№РєРё С‚РѕСЂСЂРµРЅС‚Р°", "Р›РёРјРёС‚С‹ СЃРєРѕСЂРѕСЃС‚РµР№ РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ РїСѓСЃС‚С‹РјРё РёР»Рё С†РµР»С‹РјРё С‡РёСЃР»Р°РјРё.");
+            return _dialogs.ShowTextAsync("Настройки торрента", "Лимиты скоростей должны быть пустыми или целыми числами.");
 
         var settings = new TorrentEntrySettings
         {
@@ -119,12 +119,11 @@ public partial class TorrentDetailsViewModel : ObservableObject
         try
         {
             await _updateSettingsWorkflow.ExecuteAsync(_currentTorrentId, settings);
-            await _dialogs.ShowTextAsync("РќР°СЃС‚СЂРѕР№РєРё С‚РѕСЂСЂРµРЅС‚Р°", "РќР°СЃС‚СЂРѕР№РєРё С‚РѕСЂСЂРµРЅС‚Р° СЃРѕС…СЂР°РЅРµРЅС‹ Рё РїСЂРёРјРµРЅРµРЅС‹ С‚Р°Рј, РіРґРµ СЌС‚Рѕ РІРѕР·РјРѕР¶РЅРѕ Р±РµР· РїРµСЂРµР·Р°РїСѓСЃРєР°.");
+            await _dialogs.ShowTextAsync("Настройки торрента", "Настройки торрента сохранены и применены там, где это возможно без перезапуска.");
         }
         catch (Exception ex)
         {
-            await _dialogs.ShowTextAsync("РќР°СЃС‚СЂРѕР№РєРё С‚РѕСЂСЂРµРЅС‚Р°", UserErrorMapper.ToMessage(ex, "РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё С‚РѕСЂСЂРµРЅС‚Р°."));
+            await _dialogs.ShowTextAsync("Настройки торрента", UserErrorMapper.ToMessage(ex, "Не удалось сохранить настройки торрента."));
         }
     }
 }
-
