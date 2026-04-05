@@ -38,16 +38,17 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
         if (_window is not null)
             return _window;
 
-        _window = new MainWindow();
-        _window.Title = _window.AppWindow.Title = ProcessInfoHelper.ProductNameAndVersion;
-        _window.AppWindow.SetIcon("Assets/AppIcon.ico");
-        _window.AppWindow.Closing += OnMainWindowClosing;
+        var window = new MainWindow();
+        window.Title = window.AppWindow.Title = ProcessInfoHelper.ProductNameAndVersion;
+        window.AppWindow.SetIcon("Assets/AppIcon.ico");
+        window.AppWindow.Closing += OnMainWindowClosing;
 
-        _themeService.Initialize(_window);
+        _themeService.Initialize(window);
         InitializeTray();
 
-        App.MainWindow = _window;
-        return _window;
+        _window = window;
+        App.MainWindow = window;
+        return window;
     }
 
     public void Activate()
@@ -57,16 +58,18 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
         => _dispatcher.EnqueueAsync(() =>
         {
             EnsureWindowCreated();
+            var window = _window!;
             _trayService.SetVisible(false);
-            _window!.Show();
-            _window.Activate();
+            window.Show();
+            window.Activate();
         });
 
     public Task HideToTrayAsync()
         => _dispatcher.EnqueueAsync(() =>
         {
             EnsureWindowCreated();
-            _window!.Hide();
+            var window = _window!;
+            window.Hide();
             _trayService.SetVisible(true);
         });
 

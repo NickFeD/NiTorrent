@@ -83,7 +83,11 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
         var rawRuntimeError = manager.Error;
         if (rawRuntimeError is not null)
         {
-            _logger.LogWarning(rawRuntimeError, "Runtime error for torrent {TorrentId} ({TorrentName})", id, manager.Name);
+            _logger.LogWarning(
+                "Runtime error for torrent {TorrentId} ({TorrentName}). Error={RuntimeError}",
+                id,
+                manager.Name,
+                rawRuntimeError.ToString());
         }
 
         var progress = manager.PartialProgress;

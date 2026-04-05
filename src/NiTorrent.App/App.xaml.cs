@@ -16,6 +16,7 @@ using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
+using NiTorrent.Presentation.Features.Settings;
 using WinUIEx;
 using WinUIApplication = Microsoft.UI.Xaml.Application;
 
