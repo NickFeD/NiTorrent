@@ -1,23 +1,27 @@
-# Onboarding
+﻿# Onboarding
 
-## Сначала прочитать
-1. `USER_APP_LOGIC.md`
-2. `CURRENT_ARCHITECTURE_STATE.md`
-3. `ANTI_PATTERNS.md`
-4. `REGRESSION_CHECKLIST.md`
+Status: active
+Last updated: 2026-04-05
 
-## Живые потоки
+## Quick start
+
+1. Read `README_ARCHITECTURE.md` (single entry point).
+2. Read `USER_APP_LOGIC.md` and `TARGET_ARCHITECTURE.md`.
+3. Read `APPLICATION_CONTRACTS.md` and `ANTI_PATTERNS.md`.
+4. Before implementation, check `OPEN_QUESTIONS.md`.
+5. Before merge, run through `REGRESSION_CHECKLIST.md`.
+
+## Core implementation flow
+
 - UI -> `ITorrentWorkflowService`
-- workflow/use cases -> `ITorrentCommandService` для start/pause/remove
-- workflow/use cases -> `ITorrentWriteService` для add/preview/apply-settings
-- startup -> `IRestoreTorrentCollectionWorkflow`
-- runtime facts -> product projection -> `ITorrentReadModelFeed`
+- User commands (`start/pause/remove`) -> `ITorrentCommandService`
+- Add/preview/settings apply -> `ITorrentWriteService`
+- Startup restore/sync -> restore + sync workflows
 - UI read-side -> `ITorrentReadModelFeed`
 
-## Что не возвращать
-- legacy facade `ITorrentService`
-- вторую command-систему внутри infrastructure queue/startup recovery
-- сырые исключения MonoTorrent в диалоги
-- новый JSON/settings стек без явной причины
+## Non-negotiable rules
 
-- Periodic runtime reconciliation проходит через `SyncTorrentCollectionFromRuntimeWorkflow`, а не через snapshot-publisher внутри infrastructure.
+- Do not add a second command pipeline outside intent/deferred model.
+- Do not bypass application contracts from UI.
+- Do not surface raw infrastructure/engine exceptions to users.
+- Do not implement ambiguous behavior without recording and resolving it via `OPEN_QUESTIONS.md`.

@@ -1,30 +1,60 @@
-# Architecture README
+﻿# Architecture Entry Point
 
-Читайте документы в таком порядке:
-1. `USER_APP_LOGIC.md` — продуктовые правила и поведение.
-2. `CURRENT_ARCHITECTURE_STATE.md` — текущее живое устройство проекта.
-3. `ANTI_PATTERNS.md` — чего нельзя делать в дальнейшем рефакторинге.
-4. `REGRESSION_CHECKLIST.md` — что проверять после изменений.
+Status: active
+Last updated: 2026-04-05
 
-## Коротко о текущей архитектуре
-- UI работает через `ITorrentWorkflowService`.
-- Start/Pause/Remove выполняются через `ITorrentCommandService` и intent/deferred policies.
-- Add/Preview/ApplySettings выполняются через `ITorrentWriteService`.
-- Startup restore идёт через `IRestoreTorrentCollectionWorkflow`.
-- Read-side приходит через `ITorrentReadModelFeed`, который проецирует `TorrentEntry` + runtime facts в UI read models.
-- MonoTorrent и файловое хранение остаются внутри Infrastructure.
-- Настройки хранятся через `nucs.JsonSettings`-based config classes.
+This is the single entry point for architecture and product-behavior documentation in `docs/project-map`.
 
-## Какая command-архитектура считается правильной
-Правильная command-архитектура проекта — это `ITorrentCommandService` + restore/deferred workflows.
-Историческая infrastructure-очередь команд (`TorrentCommandQueue` / queued intent inside startup) удалена и не должна возвращаться.
+## 1. Read in this order
 
+1. `USER_APP_LOGIC.md`
+- Product behavior from the user perspective.
 
-## 2026-03 alignment update
-- `ITorrentCommandService` остаётся единственным центром пользовательских команд.
-- `ITorrentWriteService` ограничен сценариями add/preview/apply-settings.
-- UI list/read-side теперь строится через `GetTorrentListQuery` и `TorrentListItemReadModel`, а не через прямую публикацию runtime snapshot'ов в Presentation.
-- Details screen переведён на отдельный `GetTorrentDetailsQuery` + `UpdatePerTorrentSettingsWorkflow`.
-- Close-flow проходит через application workflows `HandleWindowCloseWorkflow` и `HandleTrayExitWorkflow`, а `AppCloseCoordinator` стал thin shell adapter.
+2. `TARGET_ARCHITECTURE.md`
+- Target architecture, boundaries, canonical flows, governance rules.
 
-- Periodic runtime reconciliation проходит через `SyncTorrentCollectionFromRuntimeWorkflow`, а не через snapshot-publisher внутри infrastructure.
+3. `APPLICATION_CONTRACTS.md`
+- Application-layer contracts and guarantees.
+
+4. `NFR_SLO.md`
+- Non-functional expectations and reliability/responsiveness objectives.
+
+5. `FAILURE_MATRIX.md`
+- Expected behavior for known failure modes.
+
+6. `ANTI_PATTERNS.md`
+- Architectural guardrails (what must not be done).
+
+7. `REGRESSION_CHECKLIST.md`
+- Practical verification list after changes.
+
+8. `OPEN_QUESTIONS.md`
+- Ambiguities and pending clarifications. Do not implement speculative behavior.
+
+9. `CURRENT_ARCHITECTURE_STATE.md`
+- Snapshot of current implementation alignment.
+
+10. `TECH_DEBT_BACKLOG.md`
+- Deferred engineering cleanup and technical debt.
+
+## 2. Decision records
+
+- See `ADR/README.md` and accepted ADR files for fixed architectural decisions.
+
+## 3. Reference docs
+
+- `PROJECT_MAP.md` — codebase module map.
+- `NUGET_PACKAGES_MAP.md` — dependency/reference map.
+- `ONBOARDING.md` — quick onboarding checklist.
+
+## 4. Archive policy
+
+- Historical plans, closed transition reports, and old phase notes belong in `docs/project-map/archive/`.
+- Files in `archive/` are not a source of truth for current implementation decisions.
+
+## 5. Rule for ambiguity
+
+If any requirement can be interpreted in more than one valid way:
+1. record it in `OPEN_QUESTIONS.md`;
+2. do not ship assumption-based behavior;
+3. apply only approved behavior and update related docs in the same change set.
