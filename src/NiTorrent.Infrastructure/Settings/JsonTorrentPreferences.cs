@@ -8,88 +8,31 @@ public sealed class JsonTorrentPreferences : ITorrentPreferences
     private readonly TorrentConfig _cfg;
     public JsonTorrentPreferences(TorrentConfig cfg) => _cfg = cfg;
 
-    public string DefaultDownloadPath
-    {
-        get => _cfg.DefaultDownloadPath;
-        set { _cfg.DefaultDownloadPath = value; _cfg.Save(); }
-    }
+    public string DefaultDownloadPath => _cfg.DefaultDownloadPath;
 
-    public int MaximumDownloadRate
-    {
-        get => _cfg.MaximumDownloadRate;
-        set { _cfg.MaximumDownloadRate = value; _cfg.Save(); }
-    }
+    public int MaximumDownloadRate => _cfg.MaximumDownloadRate;
 
-    public int MaximumUploadRate
-    {
-        get => _cfg.MaximumUploadRate;
-        set { _cfg.MaximumUploadRate = value; _cfg.Save(); }
-    }
+    public int MaximumUploadRate => _cfg.MaximumUploadRate;
 
-    public int MaximumDiskReadRate
-    {
-        get => _cfg.MaximumDiskReadRate;
-        set { _cfg.MaximumDiskReadRate = value; _cfg.Save(); }
-    }
+    public int MaximumDiskReadRate => _cfg.MaximumDiskReadRate;
 
-    public int MaximumDiskWriteRate
-    {
-        get => _cfg.MaximumDiskWriteRate;
-        set { _cfg.MaximumDiskWriteRate = value; _cfg.Save(); }
-    }
+    public int MaximumDiskWriteRate => _cfg.MaximumDiskWriteRate;
 
-    public bool AllowDht
-    {
-        get => _cfg.AllowDht;
-        set { _cfg.AllowDht = value; _cfg.Save(); }
-    }
+    public bool AllowDht => _cfg.AllowDht;
 
-    public bool AllowPortForwarding
-    {
-        get => _cfg.AllowPortForwarding;
-        set { _cfg.AllowPortForwarding = value; _cfg.Save(); }
-    }
+    public bool AllowPortForwarding => _cfg.AllowPortForwarding;
 
-    public bool AllowLocalPeerDiscovery
-    {
-        get => _cfg.AllowLocalPeerDiscovery;
-        set { _cfg.AllowLocalPeerDiscovery = value; _cfg.Save(); }
-    }
+    public bool AllowLocalPeerDiscovery => _cfg.AllowLocalPeerDiscovery;
 
-    public int MaximumConnections
-    {
-        get => _cfg.MaximumConnections;
-        set { _cfg.MaximumConnections = value; _cfg.Save(); }
-    }
+    public int MaximumConnections => _cfg.MaximumConnections;
 
-    public int MaximumOpenFiles
-    {
-        get => _cfg.MaximumOpenFiles;
-        set { _cfg.MaximumOpenFiles = value; _cfg.Save(); }
-    }
+    public int MaximumOpenFiles => _cfg.MaximumOpenFiles;
 
-    public bool AutoSaveLoadFastResume
-    {
-        get => _cfg.AutoSaveLoadFastResume;
-        set { _cfg.AutoSaveLoadFastResume = value; _cfg.Save(); }
-    }
+    public bool AutoSaveLoadFastResume => _cfg.AutoSaveLoadFastResume;
 
-    public bool AutoSaveLoadMagnetLinkMetadata
-    {
-        get => _cfg.AutoSaveLoadMagnetLinkMetadata;
-        set { _cfg.AutoSaveLoadMagnetLinkMetadata = value; _cfg.Save(); }
-    }
+    public bool AutoSaveLoadMagnetLinkMetadata => _cfg.AutoSaveLoadMagnetLinkMetadata;
 
-    public TorrentFastResumeMode FastResumeMode
-    {
-        get => _cfg.FastResumeMode;
-        set { _cfg.FastResumeMode = value; _cfg.Save(); }
-    }
+    public TorrentFastResumeMode FastResumeMode => _cfg.FastResumeMode;
 
-    public bool MinimizeToTrayOnClose
-    {
-        get => _cfg.MinimizeToTrayOnClose;
-        set { _cfg.MinimizeToTrayOnClose = value; _cfg.Save(); }
-    }
-
+    public bool MinimizeToTrayOnClose => _cfg.MinimizeToTrayOnClose;
 }

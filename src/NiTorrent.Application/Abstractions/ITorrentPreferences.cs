@@ -5,28 +5,28 @@ namespace NiTorrent.Application.Abstractions;
 public interface ITorrentPreferences
 {
     // Paths
-    string DefaultDownloadPath { get; set; }
+    string DefaultDownloadPath { get; }
 
     // Rates (bytes/sec). 0 = unlimited
-    int MaximumDownloadRate { get; set; }
-    int MaximumUploadRate { get; set; }
-    int MaximumDiskReadRate { get; set; }
-    int MaximumDiskWriteRate { get; set; }
+    int MaximumDownloadRate { get; }
+    int MaximumUploadRate { get; }
+    int MaximumDiskReadRate { get; }
+    int MaximumDiskWriteRate { get; }
 
     // Network
-    bool AllowDht { get; set; }
-    bool AllowPortForwarding { get; set; }
-    bool AllowLocalPeerDiscovery { get; set; }
+    bool AllowDht { get; }
+    bool AllowPortForwarding { get; }
+    bool AllowLocalPeerDiscovery { get; }
 
     // Advanced
-    int MaximumConnections { get; set; }
-    int MaximumOpenFiles { get; set; }
+    int MaximumConnections { get; }
+    int MaximumOpenFiles { get; }
 
     // Resume/metadata
-    bool AutoSaveLoadFastResume { get; set; }
-    bool AutoSaveLoadMagnetLinkMetadata { get; set; }
-    TorrentFastResumeMode FastResumeMode { get; set; }
+    bool AutoSaveLoadFastResume { get; }
+    bool AutoSaveLoadMagnetLinkMetadata { get; }
+    TorrentFastResumeMode FastResumeMode { get; }
 
     // Window close behavior
-    bool MinimizeToTrayOnClose { get; set; }
+    bool MinimizeToTrayOnClose { get; }
 }
