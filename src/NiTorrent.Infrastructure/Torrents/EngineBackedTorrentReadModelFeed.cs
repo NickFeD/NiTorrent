@@ -20,8 +20,13 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
     private readonly ReplayDeferredTorrentActionsWorkflow _replayDeferredActionsWorkflow;
     private readonly ILogger<EngineBackedTorrentReadModelFeed> _logger;
     private readonly object _sync = new();
+    private readonly object _workSync = new();
     private long _syncCycleId;
     private IReadOnlyList<TorrentListItemReadModel> _current = [];
+    private IReadOnlyList<TorrentRuntimeFact> _latestRuntimeFacts = Array.Empty<TorrentRuntimeFact>();
+    private bool _refreshRequested;
+    private bool _runtimeSyncRequested;
+    private bool _isProcessing;
     private event Action<IReadOnlyList<TorrentListItemReadModel>>? _updated;
 
     public EngineBackedTorrentReadModelFeed(
@@ -61,18 +66,82 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
     }
 
     public void Refresh()
-        => _ = RefreshAsync();
+        => QueueWork(refreshRequested: true, runtimeSyncRequested: false, runtimeFacts: null);
 
-    private async Task RefreshAsync()
+    private void QueueWork(bool refreshRequested, bool runtimeSyncRequested, IReadOnlyList<TorrentRuntimeFact>? runtimeFacts)
+    {
+        var shouldStart = false;
+        lock (_workSync)
+        {
+            _refreshRequested |= refreshRequested;
+            _runtimeSyncRequested |= runtimeSyncRequested;
+            if (runtimeFacts is not null)
+                _latestRuntimeFacts = runtimeFacts;
+
+            if (!_isProcessing)
+            {
+                _isProcessing = true;
+                shouldStart = true;
+            }
+        }
+
+        if (shouldStart)
+            _ = ProcessWorkAsync();
+    }
+
+    private void OnRuntimeFactsUpdated(IReadOnlyList<TorrentRuntimeFact> runtimeFacts)
+        => QueueWork(refreshRequested: true, runtimeSyncRequested: true, runtimeFacts: runtimeFacts);
+
+    private async Task ProcessWorkAsync()
+    {
+        while (true)
+        {
+            bool shouldRefresh;
+            bool shouldSyncRuntime;
+            IReadOnlyList<TorrentRuntimeFact> runtimeFacts;
+
+            lock (_workSync)
+            {
+                shouldRefresh = _refreshRequested;
+                shouldSyncRuntime = _runtimeSyncRequested;
+                runtimeFacts = _latestRuntimeFacts;
+
+                _refreshRequested = false;
+                _runtimeSyncRequested = false;
+                _latestRuntimeFacts = Array.Empty<TorrentRuntimeFact>();
+            }
+
+            try
+            {
+                if (shouldSyncRuntime)
+                    await SynchronizeRuntimeAsync(runtimeFacts).ConfigureAwait(false);
+
+                if (shouldRefresh || shouldSyncRuntime)
+                    await RefreshCoreAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Read feed processing iteration failed");
+            }
+
+            lock (_workSync)
+            {
+                if (!_refreshRequested && !_runtimeSyncRequested)
+                {
+                    _isProcessing = false;
+                    return;
+                }
+            }
+        }
+    }
+
+    private async Task RefreshCoreAsync()
     {
         var items = await _getTorrentListQuery.ExecuteAsync(CancellationToken.None).ConfigureAwait(false);
         OnUpdated(items);
     }
 
-    private void OnRuntimeFactsUpdated(IReadOnlyList<TorrentRuntimeFact> runtimeFacts)
-        => _ = SynchronizeAndRefreshAsync(runtimeFacts);
-
-    private async Task SynchronizeAndRefreshAsync(IReadOnlyList<TorrentRuntimeFact> runtimeFacts)
+    private async Task SynchronizeRuntimeAsync(IReadOnlyList<TorrentRuntimeFact> runtimeFacts)
     {
         var cycleId = Interlocked.Increment(ref _syncCycleId);
         var affectedCount = runtimeFacts.Count;
@@ -111,16 +180,38 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
                 affectedCount,
                 string.IsNullOrWhiteSpace(affectedIds) ? "<none>" : affectedIds);
         }
-
-        await RefreshAsync().ConfigureAwait(false);
     }
 
     private void OnUpdated(IReadOnlyList<TorrentListItemReadModel> items)
     {
+        bool changed;
         lock (_sync)
+        {
+            changed = !AreSame(_current, items);
+            if (!changed)
+                return;
+
             _current = items;
+        }
 
         _updated?.Invoke(items);
+    }
+
+    private static bool AreSame(IReadOnlyList<TorrentListItemReadModel> left, IReadOnlyList<TorrentListItemReadModel> right)
+    {
+        if (ReferenceEquals(left, right))
+            return true;
+
+        if (left.Count != right.Count)
+            return false;
+
+        for (var i = 0; i < left.Count; i++)
+        {
+            if (!EqualityComparer<TorrentListItemReadModel>.Default.Equals(left[i], right[i]))
+                return false;
+        }
+
+        return true;
     }
 
     public void Dispose()

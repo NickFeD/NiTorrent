@@ -38,29 +38,59 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     public TorrentItemViewModel(TorrentListItemReadModel item)
     {
         _item = item;
-        Update(item);
+        Apply(item);
     }
 
-    public void Update(TorrentListItemReadModel item)
+    public bool Update(TorrentListItemReadModel item)
     {
         if (_isDisposed)
-            return;
+            return false;
 
-        _item = item;
+        if (EqualityComparer<TorrentListItemReadModel>.Default.Equals(_item, item))
+            return false;
 
-        State = _item.Status;
-        Progress = _item.Status.Progress;
-        IsCompleted = _item.Status.IsComplete;
-        DownloadSpeed = SizeFormatter.FormatSpeed(_item.Status.DownloadRateBytesPerSecond);
-        UploadSpeed = SizeFormatter.FormatSpeed(_item.Status.UploadRateBytesPerSecond);
-        StateText = BuildStateText(_item.Status);
-        OnPropertyChanged(nameof(Name));
-        OnPropertyChanged(nameof(Size));
-        OnPropertyChanged(nameof(SavePath));
+        Apply(item);
+        return true;
     }
 
     private static string BuildStateText(TorrentStatus status)
         => TorrentStatusTextMapper.ToUserFacingText(status);
+
+    private void Apply(TorrentListItemReadModel item)
+    {
+        var previous = _item;
+        _item = item;
+
+        if (!string.Equals(previous.Name, item.Name, StringComparison.Ordinal))
+            OnPropertyChanged(nameof(Name));
+
+        if (previous.Size != item.Size)
+            OnPropertyChanged(nameof(Size));
+
+        if (!string.Equals(previous.SavePath, item.SavePath, StringComparison.Ordinal))
+            OnPropertyChanged(nameof(SavePath));
+
+        if (!EqualityComparer<TorrentStatus>.Default.Equals(State, item.Status))
+            State = item.Status;
+
+        if (Progress != item.Status.Progress)
+            Progress = item.Status.Progress;
+
+        if (IsCompleted != item.Status.IsComplete)
+            IsCompleted = item.Status.IsComplete;
+
+        var downloadSpeed = SizeFormatter.FormatSpeed(item.Status.DownloadRateBytesPerSecond);
+        if (!string.Equals(DownloadSpeed, downloadSpeed, StringComparison.Ordinal))
+            DownloadSpeed = downloadSpeed;
+
+        var uploadSpeed = SizeFormatter.FormatSpeed(item.Status.UploadRateBytesPerSecond);
+        if (!string.Equals(UploadSpeed, uploadSpeed, StringComparison.Ordinal))
+            UploadSpeed = uploadSpeed;
+
+        var stateText = BuildStateText(item.Status);
+        if (!string.Equals(StateText, stateText, StringComparison.Ordinal))
+            StateText = stateText;
+    }
 
     public void Dispose()
     {

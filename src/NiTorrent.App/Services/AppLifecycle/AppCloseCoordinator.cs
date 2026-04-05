@@ -9,6 +9,7 @@ namespace NiTorrent.App.Services.AppLifecycle;
 public sealed class AppCloseCoordinator : IAppCloseCoordinator
 {
     private readonly SemaphoreSlim _exitGate = new(1, 1);
+    private readonly SemaphoreSlim _closeGate = new(1, 1);
     private readonly HandleWindowCloseWorkflow _handleWindowCloseWorkflow;
     private readonly HandleTrayExitWorkflow _handleTrayExitWorkflow;
     private readonly ITorrentEngineMaintenanceService _engineMaintenanceService;
@@ -18,7 +19,7 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     private readonly ILogger<AppCloseCoordinator> _logger;
 
     private bool _isExiting;
-    private int _closeRequestInProgress;
+    private int _pendingWindowCloseRequest;
 
     public AppCloseCoordinator(
         HandleWindowCloseWorkflow handleWindowCloseWorkflow,
@@ -45,51 +46,60 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
         if (_isExiting)
             return;
 
-        if (Interlocked.Exchange(ref _closeRequestInProgress, 1) == 1)
-            return;
+        Interlocked.Exchange(ref _pendingWindowCloseRequest, 1);
+
+        await _closeGate.WaitAsync().ConfigureAwait(false);
 
         try
         {
-            var action = await _handleWindowCloseWorkflow.ExecuteAsync().ConfigureAwait(false);
-
-            switch (action)
+            while (Interlocked.Exchange(ref _pendingWindowCloseRequest, 0) == 1)
             {
-                case AppShellCloseAction.MinimizeToTray:
-                    await MinimizeToTrayAsync().ConfigureAwait(false);
+                if (_isExiting)
                     return;
-                case AppShellCloseAction.AskUser:
-                    var choice = await _dialogService
-                        .ShowWindowCloseChoiceAsync(defaultMinimizeToTray: false)
-                        .ConfigureAwait(false);
 
-                    if (choice is null)
-                        return;
+                var action = await _handleWindowCloseWorkflow.ExecuteAsync().ConfigureAwait(false);
 
-                    if (choice.RememberChoice)
-                    {
-                        var settings = await _settingsRepository.LoadAsync().ConfigureAwait(false);
-                        var updated = settings with
-                        {
-                            CloseBehavior = choice.Action == WindowCloseAction.MinimizeToTray
-                                ? AppCloseBehavior.MinimizeToTray
-                                : AppCloseBehavior.ExitApplication
-                        };
-                        await _settingsRepository.SaveAsync(updated).ConfigureAwait(false);
-                    }
-
-                    if (choice.Action == WindowCloseAction.MinimizeToTray)
-                    {
+                switch (action)
+                {
+                    case AppShellCloseAction.MinimizeToTray:
                         await MinimizeToTrayAsync().ConfigureAwait(false);
+                        break;
+                    case AppShellCloseAction.AskUser:
+                        var choice = await _dialogService
+                            .ShowWindowCloseChoiceAsync(defaultMinimizeToTray: false)
+                            .ConfigureAwait(false);
+
+                        if (choice is null)
+                            return;
+
+                        if (choice.RememberChoice)
+                        {
+                            var settings = await _settingsRepository.LoadAsync().ConfigureAwait(false);
+                            var updated = settings with
+                            {
+                                CloseBehavior = choice.Action == WindowCloseAction.MinimizeToTray
+                                    ? AppCloseBehavior.MinimizeToTray
+                                    : AppCloseBehavior.ExitApplication
+                            };
+                            await _settingsRepository.SaveAsync(updated).ConfigureAwait(false);
+                        }
+
+                        if (choice.Action == WindowCloseAction.MinimizeToTray)
+                        {
+                            await MinimizeToTrayAsync().ConfigureAwait(false);
+                            break;
+                        }
+
+                        await StartExitAsync(exitAsync).ConfigureAwait(false);
                         return;
-                    }
+                    case AppShellCloseAction.ExitApplication:
+                    default:
+                        await StartExitAsync(exitAsync).ConfigureAwait(false);
+                        return;
+                }
 
-                    break;
-                case AppShellCloseAction.ExitApplication:
-                default:
-                    break;
+                // Continue loop if a newer close request arrived while handling this one.
             }
-
-            await StartExitAsync(exitAsync).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -97,7 +107,7 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
         }
         finally
         {
-            Interlocked.Exchange(ref _closeRequestInProgress, 0);
+            _closeGate.Release();
         }
     }
 

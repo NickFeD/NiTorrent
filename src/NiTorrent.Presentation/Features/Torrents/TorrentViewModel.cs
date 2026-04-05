@@ -17,6 +17,9 @@ public partial class TorrentViewModel : ObservableObject
     private readonly ITorrentWorkflowService _torrentWorkflowService;
     private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
+    private readonly object _pendingUpdateSync = new();
+    private IReadOnlyList<TorrentListItemReadModel> _pendingItems = Array.Empty<TorrentListItemReadModel>();
+    private int _uiUpdateScheduled;
 
     public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
 
@@ -65,8 +68,24 @@ public partial class TorrentViewModel : ObservableObject
 
     private void UpdateTorrent(IReadOnlyList<TorrentListItemReadModel> torrents)
     {
-        _ui.TryEnqueue(() =>
+        lock (_pendingUpdateSync)
+            _pendingItems = torrents;
+
+        if (Interlocked.Exchange(ref _uiUpdateScheduled, 1) == 1)
+            return;
+
+        if (!_ui.TryEnqueue(DrainPendingUpdatesOnUiThread))
+            Interlocked.Exchange(ref _uiUpdateScheduled, 0);
+    }
+
+    private void DrainPendingUpdatesOnUiThread()
+    {
+        while (true)
         {
+            IReadOnlyList<TorrentListItemReadModel> torrents;
+            lock (_pendingUpdateSync)
+                torrents = _pendingItems;
+
             long totalDownloadSpeed = 0;
             long totalUploadSpeed = 0;
             var actualIds = torrents.Select(x => x.Id).ToHashSet();
@@ -86,24 +105,42 @@ public partial class TorrentViewModel : ObservableObject
             {
                 totalDownloadSpeed += torrent.Status.DownloadRateBytesPerSecond;
                 totalUploadSpeed += torrent.Status.UploadRateBytesPerSecond;
+                var selectedChanged = false;
+
                 if (_torrents.TryGetValue(torrent.Id, out var oldTorrent))
                 {
-                    oldTorrent.Update(torrent);
+                    var changed = oldTorrent.Update(torrent);
+                    selectedChanged = changed && ReferenceEquals(oldTorrent, SelectedTorrent);
                 }
                 else
                 {
                     var newTorrent = new TorrentItemViewModel(torrent);
                     _torrents.Add(newTorrent.Id, newTorrent);
                     Torrents.Add(newTorrent);
+                    selectedChanged = ReferenceEquals(newTorrent, SelectedTorrent);
                 }
+
+                if (selectedChanged)
+                    RefreshCommands();
             }
 
             TotalDownloadSpeed = SizeFormatter.FormatSpeed(totalDownloadSpeed);
             TotalUploadSpeed = SizeFormatter.FormatSpeed(totalUploadSpeed);
             OnPropertyChanged(nameof(IsEmpty));
-            if (SelectedTorrent != null)
-                RefreshCommands();
-        });
+
+            Interlocked.Exchange(ref _uiUpdateScheduled, 0);
+
+            lock (_pendingUpdateSync)
+            {
+                if (ReferenceEquals(torrents, _pendingItems))
+                    return;
+            }
+
+            if (Interlocked.Exchange(ref _uiUpdateScheduled, 1) == 0)
+                continue;
+
+            return;
+        }
     }
 
     partial void OnSelectedTorrentChanged(TorrentItemViewModel? value)
