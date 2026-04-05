@@ -9,20 +9,20 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
     private readonly ITorrentCollectionRepository _repository;
     private readonly ITorrentEngineLifecycle _engineLifecycle;
     private readonly SyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
-    private readonly IApplyDeferredTorrentActionsWorkflow _applyDeferredActionsWorkflow;
+    private readonly ReplayDeferredTorrentActionsWorkflow _replayDeferredActionsWorkflow;
     private readonly ILegacyTorrentEntrySettingsMigrationSource _legacySettingsRepository;
 
     public RestoreTorrentCollectionWorkflow(
         ITorrentCollectionRepository repository,
         ITorrentEngineLifecycle engineLifecycle,
         SyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow,
-        IApplyDeferredTorrentActionsWorkflow applyDeferredActionsWorkflow,
+        ReplayDeferredTorrentActionsWorkflow replayDeferredActionsWorkflow,
         ILegacyTorrentEntrySettingsMigrationSource legacySettingsRepository)
     {
         _repository = repository;
         _engineLifecycle = engineLifecycle;
         _syncRuntimeWorkflow = syncRuntimeWorkflow;
-        _applyDeferredActionsWorkflow = applyDeferredActionsWorkflow;
+        _replayDeferredActionsWorkflow = replayDeferredActionsWorkflow;
         _legacySettingsRepository = legacySettingsRepository;
     }
 
@@ -37,7 +37,7 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
 
         var executionPlan = BuildExecutionPlan(syncedCollection);
 
-        var deferredResult = await _applyDeferredActionsWorkflow.ExecuteAsync(executionPlan, ct).ConfigureAwait(false);
+        var deferredResult = await _replayDeferredActionsWorkflow.ExecuteAsync(executionPlan, ct).ConfigureAwait(false);
         syncedCollection = deferredResult.UpdatedEntries.ToList();
         if (deferredResult.RemovedIds.Count > 0)
         {

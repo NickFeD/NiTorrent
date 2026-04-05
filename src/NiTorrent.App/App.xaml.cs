@@ -10,6 +10,7 @@ using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Settings;
 using NiTorrent.Application.Shell;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Infrastructure.DI;
@@ -100,6 +101,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<HandleWindowCloseWorkflow>();
         services.AddSingleton<HandleTrayExitWorkflow>();
         services.AddSingleton<SyncTorrentCollectionFromRuntimeWorkflow>();
+        services.AddSingleton<ReplayDeferredTorrentActionsWorkflow>();
         services.AddSingleton<UpdatePerTorrentSettingsWorkflow>();
         services.AddSingleton<IAppCloseCoordinator, AppCloseCoordinator>();
         services.AddSingleton<IAppShutdownCoordinator, AppShutdownCoordinator>();

@@ -1,5 +1,6 @@
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Domain.Torrents;
@@ -15,6 +16,7 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
     private readonly GetTorrentListQuery _getTorrentListQuery;
     private readonly ITorrentRuntimeFactsProvider _runtimeFactsProvider;
     private readonly SyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
+    private readonly ReplayDeferredTorrentActionsWorkflow _replayDeferredActionsWorkflow;
     private readonly object _sync = new();
     private IReadOnlyList<TorrentListItemReadModel> _current = [];
     private event Action<IReadOnlyList<TorrentListItemReadModel>>? _updated;
@@ -22,11 +24,13 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
     public EngineBackedTorrentReadModelFeed(
         GetTorrentListQuery getTorrentListQuery,
         ITorrentRuntimeFactsProvider runtimeFactsProvider,
-        SyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow)
+        SyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow,
+        ReplayDeferredTorrentActionsWorkflow replayDeferredActionsWorkflow)
     {
         _getTorrentListQuery = getTorrentListQuery;
         _runtimeFactsProvider = runtimeFactsProvider;
         _syncRuntimeWorkflow = syncRuntimeWorkflow;
+        _replayDeferredActionsWorkflow = replayDeferredActionsWorkflow;
 
         _runtimeFactsProvider.RuntimeFactsUpdated += OnRuntimeFactsUpdated;
         Refresh();
@@ -72,6 +76,15 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
         catch
         {
             // Best-effort synchronization; still try to show the latest persisted projection.
+        }
+
+        try
+        {
+            await _replayDeferredActionsWorkflow.ExecuteAsync(ct: CancellationToken.None).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Best-effort deferred replay; projection refresh continues.
         }
 
         await RefreshAsync().ConfigureAwait(false);
