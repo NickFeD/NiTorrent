@@ -1,5 +1,6 @@
 using MonoTorrent;
 using MonoTorrent.Client;
+using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Torrents;
 
@@ -11,10 +12,13 @@ namespace NiTorrent.Infrastructure.Torrents;
 /// </summary>
 public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFactsProvider, IDisposable
 {
+    private const string UserSafeRuntimeErrorMessage = "Ошибка работы торрент-движка.";
+
     private readonly TorrentRuntimeRegistry _runtimeRegistry;
     private readonly TorrentEventOrchestrator _eventOrchestrator;
     private readonly TorrentStartupCoordinator _startupCoordinator;
     private readonly SemaphoreSlim _operationGate;
+    private readonly ILogger<RuntimeBackedTorrentRuntimeFactsProvider> _logger;
 
     public event Action<IReadOnlyList<TorrentRuntimeFact>>? RuntimeFactsUpdated;
 
@@ -22,12 +26,14 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
         TorrentRuntimeRegistry runtimeRegistry,
         TorrentEventOrchestrator eventOrchestrator,
         TorrentStartupCoordinator startupCoordinator,
-        TorrentRuntimeContext runtimeContext)
+        TorrentRuntimeContext runtimeContext,
+        ILogger<RuntimeBackedTorrentRuntimeFactsProvider> logger)
     {
         _runtimeRegistry = runtimeRegistry;
         _eventOrchestrator = eventOrchestrator;
         _startupCoordinator = startupCoordinator;
         _operationGate = runtimeContext.OperationGate;
+        _logger = logger;
 
         _eventOrchestrator.RuntimeInvalidated += OnRuntimeChanged;
         _eventOrchestrator.Loaded += OnLoaded;
@@ -60,7 +66,7 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
     private void OnLoaded()
         => RuntimeFactsUpdated?.Invoke(GetAll());
 
-    private static TorrentRuntimeFact MapManager(TorrentId id, TorrentManager manager)
+    private TorrentRuntimeFact MapManager(TorrentId id, TorrentManager manager)
     {
         var phase = manager.State switch
         {
@@ -74,6 +80,12 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
             _ => TorrentPhase.Unknown
         };
 
+        var rawRuntimeError = manager.Error;
+        if (rawRuntimeError is not null)
+        {
+            _logger.LogWarning(rawRuntimeError, "Runtime error for torrent {TorrentId} ({TorrentName})", id, manager.Name);
+        }
+
         var progress = manager.PartialProgress;
         var runtime = new TorrentRuntimeState(
             TorrentLifecycleStateMapper.FromPhase(phase),
@@ -81,7 +93,7 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
             progress,
             manager.Monitor.DownloadRate,
             manager.Monitor.UploadRate,
-            manager.Error?.ToString(),
+            rawRuntimeError is null ? null : UserSafeRuntimeErrorMessage,
             IsEngineBacked: true);
 
         return new TorrentRuntimeFact(

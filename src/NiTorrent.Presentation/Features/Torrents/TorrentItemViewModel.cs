@@ -60,11 +60,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     }
 
     private static string BuildStateText(TorrentStatus status)
-    {
-        if (!string.IsNullOrWhiteSpace(status.Error) && status.Phase == TorrentPhase.Error)
-            return $"РћС€РёР±РєР°: {status.Error}";
-
-        var sourceSuffix = status.Source == TorrentStatusSource.Cached ? " (РєСЌС€)" : string.Empty;
+    {        var sourceSuffix = status.Source == TorrentStatusSource.Cached ? " (РєСЌС€)" : string.Empty;
 
         return status.Phase switch
         {
@@ -89,5 +85,6 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         GC.SuppressFinalize(this);
     }
 }
+
 
 
