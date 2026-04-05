@@ -80,7 +80,9 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
 
         try
         {
-            await _replayDeferredActionsWorkflow.ExecuteAsync(ct: CancellationToken.None).ConfigureAwait(false);
+            await _replayDeferredActionsWorkflow
+                .ExecuteAsync(trigger: "read-feed-runtime-resync", ct: CancellationToken.None)
+                .ConfigureAwait(false);
         }
         catch
         {

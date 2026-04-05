@@ -37,7 +37,9 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
 
         var executionPlan = BuildExecutionPlan(syncedCollection);
 
-        var deferredResult = await _replayDeferredActionsWorkflow.ExecuteAsync(executionPlan, ct).ConfigureAwait(false);
+        var deferredResult = await _replayDeferredActionsWorkflow
+            .ExecuteAsync(executionPlan, trigger: "restore-startup", ct: ct)
+            .ConfigureAwait(false);
         syncedCollection = deferredResult.UpdatedEntries.ToList();
         if (deferredResult.RemovedIds.Count > 0)
         {
