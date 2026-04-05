@@ -124,6 +124,9 @@ public sealed class TorrentCatalogStore
             existing.LastPhase = entry.LastKnownStatus.Phase;
             existing.IsComplete = entry.LastKnownStatus.IsComplete;
             existing.Error = entry.LastKnownStatus.Error;
+            existing.RuntimeDownloadRateBytesPerSecond = entry.LastKnownStatus.DownloadRateBytesPerSecond;
+            existing.RuntimeUploadRateBytesPerSecond = entry.LastKnownStatus.UploadRateBytesPerSecond;
+            existing.RuntimeStatusSource = entry.LastKnownStatus.Source;
             existing.SelectedFiles = entry.SelectedFiles?.ToList() ?? new List<string>();
             existing.DeferredActions = entry.DeferredActions?
                 .Select(x => new TorrentCatalogDeferredActionEntry
@@ -380,23 +383,26 @@ public sealed class TorrentCatalogStore
 
     private static TorrentEntry MapEntry(TorrentCatalogEntry entry)
     {
+        var statusSource = entry.RuntimeStatusSource ?? TorrentStatusSource.Cached;
+        var isEngineBacked = statusSource == TorrentStatusSource.Live;
+
         var runtime = new TorrentRuntimeState(
             TorrentLifecycleStateMapper.FromPhase(entry.LastPhase),
             entry.IsComplete,
             entry.Progress,
-            0,
-            0,
+            entry.RuntimeDownloadRateBytesPerSecond,
+            entry.RuntimeUploadRateBytesPerSecond,
             entry.Error,
-            false);
+            isEngineBacked);
 
         var lastKnownStatus = new TorrentStatus(
             entry.LastPhase,
             entry.IsComplete,
             entry.Progress,
-            0,
-            0,
+            entry.RuntimeDownloadRateBytesPerSecond,
+            entry.RuntimeUploadRateBytesPerSecond,
             entry.Error,
-            TorrentStatusSource.Cached);
+            statusSource);
 
         return new TorrentEntry(
             new TorrentId(entry.Id),

@@ -55,6 +55,19 @@ internal sealed class TorrentCatalogEntry
     public bool IsComplete { get; set; }
 
     /// <summary>
+    /// In-memory runtime refinements used by read-side projection in the current process.
+    /// They are intentionally not persisted to avoid stale "live" state after app restart.
+    /// </summary>
+    [JsonIgnore]
+    public long RuntimeDownloadRateBytesPerSecond { get; set; }
+
+    [JsonIgnore]
+    public long RuntimeUploadRateBytesPerSecond { get; set; }
+
+    [JsonIgnore]
+    public TorrentStatusSource? RuntimeStatusSource { get; set; }
+
+    /// <summary>
     /// Legacy v3 field kept only for migration. New saves write Intent instead.
     /// </summary>
     public bool? ShouldRun { get; set; }
