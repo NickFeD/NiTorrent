@@ -1,431 +1,436 @@
-# Пользовательская логика приложения
+﻿# User App Logic
 
-Этот документ описывает приложение **с точки зрения пользователя**, а не текущей реализации кода.
-Он нужен как опорная спецификация поведения: сначала мы фиксируем, **что приложение должно делать**, а уже потом строим под это целевую архитектуру.
+This document describes the application **from the user's point of view**, not from the current code implementation.
+It is a behavioral specification: we first define **what the app must do**, and only then design the target architecture to support it.
 
-Документ специально не привязан к текущим классам, сервисам и слоям. Он описывает:
-- какие сценарии есть у пользователя;
-- какие состояния есть у приложения и торрентов;
-- что пользователь может и не может делать;
-- какое поведение считается корректным;
-- какие ограничения и инварианты должны соблюдаться всегда.
-
----
-
-## 1. Назначение приложения
-
-Приложение — это настольный торрент-клиент для Windows.
-Пользователь использует его, чтобы:
-- добавлять торрент-файлы и magnet-ссылки;
-- выбирать, какие файлы скачивать;
-- видеть состояние загрузок;
-- управлять загрузками;
-- сохранять состояние между запусками;
-- работать с приложением как с обычным desktop-приложением, включая сворачивание в трей.
-
-Главная ценность для пользователя:
-- список торрентов не теряется;
-- действия пользователя не пропадают;
-- приложение предсказуемо восстанавливается после перезапуска;
-- состояние в интерфейсе соответствует тому, что реально происходит в торрент-движке.
+This document is intentionally not tied to current classes, services, or layers. It defines:
+- what user scenarios exist;
+- what application and torrent states exist;
+- what the user can and cannot do;
+- what behavior is considered correct;
+- what constraints and invariants must always hold.
 
 ---
 
-## 2. Пользовательские сущности
+## 1. Application Purpose
 
-С точки зрения пользователя в приложении есть следующие основные сущности.
+The application is a desktop torrent client for Windows.
+Users use it to:
+- add torrent files and magnet links;
+- choose which files to download;
+- see download state;
+- control downloads;
+- persist state between launches;
+- use it as a normal desktop app, including minimizing to tray.
 
-### 2.1. Торрент
-Пользователь воспринимает торрент как один элемент списка с понятными свойствами:
-- имя;
-- статус;
-- прогресс;
-- скорость загрузки;
-- скорость отдачи;
-- размер;
-- путь сохранения;
-- список файлов;
-- дата добавления.
-
-Пользователь не обязан знать про внутренние `manager`, `snapshot`, `catalog`, `engine state` и другие технические сущности.
-
-### 2.2. Настройки
-Пользователь воспринимает настройки как сохранённые параметры приложения, которые:
-- отображаются в UI;
-- меняются в UI;
-- явно сохраняются;
-- после сохранения влияют на поведение приложения.
-
-### 2.3. Главное окно
-Главное окно — основной способ работы с приложением.
-Пользователь ожидает, что:
-- окно открывается быстро;
-- список торрентов отображается сразу или максимально рано;
-- окно не зависает при открытии страниц;
-- окно можно закрыть, свернуть в трей и восстановить.
-
-### 2.4. Трей
-Трей — это дополнительный shell-сценарий, а не отдельный режим приложения.
-Пользователь ожидает, что:
-- трей появляется только тогда, когда он нужен;
-- из трея можно вернуть окно;
-- из трея можно полностью завершить приложение.
+Core user value:
+- the torrent list is not lost;
+- user actions are not lost;
+- the app restores predictably after restart;
+- UI state matches what is actually happening in the torrent engine.
 
 ---
 
-## 3. Основные пользовательские сценарии
+## 2. User-Facing Entities
 
-### 3.1. Первый запуск приложения
-Пользователь запускает приложение впервые.
+From the user perspective, the app has these core entities.
 
-Ожидаемое поведение:
-- приложение открывается без зависания;
-- список торрентов пустой;
-- доступны команды добавления;
-- настройки имеют осмысленные значения по умолчанию.
+### 2.1. Torrent
+A torrent is a single list item with understandable properties:
+- name;
+- status;
+- progress;
+- download speed;
+- upload speed;
+- size;
+- save path;
+- file list;
+- date added.
 
-Приложение не должно:
-- показывать невалидные фантомные торренты;
-- зависать из-за инициализации движка;
-- требовать от пользователя технических действий для старта.
+The user should not need to know internal entities like `manager`, `snapshot`, `catalog`, `engine state`, etc.
 
-### 3.2. Повторный запуск приложения
-Пользователь уже работал с приложением и запускает его снова.
+### 2.2. Settings
+Settings are persisted app parameters that:
+- are displayed in UI;
+- can be changed in UI;
+- are explicitly saved;
+- affect app behavior after save/apply.
 
-Ожидаемое поведение:
-- список торрентов появляется сразу из сохранённого состояния;
-- приложение не ждёт полной загрузки торрент-движка, чтобы показать список;
-- после инициализации движка состояние синхронизируется с реальным runtime;
-- ранее запущенные торренты снова стартуют;
-- ранее поставленные на паузу остаются на паузе;
-- команды, сделанные пользователем до полной загрузки движка, не теряются.
+### 2.3. Main Window
+The main window is the primary way to use the app.
+The user expects that:
+- it opens quickly;
+- the torrent list appears immediately or as early as possible;
+- opening pages does not freeze the window;
+- the window can be closed, minimized to tray, and restored.
 
-Это один из ключевых сценариев всего проекта.
-
-### 3.3. Добавление `.torrent` файла
-Пользователь выбирает `.torrent` файл.
-
-Ожидаемое поведение:
-1. приложение читает метаданные торрента;
-2. показывает preview;
-3. пользователь может:
-   - отменить добавление;
-   - выбрать папку назначения;
-   - выбрать только часть файлов;
-4. после подтверждения торрент появляется в списке;
-5. выбранные файлы скачиваются, невыбранные — нет.
-
-Если торрент уже добавлен:
-- пользователь должен получить понятное сообщение;
-- приложение не должно создавать дубликат в списке.
-
-### 3.4. Добавление magnet-ссылки
-Пользователь вставляет magnet-ссылку.
-
-Ожидаемое поведение:
-- ссылка принимается системой;
-- приложение сначала получает метаданные magnet-ссылки;
-- после этого показывает тот же preview, что и для `.torrent` файла;
-- пользователь подтверждает добавление через единый preview-flow.
-
-### 3.5. Добавление торрента через file association
-Пользователь открывает `.torrent` файл из проводника.
-
-Ожидаемое поведение:
-- если приложение закрыто, оно запускается и обрабатывает файл;
-- если приложение уже запущено, оно принимает файл без поломки текущего состояния;
-- добавление проходит через ту же логику preview и validation, что и обычное добавление из UI.
-
-### 3.6. Просмотр списка торрентов
-Пользователь видит список торрентов как основной экран приложения.
-
-Ожидаемое поведение:
-- список не “прыгает” без причины;
-- элементы не пропадают самопроизвольно;
-- порядок списка стабилен и понятен;
-- после перезапуска список восстанавливается;
-- обновления статуса не должны ломать выбор пользователя.
-
-### 3.7. Запуск торрента
-Пользователь нажимает запуск.
-
-Ожидаемое поведение:
-- торрент переходит в активное состояние;
-- когда движок готов, начинается реальная загрузка или раздача;
-- статус и скорости обновляются;
-- выбор пользователя сохраняется для следующего запуска.
-
-### 3.8. Пауза торрента
-Пользователь нажимает паузу.
-
-Ожидаемое поведение:
-- торрент перестаёт активно качать и раздавать;
-- скорость загрузки становится 0;
-- скорость отдачи становится 0;
-- статус визуально соответствует остановленному пользователем состоянию;
-- это состояние сохраняется между перезапусками.
-
-Примечание: внутренние runtime-состояния `Paused` и `Stopped` могут различаться, но пользовательская модель может отображать их одинаково.
-
-### 3.9. Удаление торрента
-Пользователь удаляет торрент из списка.
-
-Ожидаемое поведение:
-- запись исчезает из списка;
-- состояние удаляется из сохранённого каталога;
-- после перезапуска торрент не возвращается;
-- если движок ещё не загрузился, намерение удалить всё равно должно примениться.
-
-Отдельно нужно определить продуктовым решением:
-- удаляем только запись из клиента;
-- или ещё и скачанные данные с диска.
-
-Если это решение ещё не зафиксировано, архитектура должна быть готова к обоим вариантам.
-
-### 3.10. Открытие папки торрента
-Пользователь хочет открыть папку, куда качается торрент.
-
-Ожидаемое поведение:
-- открывается проводник Windows;
-- открывается правильный путь;
-- если путь отсутствует, пользователь получает понятное сообщение.
-
-### 3.11. Изменение настроек
-Пользователь открывает страницу настроек.
-
-Ожидаемое поведение:
-- страница открывается быстро;
-- поля имеют текущие значения;
-- изменения сначала находятся в локальном состоянии формы;
-- после нажатия “Применить” настройки сохраняются;
-- после сохранения нужные настройки применяются к приложению.
-
-Поведение должно быть единообразным для всех настроек одной страницы.
-
-### 3.12. Закрытие приложения
-Пользователь закрывает окно приложения.
-
-Ожидаемое поведение:
-- если включено “сворачивать в трей”, окно скрывается в трей;
-- если выключено, приложение завершается полностью.
-
-Пользователь не должен сталкиваться с разными системами закрытия в разных местах приложения.
-
-### 3.13. Выход из трея
-Пользователь выбирает `Выход` в трее.
-
-Ожидаемое поведение:
-- приложение завершается полностью;
-- настройка “сворачивать в трей при закрытии” в этом случае не применяется;
-- состояние сохраняется корректно.
-
-### 3.14. Восстановление после некорректного предыдущего состояния
-Пользователь мог закрыть приложение неидеально, или состояние движка могло оказаться повреждено.
-
-Ожидаемое поведение:
-- приложение по возможности восстанавливает список торрентов из каталога;
-- если runtime-state битый и соответствующие торренты уже не существуют в реальном движке, приложение не обязано удерживать их в UI;
-- приложение должно деградировать безопасно: не зависать, не ломать старт и не вводить пользователя в заблуждение несуществующими runtime-элементами.
+### 2.4. Tray
+Tray is an additional shell scenario, not a separate app mode.
+The user expects that:
+- tray appears only when needed;
+- the main window can be restored from tray;
+- the app can be fully exited from tray.
 
 ---
 
-## 4. Что пользователь может делать до полной инициализации торрент-движка
+## 3. Core User Scenarios
 
-Это отдельная важная часть логики.
+### 3.1. First App Launch
+The user launches the app for the first time.
 
-До полной загрузки движка пользователь всё равно должен иметь возможность:
-- видеть список торрентов из кеша;
-- запускать торрент;
-- ставить торрент на паузу;
-- удалять торрент;
-- видеть настройки и менять их;
-- закрыть или свернуть приложение.
+Expected behavior:
+- app opens without freezing;
+- torrent list is empty;
+- add commands are available;
+- settings have sensible defaults.
 
-Если действие сделано до инициализации движка:
-- оно должно быть принято системой;
-- должно сохраниться как намерение пользователя;
-- должно примениться после того, как движок будет готов.
+The app must not:
+- show invalid phantom torrents;
+- freeze due to engine initialization;
+- require technical/manual bootstrap steps from user.
 
-Пользователь не обязан знать, что команда была “отложена”.
-Для него приложение должно вести себя как обычный клиент.
+### 3.2. Subsequent App Launch
+The user has used the app before and launches it again.
+
+Expected behavior:
+- torrent list appears immediately from persisted state;
+- app does not wait for full torrent engine startup before showing list;
+- after engine initialization, state syncs with real runtime;
+- previously running torrents are started again;
+- previously paused torrents remain paused;
+- commands issued before full engine startup are not lost.
+
+This is one of the most important scenarios in the project.
+
+### 3.3. Add `.torrent` File
+The user selects a `.torrent` file.
+
+Expected behavior:
+1. app reads torrent metadata;
+2. app shows preview;
+3. user can:
+   - cancel;
+   - choose destination folder;
+   - select only part of files;
+4. after confirmation, torrent appears in list;
+5. selected files are downloaded, unselected files are not.
+
+If torrent is already added:
+- user gets a clear message;
+- app does not create a duplicate.
+
+### 3.4. Add Magnet Link
+The user pastes a magnet link.
+
+Expected behavior:
+- link is accepted;
+- app first resolves magnet metadata;
+- app then normalizes magnet input into the same prepared torrent representation used by `.torrent`;
+- app then opens the **same preview and validation flow** used for `.torrent`;
+- user confirms through this single unified preview flow.
+
+Clarification: behavior for magnet and `.torrent` must be unified as early as reasonably possible and follow one shared logic path after metadata is available.
+
+### 3.5. Add Torrent via File Association
+The user opens a `.torrent` file from Windows Explorer.
+
+Expected behavior:
+- if app is closed, app starts and handles the file;
+- if app is already running, app accepts the file without breaking current state;
+- add flow goes through the same preview/validation logic as UI add flow.
+
+### 3.6. View Torrent List
+User sees torrent list as the main app screen.
+
+Expected behavior:
+- list does not jump unexpectedly;
+- items do not disappear on their own;
+- list ordering is stable and understandable;
+- list is restored after restart;
+- status updates do not break user selection.
+
+### 3.7. Start Torrent
+User presses start.
+
+Expected behavior:
+- torrent transitions to active state;
+- when engine is ready, real download/seeding begins;
+- status and speeds update;
+- user choice is persisted for next launch.
+
+### 3.8. Pause Torrent
+User presses pause.
+
+Expected behavior:
+- torrent stops active download/seeding;
+- download speed becomes 0;
+- upload speed becomes 0;
+- visual status matches user-stopped state;
+- this state is persisted across restarts.
+
+Note: internal runtime states `Paused` and `Stopped` may differ, but in UI they must be shown as one unified user-facing state.
+
+### 3.9. Remove Torrent
+User removes torrent from list.
+
+Expected behavior:
+- record disappears from list;
+- state is removed from persisted catalog;
+- torrent does not return after restart;
+- if engine is not initialized yet, remove intent is still applied.
+
+Removal mode must be chosen by the user at removal time:
+- remove only record from client;
+- or remove downloaded files from disk too.
+
+Neither mode has product-level priority over the other.
+
+### 3.10. Open Torrent Folder
+User wants to open torrent download folder.
+
+Expected behavior:
+- Windows Explorer opens;
+- correct path is opened;
+- if path does not exist, user gets a clear message.
+
+### 3.11. Change Settings
+User opens settings page.
+
+Expected behavior:
+- page opens quickly;
+- fields show current values;
+- changes first live in local form state;
+- pressing Apply persists settings;
+- after save, required settings are applied.
+
+Behavior should be uniform for all settings on the same page.
+
+### 3.12. Close Application Window
+User clicks the main window close button (`X`).
+
+Expected behavior:
+- if **"Minimize to tray on close" is enabled**, the app hides to tray;
+- if this option is disabled, the app exits fully.
+
+Clarification: this rule applies specifically to **main window close action**, not tray menu exit.
+
+### 3.13. Exit from Tray
+User selects `Exit` in tray menu.
+
+Expected behavior:
+- app exits fully;
+- "Minimize to tray on close" setting is ignored in this case;
+- state is saved correctly.
+
+### 3.14. Recovery After Invalid Previous State
+Previous shutdown may have been non-ideal, or engine state may be damaged.
+
+Expected behavior:
+- app restores list from catalog whenever possible;
+- if runtime state is broken and corresponding torrents no longer exist in real engine, app is not required to keep them in UI;
+- app degrades safely: no freeze, no startup break, no misleading fake runtime items.
 
 ---
 
-## 5. Пользовательские состояния торрента
+## 4. What User Can Do Before Full Engine Initialization
 
-С точки зрения пользователя у торрента есть понятные состояния.
+This is a separate critical logic area.
 
-Минимальный набор:
-- ожидает инициализации клиента;
-- получает метаданные;
-- проверяет данные;
-- загружается;
-- раздаётся;
-- на паузе;
-- остановлен;
-- ошибка.
+Before full engine startup, user must still be able to:
+- see cached torrent list;
+- start torrent;
+- pause torrent;
+- remove torrent;
+- view/change settings;
+- close or minimize app.
 
-Важно:
-- пользовательские состояния не обязаны один в один совпадать с внутренними состояниями MonoTorrent;
-- система может иметь внутренние промежуточные состояния, но в UI они должны быть отображены в понятной форме.
+If action is performed before engine init:
+- system must accept it;
+- system must persist it as user intent;
+- system must apply it after engine is ready.
 
-### Особое правило для старта приложения
-На старте приложение может сначала показать состояние из кеша, а потом уточнить его по live runtime.
-Но пользователь не должен видеть ломающееся поведение вида:
-- всё было запущено, а после старта внезапно выглядит как пауза без причины;
-- торрент исчезает из списка;
-- один и тот же торрент появляется дубликатом.
+User does not need to know action was deferred.
+The app should behave like a normal client.
 
 ---
 
-## 6. Инварианты пользовательского поведения
+## 5. User-Facing Torrent States
 
-Ниже список правил, которые всегда должны быть истинны.
+From user perspective, torrent has understandable states.
 
-### 6.1. Один торрент — один элемент списка
-Один и тот же пользовательский торрент не должен существовать в UI в двух экземплярах.
+Minimum set:
+- waiting for client initialization;
+- fetching metadata;
+- checking data;
+- downloading;
+- seeding;
+- paused/stopped (single user-facing state);
+- error.
 
-### 6.2. Добавление уже существующего торрента не создаёт дубликат
-Если пользователь пытается добавить уже добавленный торрент:
-- новый элемент не создаётся;
-- пользователь получает понятное сообщение.
+Important:
+- user-facing states do not need 1:1 mapping with internal MonoTorrent states;
+- internal intermediate states are allowed, but UI must map them to understandable user states.
 
-### 6.3. Список не должен теряться между перезапусками
-Если пользователь не удалял торрент, он должен снова увидеть его после следующего запуска.
-
-### 6.4. Намерение пользователя важнее промежуточного состояния старта
-Если пользователь оставил торрент запущенным, система должна попытаться вернуть его в запущенное состояние.
-Если оставил на паузе — система не должна самовольно его запускать.
-
-### 6.5. Действия, сделанные до старта движка, не теряются
-Pause, Start, Remove до загрузки MonoTorrent должны применяться позже.
-
-### 6.6. Настройки ведут себя одинаково
-Настройки на одной странице должны иметь одинаковую модель:
-- изменить;
-- увидеть, что есть несохранённые изменения;
-- сохранить;
-- получить применение.
-
-### 6.7. Явный выход всегда сильнее обычного закрытия окна
-Закрытие из tray-меню — это всегда полный выход.
-
-### 6.8. UI должен быть отзывчивым
-Приложение не должно зависать:
-- при старте;
-- при открытии страницы настроек;
-- при активной загрузке торрентов;
-- при обновлении tray.
+### Special Startup Rule
+At app startup, app may first show cached state, then refine with live runtime.
+User must not see broken behavior like:
+- everything looked running, then suddenly appears paused without reason;
+- torrent disappears from list;
+- same torrent appears as duplicate.
 
 ---
 
-## 7. Что пользователь не должен замечать
+## 6. User Behavior Invariants
 
-Есть внутренняя сложность, которая не должна просачиваться в пользовательский слой.
+Rules below must always hold.
 
-Пользователь не должен знать:
-- что список сначала берётся из кеша, а потом синхронизируется с runtime;
-- что часть команд до старта движка была поставлена в очередь намерений;
-- что MonoTorrent имеет отдельные ограничения на регистрацию `manager`;
-- что часть статусов восстанавливается через промежуточные технические сущности.
+### 6.1. One Torrent = One List Item
+Same user torrent must not exist in UI twice.
 
-Всё это допустимо внутри системы, но наружу должно выходить только как:
-- понятное состояние;
-- понятные сообщения;
-- предсказуемое поведение.
+### 6.2. Adding Existing Torrent Must Not Create Duplicate
+If user adds already-added torrent:
+- new item is not created;
+- user gets clear message.
 
----
+### 6.3. List Must Survive Restarts
+If user did not remove torrent, it must be visible after next launch.
 
-## 8. Пользовательские ошибки и сообщения
+### 6.4. User Intent Is Stronger Than Transitional Startup State
+If user left torrent running, system should try to restore running.
+If user left torrent paused, system must not auto-start it.
 
-Ошибки должны быть:
-- локализованы;
-- понятны человеку;
-- без низкоуровневых технических формулировок, если они не нужны.
+### 6.5. Actions Before Engine Startup Are Not Lost
+Pause, Start, Remove before MonoTorrent init must be applied later.
 
-### Примеры правильных сообщений
-- `Этот торрент уже добавлен в приложение.`
-- `Не удалось открыть папку торрента.`
-- `Не удалось загрузить торрент-файл.`
-- `Не удалось применить настройки.`
+### 6.6. Settings Behave Uniformly
+Settings on one page must follow same model:
+- edit;
+- see unsaved changes;
+- save;
+- apply.
 
-### Примеры неправильных сообщений
-- сырые исключения MonoTorrent;
-- сообщения с именами внутренних классов;
-- сообщения, где невозможно понять, что делать дальше.
+### 6.7. Explicit Exit Overrides Regular Close
+Tray-menu exit is always full exit.
 
----
-
-## 9. Ограничения и пока незафиксированные решения
-
-Есть вопросы, которые либо ещё не реализованы полностью, либо требуют отдельного продуктового решения.
-
-### 9.1. Удаление данных с диска
-Нужно отдельно определить, должен ли remove удалять только запись о торренте или ещё и файлы.
-
-### 9.2. Приоритеты файлов
-Если в будущем появится более глубокое управление файлами внутри торрента, это нужно добавить как отдельный сценарий.
-
-### 9.3. Глубокая работа с ошибками движка
-Сейчас важнее, чтобы сообщения были понятны, чем чтобы пользователь видел все технические детали.
+### 6.8. UI Must Stay Responsive
+App must not freeze:
+- on startup;
+- when opening settings;
+- during active torrent transfer;
+- during tray updates.
 
 ---
 
-## 10. Что из этого особенно важно для будущей архитектуры
+## 7. What User Should Not Notice
 
-Этот документ нужен не ради описания UI, а как основа для целевой архитектуры.
+Internal complexity must not leak into user layer.
 
-Из него следует, что архитектура должна чётко поддерживать следующие уровни ответственности:
+User should not need to know:
+- list is shown from cache first, then synced with runtime;
+- some commands are queued as intent before engine startup;
+- MonoTorrent has manager registration constraints;
+- some statuses are restored through intermediate technical entities.
 
-### 10.1. Пользовательские сценарии
-Отдельный слой должен описывать именно пользовательские действия:
-- добавить торрент;
-- добавить magnet;
-- запустить;
-- пауза;
-- удалить;
-- применить настройки;
-- закрыть окно;
-- выйти из приложения.
+All this is allowed internally, but externally must appear as:
+- clear state;
+- clear messages;
+- predictable behavior.
 
-### 10.2. Пользовательское намерение
-Система должна уметь хранить не только текущее runtime-состояние, но и **намерение пользователя**:
-- должен торрент работать или нет;
-- нужно ли удалить торрент;
-- нужно ли восстановить состояние после старта.
+---
 
-### 10.3. Синхронизация кеша и runtime
-Это отдельная системная обязанность.
-Она не должна быть размазана по UI, случайным сервисам и обработчикам событий.
+## 8. User Errors and Messages
 
-### 10.4. Модель состояний
-Должна существовать одна понятная модель пользовательских состояний, а не смесь:
-- сырых состояний MonoTorrent;
-- временных UI-костылей;
-- специальных веток для старта.
+Errors must be:
+- localized;
+- human-readable;
+- free of low-level technical wording unless needed.
 
-### 10.5. Отдельная модель настроек
-Настройки должны быть оформлены единым способом:
+### Examples of Good Messages
+- `This torrent is already added to the application.`
+- `Failed to open torrent folder.`
+- `Failed to load torrent file.`
+- `Failed to apply settings.`
+
+### Examples of Bad Messages
+- raw MonoTorrent exceptions;
+- messages with internal class names;
+- messages where user cannot understand next step.
+
+---
+
+## 9. Constraints and Not-Yet-Finalized Decisions
+
+Some questions are not fully implemented yet or require explicit product decisions.
+
+### 9.1. Delete Data from Disk
+User must explicitly choose removal mode at action time:
+- remove record from client only;
+- remove record and downloaded files from disk.
+
+No default priority between these options at product-logic level.
+
+### 9.2. File Priorities
+If deeper per-file priority management is added in future, define it as separate scenario.
+
+### 9.3. Deep Engine Error Handling
+Right now, clear user messages are more important than exposing full technical details.
+
+---
+
+## 10. What Is Especially Important for Future Architecture
+
+This document is not just UI description; it is a base for target architecture.
+
+Architecture must clearly support these responsibility levels:
+
+### 10.1. User Scenarios
+A dedicated layer should model user actions:
+- add torrent;
+- add magnet;
+- start;
+- pause;
+- remove;
+- apply settings;
+- close window;
+- exit app.
+
+### 10.2. User Intent
+System must store not only runtime state, but also **user intent**:
+- should torrent be running;
+- should torrent be removed;
+- should state be restored after startup.
+
+### 10.3. Cache-Runtime Synchronization
+This is a separate system responsibility.
+It should not be scattered across UI, random services, or event handlers.
+
+### 10.4. State Model
+There should be one clear user state model, not a mix of:
+- raw MonoTorrent states;
+- temporary UI hacks;
+- special startup-only branches.
+
+### 10.5. Separate Settings Model
+Settings should be modeled in a consistent way:
 - read model;
 - edit model;
 - save/apply scenario.
 
 ---
 
-## 11. Что делать дальше после утверждения этого документа
+## 11. What to Do Next After Approving This Document
 
-После того как этот документ принят как “как приложение должно работать”, следующий шаг — построить документ **целевой архитектуры**.
+After this document is accepted as "how app must behave", next step is a **target architecture** document.
 
-В нём нужно будет ответить на вопросы:
-- какие правила являются доменными;
-- какие сценарии являются application-level;
-- что должно остаться infrastructure adapter-логикой;
-- какие модели должны стать источником истины;
-- какие события и команды должны существовать в системе.
+It must answer:
+- which rules are domain rules;
+- which scenarios are application-level;
+- what remains infrastructure adapter logic;
+- which models are source of truth;
+- which commands/events must exist in the system.
 
-То есть следующий документ должен отвечать уже не на вопрос:
-- **«что должен видеть пользователь?»**
+So the next document should answer not:
+- **"what should user see?"**
 
-а на вопрос:
-- **«какая архитектура нужна, чтобы это поведение реализовать надёжно и просто?»**
-
+but:
+- **"what architecture is needed to implement this behavior reliably and simply?"**

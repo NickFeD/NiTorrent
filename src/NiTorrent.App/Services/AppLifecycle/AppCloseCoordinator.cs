@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Shell;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Settings;
@@ -104,7 +104,14 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
                 return;
 
             _isExiting = true;
-            await exitAsync().ConfigureAwait(false);
+            try
+            {
+                await exitAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                _isExiting = false;
+            }
         }
         finally
         {

@@ -100,7 +100,7 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
         _trayInitialized = true;
     }
 
-    private async void OnMainWindowClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs e)
+    private void OnMainWindowClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs e)
     {
         if (_allowClose)
             return;
@@ -111,6 +111,11 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
         if (handler is null)
             return;
 
+        _ = ProcessCloseRequestAsync(handler);
+    }
+
+    private async Task ProcessCloseRequestAsync(Func<Task> handler)
+    {
         try
         {
             await handler().ConfigureAwait(false);
