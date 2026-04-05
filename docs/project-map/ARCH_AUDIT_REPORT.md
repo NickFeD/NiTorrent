@@ -162,3 +162,32 @@
 1. Mutable settings preferences контракт допускает обход единого settings use-case.
 - Подтверждение: [ITorrentPreferences.cs:8](C:/GitHub/NiTorrent/src/NiTorrent.Application/Abstractions/ITorrentPreferences.cs:8), [JsonTorrentPreferences.cs:13](C:/GitHub/NiTorrent/src/NiTorrent.Infrastructure/Settings/JsonTorrentPreferences.cs:13)
 
+---
+
+## Дополнение: Контрольная Проверка После Внесения Правок (2026-04-05)
+
+Ниже — дополнительные недостатки, выявленные на повторной проверке.
+
+### Major
+
+1. `AskUser` close behavior не реализован: используется fallback на полный выход.
+- Риск: неявное поведение, не зафиксированное как продуктово утверждённый сценарий.
+- Подтверждение: [AppCloseCoordinator.cs:53](C:/GitHub/NiTorrent/src/NiTorrent.App/Services/AppLifecycle/AppCloseCoordinator.cs:53), [AppCloseCoordinator.cs:54](C:/GitHub/NiTorrent/src/NiTorrent.App/Services/AppLifecycle/AppCloseCoordinator.cs:54)
+
+2. Страница темы обходит единый settings lifecycle (`read/edit/save/apply`) и применяет изменения напрямую через attach-сервис.
+- Риск: нарушение единообразия настроек и контрактной модели.
+- Подтверждение: [ThemeSettingPage.xaml:21](C:/GitHub/NiTorrent/src/NiTorrent.App/Views/Settings/ThemeSettingPage.xaml:21), [ThemeSettingPage.xaml:33](C:/GitHub/NiTorrent/src/NiTorrent.App/Views/Settings/ThemeSettingPage.xaml:33)
+
+3. В details-экране статус показывается как raw enum (`Phase.ToString()`), а не как user-facing проекция.
+- Риск: нестабильная/техническая формулировка состояния в UI.
+- Подтверждение: [TorrentDetailsViewModel.cs:71](C:/GitHub/NiTorrent/src/NiTorrent.Presentation/Features/Torrents/TorrentDetailsViewModel.cs:71)
+
+4. В `TorrentItemViewModel` присутствуют строковые ресурсы с повреждённой кодировкой (mojibake) для статусов.
+- Риск: нечитаемые пользовательские тексты.
+- Подтверждение: [TorrentItemViewModel.cs:63](C:/GitHub/NiTorrent/src/NiTorrent.Presentation/Features/Torrents/TorrentItemViewModel.cs:63), [TorrentItemViewModel.cs:67](C:/GitHub/NiTorrent/src/NiTorrent.Presentation/Features/Torrents/TorrentItemViewModel.cs:67)
+
+### Re-validated During This Pass
+
+1. Unified add flow для `.torrent` и magnet подтверждён.
+2. Remove mode choice (с/без данных) подтверждён в UI.
+3. `Paused/Stopped` отображаются как единое пользовательское состояние в списке/бейджах.

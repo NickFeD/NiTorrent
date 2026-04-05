@@ -90,6 +90,42 @@
 2. Вызовы из app-layer адаптированы к async контракту.
 3. Поведение close/tray/exit не меняется функционально.
 
+#### Item M5: Реализовать `AskUser` close behavior без fallback на немедленный exit
+- Цель: устранить неявный fallback и привести close-flow к явному продуктово-согласованному поведению.
+- Ожидаемый эффект: при `AskUser` пользователь действительно выбирает действие, а не получает скрытый full exit.
+- Затронутые подсистемы: App close orchestration, shell workflows, dialog policy.
+- Критерий готовности:
+1. Для `AppShellCloseAction.AskUser` вызывается диалог выбора действия.
+2. Результат выбора корректно маппится в `MinimizeToTray` или `ExitApplication`.
+3. Нет silent fallback на exit без пользовательского решения.
+
+#### Item M6: Привести страницу темы к единому settings lifecycle (`read/edit/save/apply`)
+- Цель: убрать bypass настройки темы мимо общего контракта настроек.
+- Ожидаемый эффект: единообразное поведение всех settings-страниц и единый write-path.
+- Затронутые подсистемы: Settings UI pages, settings contract wiring.
+- Критерий готовности:
+1. Theme settings читаются через общий read model подход.
+2. Изменения темы проходят через явный save/apply сценарий.
+3. Поведение согласовано с остальными настройками страницы/приложения.
+
+#### Item M7: Заменить raw enum-представление статуса в details на user-facing projection
+- Цель: убрать технический `Phase.ToString()` из пользовательского экрана деталей.
+- Ожидаемый эффект: status в details соответствует пользовательской терминологии и проекции состояний.
+- Затронутые подсистемы: Details view-model projection mapping.
+- Критерий готовности:
+1. Details screen получает статус из user-facing mapper/projection.
+2. В UI не отображаются технические enum-значения состояния.
+3. Формулировки статуса совпадают с общей моделью состояния в приложении.
+
+#### Item M8: Исправить повреждённые строковые ресурсы (mojibake) в torrent status текстах
+- Цель: восстановить корректную локализованную читаемость статусов.
+- Ожидаемый эффект: пользователь видит нормальные русские тексты без артефактов кодировки.
+- Затронутые подсистемы: Presentation status text resources.
+- Критерий готовности:
+1. Все статусные строки в `TorrentItemViewModel` читаемы и корректно локализованы.
+2. Нет mojibake-символов в runtime/status/error текстах интерфейса.
+3. Проверка UI подтверждает корректный рендер в ожидаемой кодировке.
+
 ### Minor
 
 #### Item m1: Укрепить settings contract как единственный write-path
@@ -132,4 +168,3 @@
 2. Матрица section 3 остаётся в статусах без регрессий по implemented сценариям.
 3. Логика соответствует `TARGET_ARCHITECTURE.md` sec.5-7 и `APPLICATION_CONTRACTS.md` guarantees.
 4. Документация (`CURRENT_ARCHITECTURE_STATE.md`, checklist при необходимости) обновлена в том же change set.
-
