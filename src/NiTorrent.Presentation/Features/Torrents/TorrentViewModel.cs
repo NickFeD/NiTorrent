@@ -190,10 +190,19 @@ public partial class TorrentViewModel : ObservableObject
     }
 
     [RelayCommand(CanExecute = nameof(CanOpenFolder))]
-    private Task OpenFolderAsync()
+    private async Task OpenFolderAsync()
     {
-        if (SelectedTorrent == null) return Task.CompletedTask;
-        return _torrentWorkflowService.OpenFolderAsync(SelectedTorrent.SavePath);
+        if (SelectedTorrent == null) return;
+
+        try
+        {
+            await _torrentWorkflowService.OpenFolderAsync(SelectedTorrent.SavePath);
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Не удалось открыть папку торрента";
+            await _dialogs.ShowTextAsync("Ошибка открытия папки", UserErrorMapper.ToMessage(ex, "Не удалось открыть папку торрента."));
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanRemove))]
