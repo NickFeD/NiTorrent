@@ -10,7 +10,7 @@ namespace NiTorrent.Infrastructure.Torrents;
 /// </summary>
 internal sealed class TorrentCatalog
 {
-    public int SchemaVersion { get; set; } = 5;
+    public int SchemaVersion { get; set; } = 6;
     public List<TorrentCatalogEntry> Items { get; set; } = new();
     public List<TorrentPendingRemovalEntry> PendingRemovals { get; set; } = new();
 
@@ -35,6 +35,7 @@ internal sealed class TorrentCatalogEntry
     public string Name { get; set; } = "";
     public long Size { get; set; }
     public string SavePath { get; set; } = "";
+    public string? SourceRef { get; set; }
     public DateTimeOffset AddedAtUtc { get; set; }
 
     // Persisted product state.

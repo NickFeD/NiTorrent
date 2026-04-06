@@ -1,7 +1,7 @@
 ﻿# Failure Matrix
 
 Status: active
-Last updated: 2026-04-05
+Last updated: 2026-04-06
 Source references: `USER_APP_LOGIC.md`, `TARGET_ARCHITECTURE.md`
 
 ## 1. Purpose
@@ -18,6 +18,7 @@ Define expected system behavior for known failure categories so user-facing beha
 | Runtime sync workflow failure | Stale live projection | Preserve last known projection; continue UI interaction | Next runtime update triggers re-sync attempt | Warning per sync cycle |
 | Deferred action apply failure | Command not applied immediately | Keep deferred action persisted; do not lose user intent | Retry when engine is ready or next sync cycle | Warning with torrent id/action |
 | Add flow metadata resolve failure (`.torrent`/magnet) | Add action fails | Show clear user message; no partial corrupt entry | User can retry add | User-facing message + error log |
+| Rehydration source missing at startup | Torrent cannot attach to runtime immediately | Keep item in UI from catalog, mark recoverable error state, do not remove user intent | Retry on next startup or after source backfill | Warning with torrent id/source ref |
 | Duplicate detection conflict | Add denied | Show clear duplicate message; no duplicate entry | None required | Info-level decision log |
 | Remove command runtime failure | Item may still exist in runtime | Persist remove intent/deferred action if needed; keep behavior deterministic | Apply later after runtime ready | Warning with delete mode |
 | Settings save failure | New settings not applied | Keep old applied settings; show clear message | User can retry save/apply | Error with settings section/context |

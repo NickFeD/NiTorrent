@@ -1,7 +1,7 @@
 ﻿# Application Contracts
 
 Status: active
-Last updated: 2026-04-05
+Last updated: 2026-04-06
 Source references: `TARGET_ARCHITECTURE.md`, `USER_APP_LOGIC.md`
 
 ## 1. Purpose
@@ -27,6 +27,7 @@ Guarantees:
 - initial snapshot is available without waiting for full engine readiness;
 - projection is stable against transient runtime failures;
 - no duplicate torrent identities in one snapshot.
+- startup snapshot is sourced from app-owned persisted collection, not from engine-wide restore artifacts.
 
 ## 4. Write and Command Contracts
 
@@ -38,6 +39,7 @@ Responsibility:
 Guarantees:
 - add operation is atomic at application meaning level (either accepted and persisted, or rejected);
 - duplicate policy is enforced before creating a new entry.
+- add flow persists per-torrent source material required for future staged rehydration.
 
 ## 4.2 `ITorrentCommandService` (or equivalent command boundary)
 
@@ -58,6 +60,7 @@ Responsibility:
 
 Guarantees:
 - startup and shutdown are explicit operations;
+- startup initializes an empty engine instance and excludes `ClientEngine.RestoreStateAsync` from the canonical path;
 - lifecycle failure does not directly force UI crash.
 
 ## 5.2 `ITorrentEngineStatusService`

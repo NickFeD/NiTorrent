@@ -104,3 +104,11 @@ In this shell session, `dotnet build` for WinUI-facing projects (`NiTorrent.App`
 without compile diagnostics (workload resolver/MSBuild restore-path issue in environment).
 This does not invalidate completed unit-level verification, but app-level acceptance
 for UI scenarios remains manual in this environment.
+
+## Startup Restore Redesign Update (2026-04-06)
+
+- Startup engine bootstrap moved to empty-engine creation path.
+- `ClientEngine.RestoreStateAsync` is no longer part of canonical startup restore flow.
+- Application now persists per-torrent source bytes for `.torrent` and magnet-derived adds.
+- Restore workflow executes staged per-torrent rehydration with running-intent priority.
+- Legacy catalog entries without persisted source are retained and marked with recoverable runtime error state instead of being dropped.

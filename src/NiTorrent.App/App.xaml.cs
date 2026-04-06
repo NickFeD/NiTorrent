@@ -104,6 +104,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<HandleWindowCloseWorkflow>();
         services.AddSingleton<HandleTrayExitWorkflow>();
         services.AddSingleton<SyncTorrentCollectionFromRuntimeWorkflow>();
+        services.AddSingleton<StagedTorrentRehydrationWorkflow>();
         services.AddSingleton<ReplayDeferredTorrentActionsWorkflow>();
         services.AddSingleton<UpdatePerTorrentSettingsWorkflow>();
         services.AddSingleton<IAppCloseCoordinator, AppCloseCoordinator>();

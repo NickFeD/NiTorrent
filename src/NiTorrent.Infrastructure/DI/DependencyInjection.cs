@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddSingleton<TorrentNotifier>();
         services.AddSingleton<TorrentStartupCoordinator>();
         services.AddSingleton<TorrentRuntimeContext>();
+        services.AddSingleton<ITorrentSourceStore, TorrentSourceStore>();
         services.AddSingleton<ITorrentCollectionRepository, CatalogBackedTorrentCollectionRepository>();
         services.AddSingleton<ITorrentReadModelFeed, EngineBackedTorrentReadModelFeed>();
         services.AddSingleton<ITorrentWriteService, EngineBackedTorrentWriteService>();

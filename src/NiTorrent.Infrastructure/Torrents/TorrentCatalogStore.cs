@@ -117,6 +117,7 @@ public sealed class TorrentCatalogStore
             existing.Name = entry.Name;
             existing.Size = entry.Size;
             existing.SavePath = entry.SavePath;
+            existing.SourceRef = $"sources/{entry.Id.Value:N}.torrent";
             existing.AddedAtUtc = entry.AddedAtUtc;
             existing.Intent = entry.Intent;
             existing.HasMetadata = entry.HasMetadata;
@@ -352,11 +353,12 @@ public sealed class TorrentCatalogStore
             entry.HasMetadata ??= !string.IsNullOrWhiteSpace(entry.Key) || !string.IsNullOrWhiteSpace(entry.Name);
             entry.SelectedFiles ??= new List<string>();
             entry.DeferredActions ??= new List<TorrentCatalogDeferredActionEntry>();
+            entry.SourceRef ??= $"sources/{entry.Id:N}.torrent";
             if (entry.PerTorrentSettings is { } settings && settings.IsDefault())
                 entry.PerTorrentSettings = null;
         }
 
-        catalog.SchemaVersion = 5;
+        catalog.SchemaVersion = 6;
     }
 
     private TorrentCatalogEntry? TryFindExistingEntry(TorrentManager manager, string key, HashSet<Guid> usedIds)

@@ -41,10 +41,18 @@ public sealed class PriorityAcceptanceVerificationTests
             repository,
             apply,
             new TestLogger<ReplayDeferredTorrentActionsWorkflow>());
+        var writeService = new NoopWriteService();
+        var staged = new StagedTorrentRehydrationWorkflow(
+            repository,
+            new InMemorySourceStore(),
+            writeService,
+            new TestLogger<StagedTorrentRehydrationWorkflow>());
         var lifecycle = new TrackingEngineLifecycle();
         var restore = new RestoreTorrentCollectionWorkflow(
             repository,
             lifecycle,
+            writeService,
+            staged,
             sync,
             replay,
             new NoopLegacyMigrationSource());
@@ -89,10 +97,18 @@ public sealed class PriorityAcceptanceVerificationTests
             repository,
             apply,
             new TestLogger<ReplayDeferredTorrentActionsWorkflow>());
+        var writeService = new NoopWriteService();
+        var staged = new StagedTorrentRehydrationWorkflow(
+            repository,
+            new InMemorySourceStore(),
+            writeService,
+            new TestLogger<StagedTorrentRehydrationWorkflow>());
         var lifecycle = new TrackingEngineLifecycle();
         var restore = new RestoreTorrentCollectionWorkflow(
             repository,
             lifecycle,
+            writeService,
+            staged,
             sync,
             replay,
             new NoopLegacyMigrationSource());
@@ -216,6 +232,26 @@ public sealed class PriorityAcceptanceVerificationTests
     {
         public TorrentEntrySettings Load(TorrentId torrentId) => TorrentEntrySettings.Default;
         public void Remove(TorrentId torrentId) { }
+    }
+
+    private sealed class InMemorySourceStore : ITorrentSourceStore
+    {
+        public Task SaveAsync(TorrentId id, TorrentKey key, byte[] torrentBytes, CancellationToken ct = default)
+            => Task.CompletedTask;
+
+        public Task<byte[]?> TryLoadAsync(TorrentId id, TorrentKey key, CancellationToken ct = default)
+            => Task.FromResult<byte[]?>([1, 2, 3]);
+    }
+
+    private sealed class NoopWriteService : ITorrentWriteService
+    {
+        public Task<TorrentRuntimeState> AddAsync(TorrentId id, AddTorrentRequest request, CancellationToken ct = default)
+            => Task.FromResult(TorrentRuntimeState.WaitingForEngine(0, false));
+
+        public Task<TorrentRuntimeState> RehydrateAsync(TorrentEntry entry, byte[] torrentBytes, CancellationToken ct = default)
+            => Task.FromResult(TorrentStatusResolver.ResolveExpectedRuntime(entry));
+
+        public Task ApplySettingsAsync(CancellationToken ct = default) => Task.CompletedTask;
     }
 
     private sealed class TestLogger<T> : ILogger<T>

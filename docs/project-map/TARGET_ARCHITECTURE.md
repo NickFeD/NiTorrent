@@ -1,7 +1,7 @@
 ﻿# Target Architecture
 
 Status: **active target architecture**.
-Last updated: **2026-04-05**.
+Last updated: **2026-04-06**.
 
 This document defines the architecture required to implement the behavior described in `USER_APP_LOGIC.md` reliably, predictably, and with low change cost over time.
 
@@ -106,6 +106,7 @@ The architecture uses multiple sources of truth with clear ownership:
 
 2. Runtime engine state
 - authoritative for live transfer facts (rates/progress/runtime state).
+- startup must initialize an empty engine instance; engine-wide restore APIs are not part of canonical startup restore.
 
 3. Projected user read model
 - authoritative for what UI renders at a moment in time.
@@ -133,10 +134,11 @@ Requirement: magnet and `.torrent` must converge into the same logic path as ear
 
 Canonical flow:
 1. load persisted collection immediately for fast UI;
-2. initialize engine in background;
-3. restore/synchronize runtime facts;
-4. apply deferred actions;
-5. refresh projections;
+2. initialize **empty** engine in background (without `ClientEngine.RestoreStateAsync`);
+3. run staged per-torrent rehydration from app-owned sources (running intent first);
+4. synchronize runtime facts;
+5. apply deferred actions;
+6. refresh projections;
 6. keep UI stable (no phantom duplicates, no random disappearance, no intent loss).
 
 ## 5.3 Command Flow (Start/Pause/Remove)

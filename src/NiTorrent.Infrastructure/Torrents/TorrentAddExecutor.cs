@@ -24,6 +24,7 @@ public sealed class TorrentAddExecutor
         TorrentId id,
         AddTorrentRequest request,
         SemaphoreSlim opGate,
+        bool startImmediately,
         CancellationToken ct)
     {
         _logger.LogInformation("Adding torrent {TorrentId}", id.Value);
@@ -42,8 +43,11 @@ public sealed class TorrentAddExecutor
             opGate.Release();
         }
 
-        _logger.LogInformation("Starting torrent {TorrentId}", id.Value);
-        await manager.StartAsync().ConfigureAwait(false);
+        if (startImmediately)
+        {
+            _logger.LogInformation("Starting torrent {TorrentId}", id.Value);
+            await manager.StartAsync().ConfigureAwait(false);
+        }
 
         var phase = manager.State switch
         {

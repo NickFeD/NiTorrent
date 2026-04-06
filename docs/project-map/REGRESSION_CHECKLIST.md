@@ -100,3 +100,12 @@ This block mirrors mandatory checks from `ARCH_REMEDIATION_PLAN.md`.
 - Critical items (C1, C2, C3): closed by code + targeted tests.
 - Backlog acceptance items (C4, M1-M8, m1): implemented; part covered by tests, part by code review, remaining UI-heavy checks are manual.
 - Documentation: updated in same change set (`CURRENT_ARCHITECTURE_STATE.md`, `REGRESSION_CHECKLIST.md`).
+
+## Startup Restore Redesign Checks (2026-04-06)
+
+- startup does not call `ClientEngine.RestoreStateAsync` in the canonical path;
+- engine starts as empty runtime and receives settings explicitly;
+- UI list appears from catalog before staged runtime rehydration completes;
+- torrents with `Running` intent are rehydrated before lower-priority entries;
+- missing persisted source does not crash startup and does not silently remove catalog item;
+- add `.torrent` and magnet persist source bytes needed for future rehydration.
