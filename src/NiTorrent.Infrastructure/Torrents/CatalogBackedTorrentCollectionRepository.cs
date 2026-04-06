@@ -30,6 +30,6 @@ public sealed class CatalogBackedTorrentCollectionRepository : ITorrentCollectio
     public Task RemoveAsync(TorrentId id, CancellationToken ct = default) =>
         _catalogStore.RemoveEntryAsync(id, ct);
 
-    public Task SaveAsync(CancellationToken ct = default) =>
-        _catalogStore.SaveAsync(force: true, ct);
+    public Task SaveAsync(bool force = true, CancellationToken ct = default) =>
+        _catalogStore.SaveAsync(force, ct);
 }

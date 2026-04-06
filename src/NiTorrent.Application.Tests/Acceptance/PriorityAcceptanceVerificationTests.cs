@@ -164,7 +164,7 @@ public sealed class PriorityAcceptanceVerificationTests
             return Task.CompletedTask;
         }
 
-        public Task SaveAsync(CancellationToken ct = default)
+        public Task SaveAsync(bool force = true, CancellationToken ct = default)
         {
             SaveCalls++;
             return Task.CompletedTask;

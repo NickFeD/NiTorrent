@@ -145,6 +145,6 @@ public sealed class EngineBackedTorrentReadModelFeedTests
             return Task.CompletedTask;
         }
 
-        public Task SaveAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public Task SaveAsync(bool force = true, CancellationToken ct = default) => Task.CompletedTask;
     }
 }
