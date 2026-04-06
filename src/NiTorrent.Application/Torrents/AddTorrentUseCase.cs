@@ -41,7 +41,7 @@ public sealed class AddTorrentUseCase(
             DeferredActions: Array.Empty<DeferredAction>());
 
         await collectionRepository.UpsertAsync(entry, ct).ConfigureAwait(false);
-        await collectionRepository.SaveAsync(ct).ConfigureAwait(false);
+        await collectionRepository.SaveAsync(ct: ct).ConfigureAwait(false);
         return id;
     }
 

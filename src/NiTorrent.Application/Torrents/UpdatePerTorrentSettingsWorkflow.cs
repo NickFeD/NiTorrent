@@ -15,7 +15,7 @@ public sealed class UpdatePerTorrentSettingsWorkflow(
 
         var effectiveSettings = settings.IsDefault() ? null : settings;
         await collectionRepository.UpsertAsync(entry.WithPerTorrentSettings(effectiveSettings), ct).ConfigureAwait(false);
-        await collectionRepository.SaveAsync(ct).ConfigureAwait(false);
+        await collectionRepository.SaveAsync(ct: ct).ConfigureAwait(false);
 
         await runtimeApplier.ApplyAsync(torrentId, effectiveSettings ?? TorrentEntrySettings.Default, ct).ConfigureAwait(false);
     }

@@ -51,7 +51,7 @@ public sealed class ReplayDeferredTorrentActionsWorkflow(
             foreach (var removedId in result.RemovedIds)
                 await repository.RemoveAsync(removedId, ct).ConfigureAwait(false);
 
-            await repository.SaveAsync(ct).ConfigureAwait(false);
+            await repository.SaveAsync(ct: ct).ConfigureAwait(false);
 
             logger.LogInformation(
                 "Deferred replay cycle {CycleId} finished (trigger={Trigger}, applied={Applied}, deferred={Deferred}, removed={Removed})",

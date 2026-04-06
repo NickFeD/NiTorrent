@@ -23,16 +23,21 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflow(
             var synced = TorrentCollectionRestorePolicy.ApplyRuntimeFacts(entries, runtimeFacts).ToList();
 
             var originalById = entries.ToDictionary(x => x.Id, x => x);
+            var hasDurableChanges = false;
             foreach (var entry in synced)
             {
                 if (originalById.TryGetValue(entry.Id, out var original) && AreEquivalent(original, entry))
                     continue;
 
+                hasDurableChanges |= !originalById.TryGetValue(entry.Id, out original) || HasDurableDifference(original, entry);
                 await repository.UpsertAsync(entry, ct).ConfigureAwait(false);
             }
 
-            // Runtime sync is high-frequency; disk persistence is intentionally throttled in infrastructure.
-            await repository.SaveAsync(force: false, ct).ConfigureAwait(false);
+            // Runtime sync is high-frequency. Persist only durable catalog changes;
+            // volatile runtime telemetry is intentionally not written every cycle.
+            if (hasDurableChanges)
+                await repository.SaveAsync(force: false, ct).ConfigureAwait(false);
+
             return new SyncTorrentCollectionFromRuntimeResult(synced, runtimeFacts);
         }
         finally
@@ -79,6 +84,29 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflow(
                && left.MaximumDownloadRateBytesPerSecond == right.MaximumDownloadRateBytesPerSecond
                && left.MaximumUploadRateBytesPerSecond == right.MaximumUploadRateBytesPerSecond
                && left.SequentialDownload == right.SequentialDownload;
+    }
+
+    private static bool HasDurableDifference(TorrentEntry left, TorrentEntry right)
+    {
+        if (left.Id != right.Id
+            || left.Key != right.Key
+            || !string.Equals(left.Name, right.Name, StringComparison.Ordinal)
+            || left.Size != right.Size
+            || !string.Equals(left.SavePath, right.SavePath, StringComparison.Ordinal)
+            || left.AddedAtUtc != right.AddedAtUtc
+            || left.Intent != right.Intent
+            || left.HasMetadata != right.HasMetadata)
+        {
+            return true;
+        }
+
+        if (!SequenceEqual(left.SelectedFiles, right.SelectedFiles, StringComparer.OrdinalIgnoreCase))
+            return true;
+
+        if (!SequenceEqual(left.DeferredActions, right.DeferredActions, EqualityComparer<DeferredAction>.Default))
+            return true;
+
+        return !SettingsEqual(left.PerTorrentSettings, right.PerTorrentSettings);
     }
 
     private static bool SequenceEqual<T>(

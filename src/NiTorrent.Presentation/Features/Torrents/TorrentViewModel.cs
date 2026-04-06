@@ -20,6 +20,7 @@ public partial class TorrentViewModel : ObservableObject
     private readonly object _pendingUpdateSync = new();
     private IReadOnlyList<TorrentListItemReadModel> _pendingItems = Array.Empty<TorrentListItemReadModel>();
     private int _uiUpdateScheduled;
+    private bool _isActive;
 
     public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
 
@@ -54,11 +55,32 @@ public partial class TorrentViewModel : ObservableObject
         _dialogs = dialogs;
         _torrentWorkflowService = torrentWorkflowService;
 
-        _readModelFeed.Updated += UpdateTorrent;
-        _engineStatusService.Ready += TorrentEngineReady;
-
         if (_engineStatusService.IsReady)
             StatusText = "Движок торрентов готов";
+    }
+
+    public void Activate()
+    {
+        if (_isActive)
+            return;
+
+        _isActive = true;
+        _readModelFeed.Updated += UpdateTorrent;
+        _engineStatusService.Ready += TorrentEngineReady;
+        UpdateTorrent(_readModelFeed.Current);
+    }
+
+    public void Deactivate()
+    {
+        if (!_isActive)
+            return;
+
+        _isActive = false;
+        _readModelFeed.Updated -= UpdateTorrent;
+        _engineStatusService.Ready -= TorrentEngineReady;
+
+        lock (_pendingUpdateSync)
+            _pendingItems = Array.Empty<TorrentListItemReadModel>();
     }
 
     private void TorrentEngineReady()
@@ -68,6 +90,9 @@ public partial class TorrentViewModel : ObservableObject
 
     private void UpdateTorrent(IReadOnlyList<TorrentListItemReadModel> torrents)
     {
+        if (!_isActive)
+            return;
+
         lock (_pendingUpdateSync)
             _pendingItems = torrents;
 
@@ -80,6 +105,12 @@ public partial class TorrentViewModel : ObservableObject
 
     private void DrainPendingUpdatesOnUiThread()
     {
+        if (!_isActive)
+        {
+            Interlocked.Exchange(ref _uiUpdateScheduled, 0);
+            return;
+        }
+
         while (true)
         {
             IReadOnlyList<TorrentListItemReadModel> torrents;

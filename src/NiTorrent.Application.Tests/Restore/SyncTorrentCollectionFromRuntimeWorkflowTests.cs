@@ -8,7 +8,7 @@ namespace NiTorrent.Application.Tests.Restore;
 public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
 {
     [Fact]
-    public async Task ExecuteAsync_WhenNoEffectiveChanges_SkipsUpsert_AndUsesNonForcedSave()
+    public async Task ExecuteAsync_WhenNoEffectiveChanges_SkipsUpsert_AndSkipsSave()
     {
         var entry = CreateEntry(TorrentIntent.Paused, TorrentLifecycleState.Paused, progress: 0, downloadRate: 0, uploadRate: 0, isEngineBacked: false);
         var repository = new TrackingCollectionRepository([entry]);
@@ -18,12 +18,11 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
         await sut.ExecuteAsync();
 
         Assert.Equal(0, repository.UpsertCalls);
-        Assert.Single(repository.SaveForceFlags);
-        Assert.False(repository.SaveForceFlags[0]);
+        Assert.Empty(repository.SaveForceFlags);
     }
 
     [Fact]
-    public async Task ExecuteAsync_WhenRuntimeChanges_UpsertsChangedEntries_AndUsesNonForcedSave()
+    public async Task ExecuteAsync_WhenOnlyRuntimeTelemetryChanges_UpsertsChangedEntries_AndSkipsSave()
     {
         var entry = CreateEntry(TorrentIntent.Running, TorrentLifecycleState.WaitingForEngine, progress: 10, downloadRate: 0, uploadRate: 0, isEngineBacked: false);
         var runtime = new TorrentRuntimeFact(
@@ -38,6 +37,58 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
                 Progress: 25,
                 DownloadRateBytesPerSecond: 1024,
                 UploadRateBytesPerSecond: 64,
+                Error: null,
+                IsEngineBacked: true));
+
+        var repository = new TrackingCollectionRepository([entry]);
+        var runtimeFactsProvider = new FixedRuntimeFactsProvider([runtime]);
+        var sut = new SyncTorrentCollectionFromRuntimeWorkflow(repository, runtimeFactsProvider);
+
+        await sut.ExecuteAsync();
+
+        Assert.Equal(1, repository.UpsertCalls);
+        Assert.Empty(repository.SaveForceFlags);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WhenDurableFieldsChange_UpsertsChangedEntries_AndUsesNonForcedSave()
+    {
+        var id = TorrentId.New();
+        var entry = new TorrentEntry(
+            id,
+            TorrentKey.Empty,
+            string.Empty,
+            0,
+            string.Empty,
+            DateTimeOffset.UtcNow,
+            TorrentIntent.Running,
+            TorrentLifecycleState.WaitingForEngine,
+            new TorrentRuntimeState(
+                TorrentLifecycleState.WaitingForEngine,
+                IsComplete: false,
+                Progress: 0,
+                DownloadRateBytesPerSecond: 0,
+                UploadRateBytesPerSecond: 0,
+                Error: null,
+                IsEngineBacked: false),
+            new TorrentStatus(TorrentPhase.WaitingForEngine, false, 0, 0, 0),
+            HasMetadata: false,
+            SelectedFiles: [],
+            PerTorrentSettings: null,
+            DeferredActions: []);
+
+        var runtime = new TorrentRuntimeFact(
+            id,
+            new TorrentKey($"k-{id.Value:N}"),
+            "updated-name",
+            1024,
+            "C:\\downloads",
+            new TorrentRuntimeState(
+                TorrentLifecycleState.Downloading,
+                IsComplete: false,
+                Progress: 1,
+                DownloadRateBytesPerSecond: 256,
+                UploadRateBytesPerSecond: 32,
                 Error: null,
                 IsEngineBacked: true));
 
@@ -80,7 +131,14 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
             intent,
             lifecycleState,
             runtime,
-            new TorrentStatus(TorrentLifecycleStateMapper.ToPhase(lifecycleState), false, progress, downloadRate, uploadRate),
+            new TorrentStatus(
+                TorrentLifecycleStateMapper.ToPhase(lifecycleState),
+                false,
+                progress,
+                downloadRate,
+                uploadRate,
+                Error: null,
+                Source: isEngineBacked ? TorrentStatusSource.Live : TorrentStatusSource.Cached),
             HasMetadata: true,
             SelectedFiles: [],
             PerTorrentSettings: null,

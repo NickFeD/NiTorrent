@@ -1,4 +1,4 @@
-using NiTorrent.Application.Abstractions;
+﻿using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Domain.Torrents;
 
@@ -50,7 +50,7 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
         {
             await _repository.UpsertAsync(entry, ct).ConfigureAwait(false);
         }
-        await _repository.SaveAsync(ct).ConfigureAwait(false);
+        await _repository.SaveAsync(ct: ct).ConfigureAwait(false);
 
         return new RestoreTorrentCollectionResult(earlyCollection, syncedCollection, syncResult.RuntimeFacts);
     }
@@ -79,7 +79,7 @@ public sealed class RestoreTorrentCollectionWorkflow : IRestoreTorrentCollection
         }
 
         if (changed)
-            await _repository.SaveAsync(ct).ConfigureAwait(false);
+            await _repository.SaveAsync(ct: ct).ConfigureAwait(false);
     }
 
     private static IReadOnlyList<TorrentEntry> BuildExecutionPlan(IReadOnlyList<TorrentEntry> entries)

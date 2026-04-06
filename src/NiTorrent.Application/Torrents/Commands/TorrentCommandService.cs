@@ -32,7 +32,7 @@ public sealed class TorrentCommandService(
         };
 
         await collectionRepository.UpsertAsync(updated, ct).ConfigureAwait(false);
-        await collectionRepository.SaveAsync(ct).ConfigureAwait(false);
+        await collectionRepository.SaveAsync(ct: ct).ConfigureAwait(false);
 
         bool appliedImmediately;
         try
@@ -64,13 +64,13 @@ public sealed class TorrentCommandService(
         if (commandType == CommandType.Remove)
         {
             await collectionRepository.RemoveAsync(id, ct).ConfigureAwait(false);
-            await collectionRepository.SaveAsync(ct).ConfigureAwait(false);
+            await collectionRepository.SaveAsync(ct: ct).ConfigureAwait(false);
             return TorrentCommandResult.Success(id);
         }
 
         var finalized = FinalizeAppliedExecution(updated, commandType);
         await collectionRepository.UpsertAsync(finalized, ct).ConfigureAwait(false);
-        await collectionRepository.SaveAsync(ct).ConfigureAwait(false);
+        await collectionRepository.SaveAsync(ct: ct).ConfigureAwait(false);
 
         return TorrentCommandResult.Success(id);
     }

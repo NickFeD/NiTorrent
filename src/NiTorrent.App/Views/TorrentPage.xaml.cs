@@ -1,4 +1,5 @@
-Ôªøusing Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Navigation;
 using NiTorrent.Presentation.Features.Torrents;
 
 // To learn more about WinUI, the WinUI project structure,
@@ -17,8 +18,23 @@ public sealed partial class TorrentPage : Page
     {
         ViewModel = App.GetService<TorrentViewModel>();
         InitializeComponent();
+        Unloaded += OnUnloaded;
     }
 
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        ViewModel.Activate();
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        ViewModel.Deactivate();
+        base.OnNavigatedFrom(e);
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+        => ViewModel.Deactivate();
 
     private void AddMagnet_Click(object sender, RoutedEventArgs e)
     {
@@ -37,7 +53,7 @@ public sealed partial class TorrentPage : Page
 
         if (!string.IsNullOrWhiteSpace(magnet))
         {
-            // –≤—ã–∑—ã–≤–∞–µ–º –∫–æ–º–∞–Ω–¥—É ViewModel
+            // ‚˚Á˚‚‡ÂÏ ÍÓÏ‡Ì‰Û ViewModel
             await ViewModel.AddMagnet(magnet);
         }
 
@@ -56,7 +72,4 @@ public sealed partial class TorrentPage : Page
 
         Frame?.Navigate(typeof(TorrentDetailsPage), ViewModel.SelectedTorrent.Id.ToString());
     }
-
 }
-
-
