@@ -72,6 +72,31 @@ public sealed class TorrentCatalogStoreRuntimeProjectionTests
     }
 
     [Fact]
+    public async Task Upsert_WithCollidingIdentity_DoesNotOverwriteDifferentRecord()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var store = new TorrentCatalogStore(NullLogger<TorrentCatalogStore>.Instance, new TestStorage(root));
+            var collidingId = TorrentId.New();
+
+            await store.UpsertEntryAsync(CreateEntryWithIdentity(collidingId, "A", @"C:\downloads\A"));
+            await store.UpsertEntryAsync(CreateEntryWithIdentity(collidingId, "B", @"C:\downloads\B"));
+            await store.SaveAsync(force: true, CancellationToken.None);
+
+            var entries = await store.GetEntriesAsync();
+            Assert.Equal(2, entries.Count);
+            Assert.Equal(2, entries.Select(x => x.Id).Distinct().Count());
+            Assert.Contains(entries, x => x.Name == "A");
+            Assert.Contains(entries, x => x.Name == "B");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ReloadFromDisk_DoesNotExposeStaleLiveRuntimeRates()
     {
         var root = CreateTempDirectory();
@@ -137,6 +162,25 @@ public sealed class TorrentCatalogStoreRuntimeProjectionTests
                 UploadRateBytesPerSecond: uploadRate,
                 Error: null,
                 Source: source),
+            HasMetadata: true,
+            SelectedFiles: [],
+            PerTorrentSettings: null,
+            DeferredActions: []);
+    }
+
+    private static TorrentEntry CreateEntryWithIdentity(TorrentId id, string name, string savePath)
+    {
+        return new TorrentEntry(
+            id,
+            new TorrentKey($"k-{name}"),
+            name,
+            1024,
+            savePath,
+            DateTimeOffset.UtcNow,
+            TorrentIntent.Running,
+            TorrentLifecycleState.WaitingForEngine,
+            new TorrentRuntimeState(TorrentLifecycleState.WaitingForEngine, false, 0, 0, 0, null, false),
+            new TorrentStatus(TorrentPhase.WaitingForEngine, false, 0, 0, 0),
             HasMetadata: true,
             SelectedFiles: [],
             PerTorrentSettings: null,

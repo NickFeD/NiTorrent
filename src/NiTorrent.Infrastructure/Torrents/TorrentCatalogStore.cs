@@ -108,10 +108,11 @@ public sealed class TorrentCatalogStore
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var existing = _catalog.Items.FirstOrDefault(x => x.Id == entry.Id.Value);
+            var targetId = ResolveCatalogIdentityForUpsert(entry);
+            var existing = _catalog.Items.FirstOrDefault(x => x.Id == targetId);
             if (existing is null)
             {
-                existing = new TorrentCatalogEntry { Id = entry.Id.Value };
+                existing = new TorrentCatalogEntry { Id = targetId };
                 _catalog.Items.Add(existing);
             }
 
@@ -144,6 +145,45 @@ public sealed class TorrentCatalogStore
             existing.ShouldRun = null;
         }
         finally { _gate.Release(); }
+    }
+
+    private Guid ResolveCatalogIdentityForUpsert(TorrentEntry entry)
+    {
+        if (entry.Id != TorrentId.Empty)
+        {
+            var sameId = _catalog.Items.FirstOrDefault(x => x.Id == entry.Id.Value);
+            if (sameId is null || IsSameLogicalRecord(sameId, entry))
+                return entry.Id.Value;
+        }
+
+        var usedIds = _catalog.Items.Select(x => x.Id).ToHashSet();
+        var surrogate = ComputeDeterministicId(new TorrentCatalogEntry
+        {
+            Key = entry.Key.IsEmpty ? null : entry.Key.Value,
+            Name = entry.Name,
+            SavePath = entry.SavePath,
+            AddedAtUtc = entry.AddedAtUtc
+        });
+
+        if (surrogate != Guid.Empty && usedIds.Add(surrogate))
+            return surrogate;
+
+        Guid generated;
+        do
+        {
+            generated = Guid.NewGuid();
+        } while (!usedIds.Add(generated));
+
+        return generated;
+    }
+
+    private static bool IsSameLogicalRecord(TorrentCatalogEntry existing, TorrentEntry incoming)
+    {
+        if (!string.IsNullOrWhiteSpace(existing.Key) && !incoming.Key.IsEmpty)
+            return string.Equals(existing.Key, incoming.Key.Value, StringComparison.OrdinalIgnoreCase);
+
+        return string.Equals(existing.Name, incoming.Name, StringComparison.OrdinalIgnoreCase)
+               && string.Equals(existing.SavePath, incoming.SavePath, StringComparison.OrdinalIgnoreCase);
     }
 
     public Task RemoveEntryAsync(TorrentId id, CancellationToken ct = default) =>
