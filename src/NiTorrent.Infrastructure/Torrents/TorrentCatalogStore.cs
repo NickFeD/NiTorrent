@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text;
+using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
@@ -347,8 +349,10 @@ public sealed class TorrentCatalogStore
 
     private static void MigrateToCurrentSchema(TorrentCatalog catalog)
     {
+        var usedIds = new HashSet<Guid>();
         foreach (var entry in catalog.Items)
         {
+            entry.Id = NormalizeIdentity(entry, usedIds);
             entry.Intent ??= entry.ShouldRun == true ? TorrentIntent.Running : TorrentIntent.Paused;
             entry.HasMetadata ??= !string.IsNullOrWhiteSpace(entry.Key) || !string.IsNullOrWhiteSpace(entry.Name);
             entry.SelectedFiles ??= new List<string>();
@@ -359,6 +363,31 @@ public sealed class TorrentCatalogStore
         }
 
         catalog.SchemaVersion = 6;
+    }
+
+    private static Guid NormalizeIdentity(TorrentCatalogEntry entry, HashSet<Guid> usedIds)
+    {
+        if (entry.Id != Guid.Empty && usedIds.Add(entry.Id))
+            return entry.Id;
+
+        var stable = ComputeDeterministicId(entry);
+        if (stable != Guid.Empty && usedIds.Add(stable))
+            return stable;
+
+        Guid generated;
+        do
+        {
+            generated = Guid.NewGuid();
+        } while (!usedIds.Add(generated));
+
+        return generated;
+    }
+
+    private static Guid ComputeDeterministicId(TorrentCatalogEntry entry)
+    {
+        var fingerprint = $"{entry.Key ?? string.Empty}|{entry.Name}|{entry.SavePath}|{entry.AddedAtUtc.UtcTicks}";
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint));
+        return new Guid(bytes.AsSpan(0, 16));
     }
 
     private TorrentCatalogEntry? TryFindExistingEntry(TorrentManager manager, string key, HashSet<Guid> usedIds)

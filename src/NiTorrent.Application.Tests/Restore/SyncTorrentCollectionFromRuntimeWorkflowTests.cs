@@ -103,6 +103,53 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
         Assert.False(repository.SaveForceFlags[0]);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_WithMultipleEntries_DoesNotCollapseIdentityAfterRuntimeSync()
+    {
+        var a = CreateEntry(TorrentIntent.Running, TorrentLifecycleState.WaitingForEngine, 0, 0, 0, false);
+        var b = CreateEntry(TorrentIntent.Running, TorrentLifecycleState.WaitingForEngine, 0, 0, 0, false);
+        var c = CreateEntry(TorrentIntent.Paused, TorrentLifecycleState.Paused, 0, 0, 0, false);
+
+        var runtimeFacts = new[]
+        {
+            new TorrentRuntimeFact(
+                a.Id,
+                a.Key,
+                "A-runtime",
+                a.Size,
+                a.SavePath,
+                new TorrentRuntimeState(TorrentLifecycleState.Downloading, false, 12, 111, 11, null, true)),
+            new TorrentRuntimeFact(
+                b.Id,
+                b.Key,
+                "B-runtime",
+                b.Size,
+                b.SavePath,
+                new TorrentRuntimeState(TorrentLifecycleState.Seeding, true, 100, 0, 222, null, true)),
+            new TorrentRuntimeFact(
+                c.Id,
+                c.Key,
+                "C-runtime",
+                c.Size,
+                c.SavePath,
+                new TorrentRuntimeState(TorrentLifecycleState.Downloading, false, 80, 333, 33, null, true))
+        };
+
+        var repository = new TrackingCollectionRepository([a, b, c]);
+        var runtimeFactsProvider = new FixedRuntimeFactsProvider(runtimeFacts);
+        var sut = new SyncTorrentCollectionFromRuntimeWorkflow(repository, runtimeFactsProvider);
+
+        var result = await sut.ExecuteAsync();
+
+        Assert.Equal(3, result.Entries.Count);
+        Assert.Equal(3, result.Entries.Select(x => x.Id).Distinct().Count());
+
+        var byId = result.Entries.ToDictionary(x => x.Id, x => x);
+        Assert.Equal("A-runtime", byId[a.Id].Name);
+        Assert.Equal("B-runtime", byId[b.Id].Name);
+        Assert.Equal("C-runtime", byId[c.Id].Name);
+    }
+
     private static TorrentEntry CreateEntry(
         TorrentIntent intent,
         TorrentLifecycleState lifecycleState,

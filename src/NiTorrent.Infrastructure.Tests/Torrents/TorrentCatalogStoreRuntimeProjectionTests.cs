@@ -9,6 +9,40 @@ namespace NiTorrent.Infrastructure.Tests.Torrents;
 public sealed class TorrentCatalogStoreRuntimeProjectionTests
 {
     [Fact]
+    public async Task LoadCatalog_WithDuplicateOrEmptyIds_NormalizesToUniqueIdentity()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var catalogPath = Path.Combine(root, "Torrents", "torrent_catalog.json");
+            Directory.CreateDirectory(Path.GetDirectoryName(catalogPath)!);
+            await File.WriteAllTextAsync(catalogPath, """
+{
+  "SchemaVersion": 5,
+  "Items": [
+    { "Id": "00000000-0000-0000-0000-000000000000", "Name": "A", "SavePath": "C:\\downloads\\A", "AddedAtUtc": "2026-01-01T00:00:00+00:00", "Intent": "Running", "Key": "k-a" },
+    { "Id": "00000000-0000-0000-0000-000000000000", "Name": "B", "SavePath": "C:\\downloads\\B", "AddedAtUtc": "2026-01-02T00:00:00+00:00", "Intent": "Paused", "Key": "k-b" },
+    { "Name": "C", "SavePath": "C:\\downloads\\C", "AddedAtUtc": "2026-01-03T00:00:00+00:00", "Intent": "Running", "Key": "k-c" }
+  ],
+  "PendingRemovals": []
+}
+""");
+
+            var store = new TorrentCatalogStore(NullLogger<TorrentCatalogStore>.Instance, new TestStorage(root));
+            var entries = await store.GetEntriesAsync();
+
+            Assert.Equal(3, entries.Count);
+            Assert.Equal(3, entries.Select(x => x.Id).Distinct().Count());
+            Assert.DoesNotContain(entries, x => x.Id == TorrentId.Empty);
+            Assert.Equal(3, entries.Select(x => x.Name).Distinct().Count());
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task UpsertAndGetEntries_PreservesLiveRuntimeRates_WithinCurrentProcess()
     {
         var root = CreateTempDirectory();
