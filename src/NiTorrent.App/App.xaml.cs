@@ -172,9 +172,25 @@ public partial class App : WinUIApplication
     private async Task StopHostAsync()
     {
         if (_hostStartTask is not null)
-            await _hostStartTask.ConfigureAwait(false);
+        {
+            var startupCompleted = await Task
+                .WhenAny(_hostStartTask, Task.Delay(TimeSpan.FromSeconds(3)))
+                .ConfigureAwait(false);
 
-        await _host.StopAsync().ConfigureAwait(false);
+            if (ReferenceEquals(startupCompleted, _hostStartTask))
+                await _hostStartTask.ConfigureAwait(false);
+        }
+
+        try
+        {
+            using var stopTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await _host.StopAsync(stopTimeout.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Exit must continue even if host stop exceeded timeout.
+        }
+
         _host.Dispose();
     }
 }

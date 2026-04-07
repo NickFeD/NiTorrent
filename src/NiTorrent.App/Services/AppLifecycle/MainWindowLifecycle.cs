@@ -73,24 +73,18 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
             _trayService.SetVisible(true);
         });
 
-    public async Task CloseForShutdownAsync()
-    {
-        _allowClose = true;
+    public Task CloseForShutdownAsync()
+        => _dispatcher.EnqueueAsync(() =>
+        {
+            EnsureWindowCreated();
+            var window = _window!;
 
-        try
-        {
-            await _dispatcher.EnqueueAsync(() =>
-            {
-                _trayService.SetVisible(false);
-                _window?.Close();
-            }).ConfigureAwait(false);
-        }
-        catch
-        {
-            _allowClose = false;
-            throw;
-        }
-    }
+            _trayService.SetVisible(false);
+
+            // Explicit shutdown must bypass regular close-to-tray interception.
+            _allowClose = true;
+            window.Close();
+        });
 
     private void InitializeTray()
     {

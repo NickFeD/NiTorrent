@@ -44,8 +44,7 @@ public sealed partial class TrayService : ITrayService, IDisposable
 
     public void SetVisible(bool visible)
     {
-        if (_tray != null)
-            _tray.IsVisible = visible;
+        _tray?.IsVisible = visible;
     }
 
     private void OnTorrentsUpdated(IReadOnlyList<TorrentListItemReadModel> items)
@@ -67,11 +66,9 @@ public sealed partial class TrayService : ITrayService, IDisposable
 
     private void ApplyUi()
     {
-        if (_tray != null)
-            _tray.Tooltip = BuildTooltip();
+        _tray?.Tooltip = BuildTooltip();
 
-        if (_speedsItem != null)
-            _speedsItem.Text = $"↓ {_lastDl}    ↑ {_lastUl}";
+        _speedsItem?.Text = $"↓ {_lastDl}    ↑ {_lastUl}";
     }
 
     private string BuildTooltip()
