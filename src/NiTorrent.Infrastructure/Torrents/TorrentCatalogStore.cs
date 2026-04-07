@@ -120,7 +120,7 @@ public sealed class TorrentCatalogStore
             existing.Name = entry.Name;
             existing.Size = entry.Size;
             existing.SavePath = entry.SavePath;
-            existing.SourceRef = $"sources/{entry.Id.Value:N}.torrent";
+            existing.SourceRef = $"sources/{targetId:N}.torrent";
             existing.AddedAtUtc = entry.AddedAtUtc;
             existing.Intent = entry.Intent;
             existing.HasMetadata = entry.HasMetadata;
@@ -443,13 +443,24 @@ public sealed class TorrentCatalogStore
                 return byKey;
         }
 
+        // Avoid binding by mutable/display fields when runtime key is present but does not match.
+        // Name/SavePath fallback is allowed only for legacy keyless records and only when unique.
+        if (!string.IsNullOrWhiteSpace(key))
+            return null;
+
         var savePath = manager.SavePath ?? string.Empty;
         var name = manager.Name ?? string.Empty;
 
-        return _catalog.Items.FirstOrDefault(x =>
-            !usedIds.Contains(x.Id)
-            && string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(x.SavePath, savePath, StringComparison.OrdinalIgnoreCase));
+        var candidates = _catalog.Items
+            .Where(x =>
+                !usedIds.Contains(x.Id)
+                && string.IsNullOrWhiteSpace(x.Key)
+                && string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(x.SavePath, savePath, StringComparison.OrdinalIgnoreCase))
+            .Take(2)
+            .ToList();
+
+        return candidates.Count == 1 ? candidates[0] : null;
     }
 
     private static TorrentEntry MapEntry(TorrentCatalogEntry entry)

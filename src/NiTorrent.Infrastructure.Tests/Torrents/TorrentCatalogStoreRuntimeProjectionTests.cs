@@ -97,6 +97,33 @@ public sealed class TorrentCatalogStoreRuntimeProjectionTests
     }
 
     [Fact]
+    public async Task Upsert_WithCollidingIdentity_PersistsSourceRefForResolvedIdentity()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var store = new TorrentCatalogStore(NullLogger<TorrentCatalogStore>.Instance, new TestStorage(root));
+            var collidingId = TorrentId.New();
+
+            await store.UpsertEntryAsync(CreateEntryWithIdentity(collidingId, "A", @"C:\downloads\A"));
+            await store.UpsertEntryAsync(CreateEntryWithIdentity(collidingId, "B", @"C:\downloads\B"));
+            await store.SaveAsync(force: true, CancellationToken.None);
+
+            var entries = await store.GetEntriesAsync();
+            var entryB = Assert.Single(entries.Where(x => x.Name == "B"));
+
+            var catalogPath = Path.Combine(root, "Torrents", "torrent_catalog.json");
+            var catalogJson = await File.ReadAllTextAsync(catalogPath);
+
+            Assert.Contains($"\"SourceRef\": \"sources/{entryB.Id.Value:N}.torrent\"", catalogJson, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task ReloadFromDisk_DoesNotExposeStaleLiveRuntimeRates()
     {
         var root = CreateTempDirectory();
