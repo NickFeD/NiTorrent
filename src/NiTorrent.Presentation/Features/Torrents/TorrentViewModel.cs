@@ -111,66 +111,68 @@ public partial class TorrentViewModel : ObservableObject
             return;
         }
 
-        while (true)
+        IReadOnlyList<TorrentListItemReadModel> torrents;
+        lock (_pendingUpdateSync)
+            torrents = _pendingItems;
+
+        var previousCount = Torrents.Count;
+        var commandsNeedRefresh = false;
+
+        long totalDownloadSpeed = 0;
+        long totalUploadSpeed = 0;
+        var actualIds = torrents.Select(x => x.Id).ToHashSet();
+
+        foreach (var stale in _torrents.Keys.Where(id => !actualIds.Contains(id)).ToList())
         {
-            IReadOnlyList<TorrentListItemReadModel> torrents;
-            lock (_pendingUpdateSync)
-                torrents = _pendingItems;
+            var staleVm = _torrents[stale];
+            staleVm.Dispose();
+            _torrents.Remove(stale);
+            Torrents.Remove(staleVm);
 
-            long totalDownloadSpeed = 0;
-            long totalUploadSpeed = 0;
-            var actualIds = torrents.Select(x => x.Id).ToHashSet();
+            if (ReferenceEquals(SelectedTorrent, staleVm))
+                SelectedTorrent = null;
+        }
 
-            foreach (var stale in _torrents.Keys.Where(id => !actualIds.Contains(id)).ToList())
+        foreach (var torrent in torrents)
+        {
+            totalDownloadSpeed += torrent.Status.DownloadRateBytesPerSecond;
+            totalUploadSpeed += torrent.Status.UploadRateBytesPerSecond;
+
+            if (_torrents.TryGetValue(torrent.Id, out var oldTorrent))
             {
-                var staleVm = _torrents[stale];
-                staleVm.Dispose();
-                _torrents.Remove(stale);
-                Torrents.Remove(staleVm);
-
-                if (ReferenceEquals(SelectedTorrent, staleVm))
-                    SelectedTorrent = null;
+                var update = oldTorrent.Update(torrent);
+                if (update.CommandStateChanged && ReferenceEquals(oldTorrent, SelectedTorrent))
+                    commandsNeedRefresh = true;
             }
-
-            foreach (var torrent in torrents)
+            else
             {
-                totalDownloadSpeed += torrent.Status.DownloadRateBytesPerSecond;
-                totalUploadSpeed += torrent.Status.UploadRateBytesPerSecond;
-                var selectedChanged = false;
-
-                if (_torrents.TryGetValue(torrent.Id, out var oldTorrent))
-                {
-                    var changed = oldTorrent.Update(torrent);
-                    selectedChanged = changed && ReferenceEquals(oldTorrent, SelectedTorrent);
-                }
-                else
-                {
-                    var newTorrent = new TorrentItemViewModel(torrent);
-                    _torrents.Add(newTorrent.Id, newTorrent);
-                    Torrents.Add(newTorrent);
-                    selectedChanged = ReferenceEquals(newTorrent, SelectedTorrent);
-                }
-
-                if (selectedChanged)
-                    RefreshCommands();
+                var newTorrent = new TorrentItemViewModel(torrent);
+                _torrents.Add(newTorrent.Id, newTorrent);
+                Torrents.Add(newTorrent);
             }
+        }
 
-            TotalDownloadSpeed = SizeFormatter.FormatSpeed(totalDownloadSpeed);
-            TotalUploadSpeed = SizeFormatter.FormatSpeed(totalUploadSpeed);
+        TotalDownloadSpeed = SizeFormatter.FormatSpeed(totalDownloadSpeed);
+        TotalUploadSpeed = SizeFormatter.FormatSpeed(totalUploadSpeed);
+
+        if (previousCount != Torrents.Count)
             OnPropertyChanged(nameof(IsEmpty));
 
-            Interlocked.Exchange(ref _uiUpdateScheduled, 0);
+        if (commandsNeedRefresh)
+            RefreshCommands();
 
-            lock (_pendingUpdateSync)
-            {
-                if (ReferenceEquals(torrents, _pendingItems))
-                    return;
-            }
+        Interlocked.Exchange(ref _uiUpdateScheduled, 0);
 
-            if (Interlocked.Exchange(ref _uiUpdateScheduled, 1) == 0)
-                continue;
+        lock (_pendingUpdateSync)
+        {
+            if (ReferenceEquals(torrents, _pendingItems))
+                return;
+        }
 
-            return;
+        if (Interlocked.Exchange(ref _uiUpdateScheduled, 1) == 0)
+        {
+            if (!_ui.TryEnqueue(DrainPendingUpdatesOnUiThread))
+                Interlocked.Exchange(ref _uiUpdateScheduled, 0);
         }
     }
 

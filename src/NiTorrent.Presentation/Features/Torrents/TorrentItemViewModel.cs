@@ -6,6 +6,8 @@ namespace NiTorrent.Presentation.Features.Torrents;
 
 public partial class TorrentItemViewModel : ObservableObject, IDisposable
 {
+    public readonly record struct UpdateResult(bool AnyChanged, bool CommandStateChanged);
+
     private bool _isDisposed;
     public TorrentId Id => _item.Id;
 
@@ -41,16 +43,19 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         Apply(item);
     }
 
-    public bool Update(TorrentListItemReadModel item)
+    public UpdateResult Update(TorrentListItemReadModel item)
     {
         if (_isDisposed)
-            return false;
+            return default;
 
         if (EqualityComparer<TorrentListItemReadModel>.Default.Equals(_item, item))
-            return false;
+            return default;
 
+        var previousPhase = State.Phase;
         Apply(item);
-        return true;
+        return new UpdateResult(
+            AnyChanged: true,
+            CommandStateChanged: previousPhase != State.Phase);
     }
 
     private static string BuildStateText(TorrentStatus status)
