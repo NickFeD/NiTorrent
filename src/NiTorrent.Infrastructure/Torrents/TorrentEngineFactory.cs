@@ -25,6 +25,7 @@ public sealed class TorrentEngineFactory
         var settings = new EngineSettingsBuilder
         {
             CacheDirectory = _cacheDir,
+            MaximumHalfOpenConnections = 8,
         }.ToSettings();
 
         _logger.LogInformation("Initialized empty torrent engine instance without engine-wide state restore");

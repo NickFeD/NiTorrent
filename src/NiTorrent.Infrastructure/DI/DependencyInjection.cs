@@ -31,6 +31,7 @@ public static class DependencyInjection
         services.AddSingleton<TorrentSourceResolver>();
         services.AddSingleton<ITorrentSourcePreparationService>(sp => sp.GetRequiredService<TorrentSourceResolver>());
         services.AddSingleton<TorrentSettingsApplier>();
+        services.AddSingleton<PeerEndpointConnectionCooldown>();
         services.AddSingleton<TorrentEventOrchestrator>();
         services.AddSingleton<BackgroundTaskRunner>();
         services.AddSingleton<TorrentLifecycleExecutor>();

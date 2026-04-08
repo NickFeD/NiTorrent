@@ -89,7 +89,10 @@ public sealed class ReplayDeferredTorrentActionsWorkflowTests
         private int _current;
         public int MaxConcurrency { get; private set; }
 
-        public async Task<ApplyDeferredTorrentActionsResult> ExecuteAsync(IReadOnlyList<TorrentEntry> entries, CancellationToken ct = default)
+        public async Task<ApplyDeferredTorrentActionsResult> ExecuteAsync(
+            IReadOnlyList<TorrentEntry> entries,
+            bool staggerStartupStarts = false,
+            CancellationToken ct = default)
         {
             var concurrent = Interlocked.Increment(ref _current);
             if (concurrent > MaxConcurrency)
@@ -106,7 +109,10 @@ public sealed class ReplayDeferredTorrentActionsWorkflowTests
     {
         public List<TorrentEntry> CapturedEntries { get; } = [];
 
-        public Task<ApplyDeferredTorrentActionsResult> ExecuteAsync(IReadOnlyList<TorrentEntry> entries, CancellationToken ct = default)
+        public Task<ApplyDeferredTorrentActionsResult> ExecuteAsync(
+            IReadOnlyList<TorrentEntry> entries,
+            bool staggerStartupStarts = false,
+            CancellationToken ct = default)
         {
             CapturedEntries.Clear();
             CapturedEntries.AddRange(entries);

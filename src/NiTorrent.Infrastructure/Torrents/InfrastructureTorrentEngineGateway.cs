@@ -9,6 +9,7 @@ public sealed class InfrastructureTorrentEngineGateway(
     TorrentRuntimeContext runtimeContext,
     TorrentLifecycleExecutor lifecycleExecutor,
     TorrentRuntimeRegistry runtimeRegistry,
+    PeerEndpointConnectionCooldown peerEndpointCooldown,
     TorrentEngineStateStore engineStateStore,
     TorrentEventOrchestrator eventOrchestrator,
     BackgroundTaskRunner backgroundTasks) : ITorrentEngineGateway
@@ -24,6 +25,7 @@ public sealed class InfrastructureTorrentEngineGateway(
             if (manager is null)
                 return false;
 
+            peerEndpointCooldown.ResetForTorrent(id);
             await manager.StartAsync().ConfigureAwait(false);
             PublishRuntimeChanged();
             return true;
@@ -66,6 +68,7 @@ public sealed class InfrastructureTorrentEngineGateway(
             if (manager is null)
                 return false;
 
+            peerEndpointCooldown.Unregister(id, manager);
             await manager.StopAsync(StopTimeout).ConfigureAwait(false);
 
             var mode = deleteData ? RemoveMode.CacheDataAndDownloadedData : RemoveMode.CacheDataOnly;

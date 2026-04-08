@@ -43,7 +43,12 @@ public sealed class ReplayDeferredTorrentActionsWorkflow(
                 return emptyResult;
             }
 
-            var result = await applyDeferredActionsWorkflow.ExecuteAsync(normalizedEntries, ct).ConfigureAwait(false);
+            var result = await applyDeferredActionsWorkflow
+                .ExecuteAsync(
+                    normalizedEntries,
+                    staggerStartupStarts: string.Equals(trigger, "restore-startup", StringComparison.OrdinalIgnoreCase),
+                    ct: ct)
+                .ConfigureAwait(false);
 
             foreach (var entry in result.UpdatedEntries)
                 await repository.UpsertAsync(entry, ct).ConfigureAwait(false);

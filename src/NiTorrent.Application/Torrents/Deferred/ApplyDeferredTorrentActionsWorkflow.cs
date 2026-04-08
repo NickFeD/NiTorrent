@@ -6,12 +6,19 @@ namespace NiTorrent.Application.Torrents.Deferred;
 public sealed class ApplyDeferredTorrentActionsWorkflow(
     ITorrentEngineGateway engineGateway) : IApplyDeferredTorrentActionsWorkflow
 {
-    public async Task<ApplyDeferredTorrentActionsResult> ExecuteAsync(IReadOnlyList<TorrentEntry> entries, CancellationToken ct = default)
+    private static readonly TimeSpan StartupStaggerMinDelay = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan StartupStaggerMaxDelay = TimeSpan.FromSeconds(5);
+
+    public async Task<ApplyDeferredTorrentActionsResult> ExecuteAsync(
+        IReadOnlyList<TorrentEntry> entries,
+        bool staggerStartupStarts = false,
+        CancellationToken ct = default)
     {
         var updated = new List<TorrentEntry>(entries.Count);
         var removedIds = new List<TorrentId>();
         var appliedIds = new List<TorrentId>();
         var deferredIds = new List<TorrentId>();
+        var hasStartedAtLeastOneTorrent = false;
 
         foreach (var entry in entries)
         {
@@ -28,6 +35,16 @@ public sealed class ApplyDeferredTorrentActionsWorkflow(
             while (pendingActions.Count > 0)
             {
                 var action = pendingActions[0];
+                if (staggerStartupStarts
+                    && action.Type == DeferredActionType.Start
+                    && hasStartedAtLeastOneTorrent)
+                {
+                    var delayMs = Random.Shared.Next(
+                        (int)StartupStaggerMinDelay.TotalMilliseconds,
+                        (int)StartupStaggerMaxDelay.TotalMilliseconds + 1);
+                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                }
+
                 var applied = await TryApplyAsync(current.Id, action, engineGateway, ct).ConfigureAwait(false);
                 if (!applied)
                 {
@@ -41,6 +58,7 @@ public sealed class ApplyDeferredTorrentActionsWorkflow(
                 switch (action.Type)
                 {
                     case DeferredActionType.Start:
+                        hasStartedAtLeastOneTorrent = true;
                         current = current.WithIntent(TorrentIntent.Running);
                         break;
                     case DeferredActionType.Pause:

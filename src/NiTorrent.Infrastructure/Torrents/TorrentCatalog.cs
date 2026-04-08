@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using NiTorrent.Domain.Torrents;
 
@@ -13,13 +12,6 @@ internal sealed class TorrentCatalog
     public int SchemaVersion { get; set; } = 6;
     public List<TorrentCatalogEntry> Items { get; set; } = new();
     public List<TorrentPendingRemovalEntry> PendingRemovals { get; set; } = new();
-
-    public static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        Converters = { new JsonStringEnumConverter() }
-    };
 }
 
 internal sealed class TorrentCatalogEntry

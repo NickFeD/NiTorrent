@@ -358,7 +358,7 @@ public sealed class TorrentCatalogStore
             if (!force && (now - _lastSaveUtc) < TimeSpan.FromSeconds(5))
                 return;
 
-            var json = JsonSerializer.Serialize(_catalog, TorrentCatalog.JsonOptions);
+            var json = JsonSerializer.Serialize(_catalog, TorrentCatalogJsonContext.Default.TorrentCatalog);
             await File.WriteAllTextAsync(_catalogFilePath, json, ct).ConfigureAwait(false);
             _lastSaveUtc = now;
         }
@@ -380,7 +380,7 @@ public sealed class TorrentCatalogStore
         var json = await File.ReadAllTextAsync(_catalogFilePath, ct).ConfigureAwait(false);
 
         var catalog = await Task.Run(() =>
-            JsonSerializer.Deserialize<TorrentCatalog>(json, TorrentCatalog.JsonOptions) ?? new TorrentCatalog(),
+            JsonSerializer.Deserialize(json, TorrentCatalogJsonContext.Default.TorrentCatalog) ?? new TorrentCatalog(),
             ct).ConfigureAwait(false);
 
         MigrateToCurrentSchema(catalog);

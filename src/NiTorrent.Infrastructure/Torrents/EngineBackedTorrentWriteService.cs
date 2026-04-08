@@ -17,6 +17,7 @@ public sealed class EngineBackedTorrentWriteService(
     TorrentSettingsApplier settingsApplier,
     ITorrentEntrySettingsRuntimeApplier runtimeSettingsApplier,
     TorrentRuntimeRegistry runtimeRegistry,
+    PeerEndpointConnectionCooldown peerEndpointCooldown,
     TorrentEventOrchestrator eventOrchestrator,
     BackgroundTaskRunner backgroundTasks,
     TorrentEngineStateStore engineStateStore,
@@ -51,6 +52,7 @@ public sealed class EngineBackedTorrentWriteService(
             var existing = await TryGetExistingManagerAsync(entry.Id, ct).ConfigureAwait(false);
             if (existing is not null)
             {
+                peerEndpointCooldown.Register(entry.Id, existing);
                 await ApplyRuntimeSettingsAsync(entry, ct).ConfigureAwait(false);
                 return MapRuntime(existing);
             }

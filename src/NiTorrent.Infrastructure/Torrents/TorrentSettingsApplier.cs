@@ -30,6 +30,7 @@ public sealed class TorrentSettingsApplier
 
             MaximumConnections = _prefs.MaximumConnections,
             MaximumOpenFiles = _prefs.MaximumOpenFiles,
+            MaximumHalfOpenConnections = 8,
 
             AutoSaveLoadFastResume = _prefs.AutoSaveLoadFastResume,
             AutoSaveLoadMagnetLinkMetadata = _prefs.AutoSaveLoadMagnetLinkMetadata,

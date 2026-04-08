@@ -10,13 +10,16 @@ public sealed class TorrentAddExecutor
 {
     private readonly ILogger<TorrentAddExecutor> _logger;
     private readonly TorrentRuntimeRegistry _runtimeRegistry;
+    private readonly PeerEndpointConnectionCooldown _peerEndpointCooldown;
 
     public TorrentAddExecutor(
         ILogger<TorrentAddExecutor> logger,
-        TorrentRuntimeRegistry runtimeRegistry)
+        TorrentRuntimeRegistry runtimeRegistry,
+        PeerEndpointConnectionCooldown peerEndpointCooldown)
     {
         _logger = logger;
         _runtimeRegistry = runtimeRegistry;
+        _peerEndpointCooldown = peerEndpointCooldown;
     }
 
     public async Task<TorrentRuntimeState> AddAsync(
@@ -42,6 +45,8 @@ public sealed class TorrentAddExecutor
         {
             opGate.Release();
         }
+
+        _peerEndpointCooldown.Register(id, manager);
 
         if (startImmediately)
         {

@@ -9,6 +9,7 @@ public sealed class TorrentStartupCoordinator
     private readonly TorrentCatalogStore _catalogStore;
     private readonly TorrentRuntimeRegistry _runtimeRegistry;
     private readonly TorrentEngineFactory _engineFactory;
+    private readonly PeerEndpointConnectionCooldown _peerEndpointCooldown;
 
     private Task? _initTask;
 
@@ -16,12 +17,14 @@ public sealed class TorrentStartupCoordinator
         ILogger<TorrentStartupCoordinator> logger,
         TorrentCatalogStore catalogStore,
         TorrentRuntimeRegistry runtimeRegistry,
-        TorrentEngineFactory engineFactory)
+        TorrentEngineFactory engineFactory,
+        PeerEndpointConnectionCooldown peerEndpointCooldown)
     {
         _logger = logger;
         _catalogStore = catalogStore;
         _runtimeRegistry = runtimeRegistry;
         _engineFactory = engineFactory;
+        _peerEndpointCooldown = peerEndpointCooldown;
     }
 
     public ClientEngine? Engine { get; private set; }
@@ -61,6 +64,9 @@ public sealed class TorrentStartupCoordinator
 
             try
             {
+                foreach (var (torrentId, manager) in _runtimeRegistry.Snapshot())
+                    _peerEndpointCooldown.Unregister(torrentId, manager);
+
                 await Engine.StopAllAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
