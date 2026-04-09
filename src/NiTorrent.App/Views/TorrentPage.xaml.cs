@@ -53,7 +53,6 @@ public sealed partial class TorrentPage : Page
 
         if (!string.IsNullOrWhiteSpace(magnet))
         {
-            // вызываем команду ViewModel
             await ViewModel.AddMagnet(magnet);
         }
 
@@ -71,5 +70,14 @@ public sealed partial class TorrentPage : Page
             return;
 
         Frame?.Navigate(typeof(TorrentDetailsPage), ViewModel.SelectedTorrent.Id.ToString());
+    }
+
+    private void TorrentItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement element || element.DataContext is not TorrentItemViewModel)
+            return;
+
+        // Keep current selection unchanged when opening context menu by right click.
+        e.Handled = true;
     }
 }

@@ -5,6 +5,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="using:NiTorrent.App.Converters"
+    xmlns:dev="using:DevWinUI"
     xmlns:vm="using:NiTorrent.Presentation.Features.Torrents"
     NavigationCacheMode="Required">
 
@@ -96,9 +97,15 @@
 
                     <AppBarSeparator/>
 
-                    <AppBarButton Label="Старт" Icon="Play" Command="{x:Bind ViewModel.StartCommand}"/>
-                    <AppBarButton Label="Пауза" Icon="Pause" Command="{x:Bind ViewModel.PauseCommand}"/>
-                    <AppBarButton Label="Папка" Icon="Folder" Command="{x:Bind ViewModel.OpenFolderCommand}"/>
+                    <AppBarButton Label="Старт"
+                                  Icon="Play"
+                                  Command="{x:Bind ViewModel.SelectedTorrent.StartCommand, Mode=OneWay}"/>
+                    <AppBarButton Label="Пауза"
+                                  Icon="Pause"
+                                  Command="{x:Bind ViewModel.SelectedTorrent.PauseCommand, Mode=OneWay}"/>
+                    <AppBarButton Label="Папка"
+                                  Icon="Folder"
+                                  Command="{x:Bind ViewModel.SelectedTorrent.OpenFolderCommand, Mode=OneWay}"/>
 
                     <AppBarSeparator/>
 
@@ -109,12 +116,10 @@
                             <MenuFlyout>
                                 <MenuFlyoutItem Text="Удалить"
                                                 Icon="Delete"
-                                                Command="{x:Bind ViewModel.RemoveTorrentCommand}"
-                                                CommandParameter="0"/>
+                                                Command="{x:Bind ViewModel.SelectedTorrent.RemoveCommand, Mode=OneWay}"/>
                                 <MenuFlyoutItem Text="Удалить со скачанным"
                                                 Icon="Delete"
-                                                Command="{x:Bind ViewModel.RemoveTorrentCommand}"
-                                                CommandParameter="1"/>
+                                                Command="{x:Bind ViewModel.SelectedTorrent.RemoveWithDataCommand, Mode=OneWay}"/>
                             </MenuFlyout>
                         </AppBarButton.Flyout>
                     </AppBarButton>
@@ -198,7 +203,30 @@
                                         Padding="12"
                                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                        BorderThickness="1">
+                                        BorderThickness="1"
+                                        RightTapped="TorrentItem_RightTapped">
+                                    <Border.ContextFlyout>
+                                        <MenuFlyout>
+                                            <MenuFlyoutItem Text="Старт"
+                                                            Icon="Play"
+                                                            Command="{x:Bind StartCommand}"/>
+                                            <MenuFlyoutItem Text="Пауза"
+                                                            Icon="Pause"
+                                                            Command="{x:Bind PauseCommand}"/>
+                                            <MenuFlyoutItem Text="Папка"
+                                                            Icon="Folder"
+                                                            Command="{x:Bind OpenFolderCommand}"/>
+                                            <MenuFlyoutSubItem Text="Удалить"
+                                                               Icon="Delete">
+                                                <MenuFlyoutItem Text="Удалить"
+                                                                Icon="Delete"
+                                                                Command="{x:Bind RemoveCommand}"/>
+                                                <MenuFlyoutItem Text="Удалить со скачанным"
+                                                                Icon="Delete"
+                                                                Command="{x:Bind RemoveWithDataCommand}"/>
+                                            </MenuFlyoutSubItem>
+                                        </MenuFlyout>
+                                    </Border.ContextFlyout>
 
                                     <Grid RowSpacing="10">
                                         <Grid.RowDefinitions>
@@ -273,12 +301,10 @@
                                         </Grid>
 
                                         <!-- ROW 3: Progress bar -->
-                                        <ProgressBar Grid.Row="2"
-                                                     Value="{x:Bind Progress, Mode=OneWay}"
-                                                     Minimum="0"
-                                                     Maximum="100"
-                                                     Height="6"
-                                                     CornerRadius="3"/>
+                                        <dev:StorageBar Grid.Row="2"
+                                                        Value="{x:Bind Progress, Mode=OneWay}"
+                                                        Minimum="0"
+                                                        Maximum="100"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

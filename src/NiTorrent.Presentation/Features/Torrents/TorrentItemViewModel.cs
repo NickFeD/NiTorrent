@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 
@@ -9,6 +10,12 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     public readonly record struct UpdateResult(bool AnyChanged, bool CommandStateChanged);
 
     private bool _isDisposed;
+    private readonly Func<TorrentItemViewModel, Task> _startAsync;
+    private readonly Func<TorrentItemViewModel, Task> _pauseAsync;
+    private readonly Func<TorrentItemViewModel, Task> _openFolderAsync;
+    private readonly Func<TorrentItemViewModel, Task> _removeAsync;
+    private readonly Func<TorrentItemViewModel, Task> _removeWithDataAsync;
+
     public TorrentId Id => _item.Id;
 
     private TorrentListItemReadModel _item;
@@ -37,8 +44,20 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     public partial string UploadSpeed { get; set; } = "0 B";
 
-    public TorrentItemViewModel(TorrentListItemReadModel item)
+    public TorrentItemViewModel(
+        TorrentListItemReadModel item,
+        Func<TorrentItemViewModel, Task> startAsync,
+        Func<TorrentItemViewModel, Task> pauseAsync,
+        Func<TorrentItemViewModel, Task> openFolderAsync,
+        Func<TorrentItemViewModel, Task> removeAsync,
+        Func<TorrentItemViewModel, Task> removeWithDataAsync)
     {
+        _startAsync = startAsync;
+        _pauseAsync = pauseAsync;
+        _openFolderAsync = openFolderAsync;
+        _removeAsync = removeAsync;
+        _removeWithDataAsync = removeWithDataAsync;
+
         _item = item;
         Apply(item);
     }
@@ -61,6 +80,38 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     private static string BuildStateText(TorrentStatus status)
         => TorrentStatusTextMapper.ToUserFacingText(status);
 
+    private bool CanStart()
+        => State.Phase is TorrentPhase.Stopped or TorrentPhase.Paused or TorrentPhase.Error;
+
+    private bool CanPause()
+        => State.Phase is TorrentPhase.WaitingForEngine or TorrentPhase.FetchingMetadata or TorrentPhase.Checking or TorrentPhase.Downloading or TorrentPhase.Seeding;
+
+    private bool CanOpenFolder()
+        => !string.IsNullOrWhiteSpace(SavePath);
+
+    private bool CanRemove()
+        => true;
+
+    [RelayCommand(CanExecute = nameof(CanStart))]
+    private Task StartAsync()
+        => _startAsync(this);
+
+    [RelayCommand(CanExecute = nameof(CanPause))]
+    private Task PauseAsync()
+        => _pauseAsync(this);
+
+    [RelayCommand(CanExecute = nameof(CanOpenFolder))]
+    private Task OpenFolderAsync()
+        => _openFolderAsync(this);
+
+    [RelayCommand(CanExecute = nameof(CanRemove))]
+    private Task RemoveAsync()
+        => _removeAsync(this);
+
+    [RelayCommand(CanExecute = nameof(CanRemove))]
+    private Task RemoveWithDataAsync()
+        => _removeWithDataAsync(this);
+
     private void Apply(TorrentListItemReadModel item)
     {
         var previous = _item;
@@ -75,6 +126,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         if (!string.Equals(previous.SavePath, item.SavePath, StringComparison.Ordinal))
             OnPropertyChanged(nameof(SavePath));
 
+        var previousPhase = State.Phase;
         if (!EqualityComparer<TorrentStatus>.Default.Equals(State, item.Status))
             State = item.Status;
 
@@ -95,6 +147,16 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         var stateText = BuildStateText(item.Status);
         if (!string.Equals(StateText, stateText, StringComparison.Ordinal))
             StateText = stateText;
+
+        if (previousPhase != State.Phase)
+        {
+            StartCommand.NotifyCanExecuteChanged();
+            PauseCommand.NotifyCanExecuteChanged();
+        }
+
+        OpenFolderCommand.NotifyCanExecuteChanged();
+        RemoveCommand.NotifyCanExecuteChanged();
+        RemoveWithDataCommand.NotifyCanExecuteChanged();
     }
 
     public void Dispose()

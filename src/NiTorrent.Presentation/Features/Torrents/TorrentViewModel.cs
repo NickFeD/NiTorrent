@@ -146,7 +146,13 @@ public partial class TorrentViewModel : ObservableObject
             }
             else
             {
-                var newTorrent = new TorrentItemViewModel(torrent);
+                var newTorrent = new TorrentItemViewModel(
+                    torrent,
+                    ExecuteStartAsync,
+                    ExecutePauseAsync,
+                    ExecuteOpenFolderAsync,
+                    ExecuteRemoveAsync,
+                    ExecuteRemoveWithDataAsync);
                 _torrents.Add(newTorrent.Id, newTorrent);
                 Torrents.Add(newTorrent);
             }
@@ -183,10 +189,6 @@ public partial class TorrentViewModel : ObservableObject
 
     public void RefreshCommands()
     {
-        StartCommand.NotifyCanExecuteChanged();
-        PauseCommand.NotifyCanExecuteChanged();
-        OpenFolderCommand.NotifyCanExecuteChanged();
-        RemoveTorrentCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]
@@ -216,24 +218,12 @@ public partial class TorrentViewModel : ObservableObject
         }
     }
 
-    private bool CanStart()
-        => SelectedTorrent != null && (SelectedTorrent.State.Phase is TorrentPhase.Stopped or TorrentPhase.Paused or TorrentPhase.Error);
-
-    private bool CanPause()
-        => SelectedTorrent != null && (SelectedTorrent.State.Phase is TorrentPhase.WaitingForEngine or TorrentPhase.FetchingMetadata or TorrentPhase.Checking or TorrentPhase.Downloading or TorrentPhase.Seeding);
-
-    private bool CanOpenFolder()
-        => SelectedTorrent != null;
-
-    [RelayCommand(CanExecute = nameof(CanStart))]
-    private async Task StartAsync()
+    private async Task ExecuteStartAsync(TorrentItemViewModel torrent)
     {
-        if (SelectedTorrent == null) return;
-
         try
         {
             StatusText = "Запуск торрента...";
-            await _torrentWorkflowService.StartAsync(SelectedTorrent.Id);
+            await _torrentWorkflowService.StartAsync(torrent.Id);
         }
         catch (Exception ex)
         {
@@ -242,15 +232,12 @@ public partial class TorrentViewModel : ObservableObject
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanPause))]
-    private async Task PauseAsync()
+    private async Task ExecutePauseAsync(TorrentItemViewModel torrent)
     {
-        if (SelectedTorrent == null) return;
-
         try
         {
             StatusText = "Пауза торрента...";
-            await _torrentWorkflowService.PauseAsync(SelectedTorrent.Id);
+            await _torrentWorkflowService.PauseAsync(torrent.Id);
         }
         catch (Exception ex)
         {
@@ -259,14 +246,11 @@ public partial class TorrentViewModel : ObservableObject
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanOpenFolder))]
-    private async Task OpenFolderAsync()
+    private async Task ExecuteOpenFolderAsync(TorrentItemViewModel torrent)
     {
-        if (SelectedTorrent == null) return;
-
         try
         {
-            await _torrentWorkflowService.OpenFolderAsync(SelectedTorrent.SavePath);
+            await _torrentWorkflowService.OpenFolderAsync(torrent.SavePath);
         }
         catch (Exception ex)
         {
@@ -275,16 +259,19 @@ public partial class TorrentViewModel : ObservableObject
         }
     }
 
-    [RelayCommand(CanExecute = nameof(CanRemove))]
-    private async Task RemoveTorrent(string isDeleteData)
-    {
-        if (SelectedTorrent == null) return;
+    private Task ExecuteRemoveAsync(TorrentItemViewModel torrent)
+        => RemoveTorrentCoreAsync(torrent, deleteData: false);
 
-        var toRemove = SelectedTorrent;
+    private Task ExecuteRemoveWithDataAsync(TorrentItemViewModel torrent)
+        => RemoveTorrentCoreAsync(torrent, deleteData: true);
+
+    private async Task RemoveTorrentCoreAsync(TorrentItemViewModel torrent, bool deleteData)
+    {
+        var toRemove = torrent;
 
         try
         {
-            await _torrentWorkflowService.RemoveAsync(SelectedTorrent.Id, isDeleteData == "1");
+            await _torrentWorkflowService.RemoveAsync(toRemove.Id, deleteData);
 
             _torrents.Remove(toRemove.Id);
             toRemove.Dispose();
