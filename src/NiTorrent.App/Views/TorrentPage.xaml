@@ -216,6 +216,9 @@
                                             <MenuFlyoutItem Text="Папка"
                                                             Icon="Folder"
                                                             Command="{x:Bind OpenFolderCommand}"/>
+                                            <MenuFlyoutItem Text="Подробнее"
+                                                            Icon="PreviewLink"
+                                                            Click="TorrentDetailsContext_Click"/>
                                             <MenuFlyoutSubItem Text="Удалить"
                                                                Icon="Delete">
                                                 <MenuFlyoutItem Text="Удалить"

@@ -12,6 +12,8 @@ namespace NiTorrent.App.Views;
 /// </summary>
 public sealed partial class TorrentPage : Page
 {
+    private TorrentItemViewModel? _contextMenuTorrent;
+
     public TorrentViewModel ViewModel { get; }
 
     public TorrentPage()
@@ -74,10 +76,21 @@ public sealed partial class TorrentPage : Page
 
     private void TorrentItem_RightTapped(object sender, RightTappedRoutedEventArgs e)
     {
-        if (sender is not FrameworkElement element || element.DataContext is not TorrentItemViewModel)
+        if (sender is not FrameworkElement element || element.DataContext is not TorrentItemViewModel torrent)
             return;
+
+        _contextMenuTorrent = torrent;
 
         // Keep current selection unchanged when opening context menu by right click.
         e.Handled = true;
+    }
+
+    private void TorrentDetailsContext_Click(object sender, RoutedEventArgs e)
+    {
+        var torrent = _contextMenuTorrent ?? ViewModel.SelectedTorrent;
+        if (torrent is null)
+            return;
+
+        Frame?.Navigate(typeof(TorrentDetailsPage), torrent.Id.ToString());
     }
 }
