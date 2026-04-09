@@ -18,10 +18,26 @@ public sealed partial class TorrentDetailsPage : Page
     {
         base.OnNavigatedTo(e);
 
-        if (e.Parameter is string raw && Guid.TryParse(raw, out var guid))
-            await ViewModel.LoadAsync(new TorrentId(guid));
-        else if (e.Parameter is TorrentId torrentId)
-            await ViewModel.LoadAsync(torrentId);
+        try
+        {
+            if (e.Parameter is string raw && Guid.TryParse(raw, out var guid))
+                await ViewModel.LoadAsync(new TorrentId(guid));
+            else if (e.Parameter is TorrentId torrentId)
+                await ViewModel.LoadAsync(torrentId);
+
+            ViewModel.Activate();
+        }
+        catch
+        {
+            if (Frame?.CanGoBack == true)
+                Frame.GoBack();
+        }
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        ViewModel.Deactivate();
+        base.OnNavigatedFrom(e);
     }
 
     private void Back_Click(object sender, RoutedEventArgs e)

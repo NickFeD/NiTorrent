@@ -128,6 +128,7 @@
                                                           IsEnabled="{x:Bind CanToggle}"
                                                           IsChecked="{x:Bind IsChecked, Mode=OneWay}"
                                                           Command="{x:Bind ToggleCommand}"
+                                                          x:SuppressXamlTrimWarnings="True"
                                                           CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Mode=Self}}"/>
 
                                                 <FontIcon Glyph="{x:Bind TypeGlyph}"

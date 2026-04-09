@@ -112,3 +112,29 @@ for UI scenarios remains manual in this environment.
 - Application now persists per-torrent source bytes for `.torrent` and magnet-derived adds.
 - Restore workflow executes staged per-torrent rehydration with running-intent priority.
 - Legacy catalog entries without persisted source are retained and marked with recoverable runtime error state instead of being dropped.
+
+## Torrent Details Update (2026-04-09)
+
+- `TorrentDetailsPage` now contains:
+  - header/action block with status, `dev:StorageBar`, progress, transfer rates, ETA, ratio, save path, hash, and start/pause/open-folder/delete actions;
+  - live transfer chart (download + upload on one graph);
+  - extended details (general, transfer, technical, connections, tracker summary);
+  - inline peers list;
+  - inline trackers list;
+  - per-torrent settings block (existing save flow preserved).
+
+- Live chart behavior:
+  - chart history is in-memory only (`TorrentDetailsViewModel.SpeedHistory`);
+  - history is capped to a fixed point count (`MaxChartPoints`) to avoid UI overload;
+  - history is not persisted and starts empty after application restart.
+
+- Peers behavior:
+  - peers are polled only while `TorrentDetailsPage` is active (`Activate`/`Deactivate`);
+  - polling is stopped on page navigation away;
+  - peers are updated via keyed diff (`ObservableCollection` + dictionary), without full list recreation each refresh.
+
+- Architecture changes:
+  - added application boundary `ITorrentDetailsRuntimeService`;
+  - added query `GetTorrentRuntimeDetailsQuery`;
+  - added infrastructure adapter `EngineBackedTorrentDetailsRuntimeService` (runtime snapshot mapping for details/peers/trackers);
+  - `TorrentDetailsViewModel` now consumes dedicated details query + runtime query + workflow commands, keeping UI and business boundaries separated.

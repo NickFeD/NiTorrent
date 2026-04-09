@@ -3,12 +3,17 @@
     x:Class="NiTorrent.App.Views.TorrentDetailsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:dev="using:DevWinUI"
     xmlns:vm="using:NiTorrent.Presentation.Features.Torrents"
     NavigationCacheMode="Disabled">
 
     <ScrollViewer>
         <Grid Padding="12" RowSpacing="12">
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -20,19 +25,83 @@
                     BorderThickness="1"
                     CornerRadius="12"
                     Padding="12">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="Подробности торрента"
-                               FontSize="20"
-                               FontWeight="SemiBold"/>
-                    <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}"
-                               FontSize="16"
-                               FontWeight="SemiBold"
-                               TextWrapping="WrapWholeWords"/>
-                    <TextBlock Text="{x:Bind ViewModel.StatusLabel, Mode=OneWay}"/>
-                    <TextBlock Text="{x:Bind ViewModel.SavePath, Mode=OneWay}"
-                               Opacity="0.75"
-                               TextWrapping="WrapWholeWords"/>
-                </StackPanel>
+                <Grid RowSpacing="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Spacing="4">
+                        <TextBlock Text="{x:Bind ViewModel.Title, Mode=OneWay}"
+                                   FontSize="20"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="WrapWholeWords"/>
+                        <TextBlock Text="{x:Bind ViewModel.StatusLabel, Mode=OneWay}"
+                                   Opacity="0.9"/>
+                    </StackPanel>
+
+                    <dev:StorageBar Grid.Row="1"
+                                    Value="{x:Bind ViewModel.ProgressPercent, Mode=OneWay}"
+                                    Minimum="0"
+                                    Maximum="100"/>
+
+                    <Grid Grid.Row="2" ColumnSpacing="16" RowSpacing="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}" FontWeight="SemiBold"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{x:Bind ViewModel.ProgressSummaryText, Mode=OneWay}" TextAlignment="Right"/>
+
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{x:Bind ViewModel.DownloadSpeedText, Mode=OneWay}"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{x:Bind ViewModel.UploadSpeedText, Mode=OneWay}" TextAlignment="Right"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{x:Bind ViewModel.EtaText, Mode=OneWay}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{x:Bind ViewModel.RatioText, Mode=OneWay}" TextAlignment="Right"/>
+
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{x:Bind ViewModel.PeersCountText, Mode=OneWay}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{x:Bind ViewModel.SeedsCountText, Mode=OneWay}" TextAlignment="Right"/>
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="{x:Bind ViewModel.SavePath, Mode=OneWay}" Opacity="0.8" TextWrapping="WrapWholeWords"/>
+                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{x:Bind ViewModel.Hash, Mode=OneWay}" TextAlignment="Right" Opacity="0.8" TextWrapping="WrapWholeWords"/>
+                    </Grid>
+
+                    <CommandBar Grid.Row="3"
+                                DefaultLabelPosition="Collapsed"
+                                OverflowButtonVisibility="Auto"
+                                Background="Transparent">
+                        <AppBarButton Icon="Play"
+                                      Label="Start"
+                                      Command="{x:Bind ViewModel.StartCommand, Mode=OneWay}"/>
+                        <AppBarButton Icon="Pause"
+                                      Label="Pause"
+                                      Command="{x:Bind ViewModel.PauseCommand, Mode=OneWay}"/>
+                        <AppBarButton Icon="Folder"
+                                      Label="Open folder"
+                                      Command="{x:Bind ViewModel.OpenFolderCommand, Mode=OneWay}"/>
+                        <AppBarButton Icon="Delete"
+                                      Label="Delete">
+                            <AppBarButton.Flyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Delete"
+                                                    Command="{x:Bind ViewModel.DeleteCommand, Mode=OneWay}"/>
+                                    <MenuFlyoutItem Text="Delete with data"
+                                                    Command="{x:Bind ViewModel.DeleteWithDataCommand, Mode=OneWay}"/>
+                                </MenuFlyout>
+                            </AppBarButton.Flyout>
+                        </AppBarButton>
+                    </CommandBar>
+                </Grid>
             </Border>
 
             <Border Grid.Row="1"
@@ -41,34 +110,191 @@
                     BorderThickness="1"
                     CornerRadius="12"
                     Padding="12">
-                <StackPanel Spacing="12">
-                    <TextBlock Text="Настройки торрента"
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Transfer load" FontWeight="SemiBold"/>
+                    <dev:SpeedGraph Height="120"/>
+                    <dev:SpeedGraph Height="120"/>
+                    <StackPanel Orientation="Horizontal" Spacing="14">
+                        <TextBlock Text="Download line: Blue" Opacity="0.8"/>
+                        <TextBlock Text="Upload line: Orange" Opacity="0.8"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="2"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="12">
+                <Grid ColumnSpacing="20" RowSpacing="6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Spacing="6">
+                        <TextBlock Text="General" FontWeight="SemiBold"/>
+                        <TextBlock Text="Size:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.SizeText, Mode=OneWay}"/>
+                        <TextBlock Text="Progress:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.ProgressText, Mode=OneWay}"/>
+                        <TextBlock Text="Remaining:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.RemainingText, Mode=OneWay}"/>
+                        <TextBlock Text="Added:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.AddedAtText, Mode=OneWay}"/>
+                        <TextBlock Text="Metadata:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.HasMetadataText, Mode=OneWay}"/>
+
+                        <TextBlock Text="Transfer" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                        <TextBlock Text="Downloaded:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.DownloadedText, Mode=OneWay}"/>
+                        <TextBlock Text="Uploaded:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.UploadedText, Mode=OneWay}"/>
+                        <TextBlock Text="Download speed:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.DownloadSpeedText, Mode=OneWay}"/>
+                        <TextBlock Text="Upload speed:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.UploadSpeedText, Mode=OneWay}"/>
+                        <TextBlock Text="Ratio:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.RatioText, Mode=OneWay}"/>
+                        <TextBlock Text="ETA:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.EtaText, Mode=OneWay}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Spacing="6">
+                        <TextBlock Text="Technical" FontWeight="SemiBold"/>
+                        <TextBlock Text="Piece size:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.PieceSizeText, Mode=OneWay}"/>
+                        <TextBlock Text="Pieces count:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.PieceCountText, Mode=OneWay}"/>
+                        <TextBlock Text="Hash fails:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.HashFailsText, Mode=OneWay}"/>
+                        <TextBlock Text="Unhashed pieces:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.UnhashedPiecesText, Mode=OneWay}"/>
+
+                        <TextBlock Text="Connections" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                        <TextBlock Text="Open connections:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.ConnectionsText, Mode=OneWay}"/>
+                        <TextBlock Text="Uploading to:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.UploadingToText, Mode=OneWay}"/>
+                        <TextBlock Text="Peers:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.PeersCountText, Mode=OneWay}"/>
+                        <TextBlock Text="Seeds:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.SeedsCountText, Mode=OneWay}"/>
+
+                        <TextBlock Text="Trackers" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                        <TextBlock Text="Tracker count:" Opacity="0.75"/>
+                        <TextBlock Text="{x:Bind ViewModel.TrackerCountText, Mode=OneWay}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="3"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Peers" FontWeight="SemiBold"/>
+                    <ListView ItemsSource="{x:Bind ViewModel.Peers, Mode=OneWay}"
+                              SelectionMode="None"
+                              IsItemClickEnabled="False"
+                              HorizontalContentAlignment="Stretch"
+                              MaxHeight="320">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TorrentPeerItemViewModel">
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{x:Bind Endpoint}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Client}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="2" Text="{x:Bind Progress}"/>
+                                    <TextBlock Grid.Column="3" Text="{x:Bind DownloadSpeed}"/>
+                                    <TextBlock Grid.Column="4" Text="{x:Bind UploadSpeed}"/>
+                                    <TextBlock Grid.Column="5" Text="{x:Bind Flags}" TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="4"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Trackers" FontWeight="SemiBold"/>
+                    <ListView ItemsSource="{x:Bind ViewModel.Trackers, Mode=OneWay}"
+                              SelectionMode="None"
+                              HorizontalContentAlignment="Stretch"
+                              MaxHeight="220">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TorrentTrackerItemViewModel">
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="2*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="2*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{x:Bind Uri}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind Status}"/>
+                                    <TextBlock Grid.Column="2" Text="{x:Bind LastAnnounce}"/>
+                                    <TextBlock Grid.Column="3" Text="{x:Bind NextAnnounce}"/>
+                                    <TextBlock Grid.Column="4" Text="{x:Bind Message}" TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="5"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="12">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Per-torrent settings"
                                FontWeight="SemiBold"/>
 
-                    <TextBox Header="Путь загрузки (override)"
+                    <TextBox Header="Download path override"
                              Text="{x:Bind ViewModel.DownloadPathOverride, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             PlaceholderText="Использовать общий путь"/>
+                             PlaceholderText="Use global path"/>
 
-                    <TextBox Header="Максимальная скорость загрузки (B/s)"
+                    <TextBox Header="Maximum download speed (B/s)"
                              Text="{x:Bind ViewModel.MaximumDownloadRateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             PlaceholderText="Без ограничения"/>
+                             PlaceholderText="Unlimited"/>
 
-                    <TextBox Header="Максимальная скорость отдачи (B/s)"
+                    <TextBox Header="Maximum upload speed (B/s)"
                              Text="{x:Bind ViewModel.MaximumUploadRateText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                             PlaceholderText="Без ограничения"/>
+                             PlaceholderText="Unlimited"/>
 
                     <ToggleSwitch Header="Sequential download"
                                   IsOn="{x:Bind ViewModel.SequentialDownload, Mode=TwoWay}"/>
                 </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="2"
+            <StackPanel Grid.Row="6"
                         Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         Spacing="8">
-                <Button Content="Назад" Click="Back_Click"/>
-                <Button Content="Сохранить"
-                        Command="{x:Bind ViewModel.SaveCommand}"/>
+                <Button Content="Back" Click="Back_Click"/>
+                <Button Content="Save settings"
+                        Command="{x:Bind ViewModel.SaveCommand}"
+                        IsEnabled="{x:Bind ViewModel.CanSave, Mode=OneWay}"/>
             </StackPanel>
         </Grid>
     </ScrollViewer>

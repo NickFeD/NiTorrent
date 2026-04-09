@@ -17,6 +17,7 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
     private readonly TorrentRuntimeRegistry _runtimeRegistry;
     private readonly TorrentEventOrchestrator _eventOrchestrator;
     private readonly TorrentStartupCoordinator _startupCoordinator;
+    private readonly TorrentStableKeyAccessor _stableKeyAccessor;
     private readonly SemaphoreSlim _operationGate;
     private readonly ILogger<RuntimeBackedTorrentRuntimeFactsProvider> _logger;
 
@@ -26,12 +27,14 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
         TorrentRuntimeRegistry runtimeRegistry,
         TorrentEventOrchestrator eventOrchestrator,
         TorrentStartupCoordinator startupCoordinator,
+        TorrentStableKeyAccessor stableKeyAccessor,
         TorrentRuntimeContext runtimeContext,
         ILogger<RuntimeBackedTorrentRuntimeFactsProvider> logger)
     {
         _runtimeRegistry = runtimeRegistry;
         _eventOrchestrator = eventOrchestrator;
         _startupCoordinator = startupCoordinator;
+        _stableKeyAccessor = stableKeyAccessor;
         _operationGate = runtimeContext.OperationGate;
         _logger = logger;
 
@@ -68,6 +71,7 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
 
     private TorrentRuntimeFact MapManager(TorrentId id, TorrentManager manager)
     {
+        var stableKey = _stableKeyAccessor.GetStableKey(manager);
         var phase = manager.State switch
         {
             TorrentState.Metadata => TorrentPhase.FetchingMetadata,
@@ -102,29 +106,11 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
 
         return new TorrentRuntimeFact(
             id,
-            string.IsNullOrWhiteSpace(GetStableKey(manager)) ? TorrentKey.Empty : new TorrentKey(GetStableKey(manager)),
+            string.IsNullOrWhiteSpace(stableKey) ? TorrentKey.Empty : new TorrentKey(stableKey),
             manager.Name,
             manager.Torrent?.Size ?? 0,
             manager.SavePath,
             runtime);
-    }
-
-    private static string GetStableKey(TorrentManager manager)
-    {
-        try
-        {
-            var infoHashes = manager.InfoHashes;
-            var v1 = infoHashes?.V1;
-            if (v1 is not null)
-                return v1.ToString() ?? string.Empty;
-
-            var v2 = infoHashes?.V2;
-            return v2?.ToString() ?? string.Empty;
-        }
-        catch
-        {
-            return string.Empty;
-        }
     }
 
     public void Dispose()

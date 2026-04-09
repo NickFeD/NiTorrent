@@ -42,6 +42,7 @@ public static class DependencyInjection
         services.AddSingleton<ITorrentCollectionRepository, CatalogBackedTorrentCollectionRepository>();
         services.AddSingleton<ITorrentReadModelFeed, EngineBackedTorrentReadModelFeed>();
         services.AddSingleton<ITorrentWriteService, EngineBackedTorrentWriteService>();
+        services.AddSingleton<ITorrentDetailsRuntimeService, EngineBackedTorrentDetailsRuntimeService>();
         services.AddSingleton<ITorrentRuntimeFactsProvider, RuntimeBackedTorrentRuntimeFactsProvider>();
         services.AddSingleton<ITorrentEngineGateway, InfrastructureTorrentEngineGateway>();
         services.AddSingleton<ITorrentEngineLifecycle, InfrastructureTorrentEngineLifecycle>();

@@ -99,6 +99,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<ThemeSettingsViewModel>();
         services.AddSingleton<GetTorrentListQuery>();
         services.AddSingleton<GetTorrentDetailsQuery>();
+        services.AddSingleton<GetTorrentRuntimeDetailsQuery>();
         services.AddSingleton<GetSettingsQuery>();
         services.AddSingleton<GetShellStateQuery>();
         services.AddSingleton<HandleWindowCloseWorkflow>();

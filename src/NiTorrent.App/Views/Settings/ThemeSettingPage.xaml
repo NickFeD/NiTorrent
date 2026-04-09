@@ -24,6 +24,7 @@
                               Header="App theme"
                               HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Theme.png}">
                 <ComboBox SelectedValuePath="Tag"
+                          x:SuppressXamlTrimWarnings="True"
                           SelectedValue="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}">
                     <ComboBoxItem Content="Light" Tag="Light" />
                     <ComboBoxItem Content="Dark" Tag="Dark" />
@@ -35,6 +36,7 @@
                               Header="Material"
                               HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Backdrop.png}">
                 <ComboBox SelectedValuePath="Tag"
+                          x:SuppressXamlTrimWarnings="True"
                           SelectedValue="{x:Bind ViewModel.SelectedBackdrop, Mode=TwoWay}">
                     <ComboBoxItem Content="Mica" Tag="Mica" />
                     <ComboBoxItem Content="Mica Alt" Tag="MicaAlt" />
