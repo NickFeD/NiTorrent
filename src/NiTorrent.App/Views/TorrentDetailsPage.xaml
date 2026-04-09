@@ -112,8 +112,14 @@
                     Padding="12">
                 <StackPanel Spacing="8">
                     <TextBlock Text="Transfer load" FontWeight="SemiBold"/>
-                    <dev:SpeedGraph Height="120"/>
-                    <dev:SpeedGraph Height="120"/>
+                    <dev:SpeedGraph Height="120"
+                                    Total="{x:Bind ViewModel.DownloadGraphTotal, Mode=OneWay}"
+                                    MaxSpeed="{x:Bind ViewModel.DownloadGraphMaxSpeed, Mode=OneWay}"
+                                    AutoUpdateSpeedText="False"/>
+                    <dev:SpeedGraph Height="120"
+                                    Total="{x:Bind ViewModel.UploadGraphTotal, Mode=OneWay}"
+                                    MaxSpeed="{x:Bind ViewModel.UploadGraphMaxSpeed, Mode=OneWay}"
+                                    AutoUpdateSpeedText="False"/>
                     <StackPanel Orientation="Horizontal" Spacing="14">
                         <TextBlock Text="Download line: Blue" Opacity="0.8"/>
                         <TextBlock Text="Upload line: Orange" Opacity="0.8"/>

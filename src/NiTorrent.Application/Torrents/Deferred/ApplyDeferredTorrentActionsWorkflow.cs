@@ -6,8 +6,7 @@ namespace NiTorrent.Application.Torrents.Deferred;
 public sealed class ApplyDeferredTorrentActionsWorkflow(
     ITorrentEngineGateway engineGateway) : IApplyDeferredTorrentActionsWorkflow
 {
-    private static readonly TimeSpan StartupStaggerMinDelay = TimeSpan.FromSeconds(2);
-    private static readonly TimeSpan StartupStaggerMaxDelay = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan StartupStaggerDelay = TimeSpan.FromSeconds(8);
 
     public async Task<ApplyDeferredTorrentActionsResult> ExecuteAsync(
         IReadOnlyList<TorrentEntry> entries,
@@ -39,10 +38,7 @@ public sealed class ApplyDeferredTorrentActionsWorkflow(
                     && action.Type == DeferredActionType.Start
                     && hasStartedAtLeastOneTorrent)
                 {
-                    var delayMs = Random.Shared.Next(
-                        (int)StartupStaggerMinDelay.TotalMilliseconds,
-                        (int)StartupStaggerMaxDelay.TotalMilliseconds + 1);
-                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                    await Task.Delay(StartupStaggerDelay, ct).ConfigureAwait(false);
                 }
 
                 var applied = await TryApplyAsync(current.Id, action, engineGateway, ct).ConfigureAwait(false);

@@ -89,6 +89,10 @@ public partial class TorrentDetailsViewModel : ObservableObject
     [ObservableProperty] public partial string SeedsCountText { get; set; } = "—";
     [ObservableProperty] public partial string TrackerCountText { get; set; } = "0";
     [ObservableProperty] public partial string HasMetadataText { get; set; } = "No";
+    [ObservableProperty] public partial ulong DownloadGraphTotal { get; set; }
+    [ObservableProperty] public partial ulong UploadGraphTotal { get; set; }
+    [ObservableProperty] public partial ulong DownloadGraphMaxSpeed { get; set; } = 1;
+    [ObservableProperty] public partial ulong UploadGraphMaxSpeed { get; set; } = 1;
 
     [ObservableProperty]
     public partial string? DownloadPathOverride { get; set; }
@@ -227,6 +231,8 @@ public partial class TorrentDetailsViewModel : ObservableObject
         ProgressPercent = snapshot.Status.Progress;
         DownloadSpeedText = SizeFormatter.FormatSpeed(snapshot.Status.DownloadRateBytesPerSecond);
         UploadSpeedText = SizeFormatter.FormatSpeed(snapshot.Status.UploadRateBytesPerSecond);
+        DownloadGraphTotal = (ulong)Math.Max(0, snapshot.Status.DownloadRateBytesPerSecond);
+        UploadGraphTotal = (ulong)Math.Max(0, snapshot.Status.UploadRateBytesPerSecond);
         EtaText = FormatEta(snapshot.Eta);
         RatioText = $"{snapshot.Ratio:F2}";
 
@@ -263,6 +269,9 @@ public partial class TorrentDetailsViewModel : ObservableObject
         _speedHistory.Add(new SpeedSamplePoint(downloadRateBytesPerSecond, uploadRateBytesPerSecond));
         if (_speedHistory.Count > MaxChartPoints)
             _speedHistory.RemoveAt(0);
+
+        DownloadGraphMaxSpeed = (ulong)Math.Max(1L, _speedHistory.Max(x => x.DownloadRateBytesPerSecond));
+        UploadGraphMaxSpeed = (ulong)Math.Max(1L, _speedHistory.Max(x => x.UploadRateBytesPerSecond));
 
         OnPropertyChanged(nameof(SpeedHistory));
     }
@@ -454,6 +463,10 @@ public partial class TorrentDetailsViewModel : ObservableObject
         ProgressSummaryText = "0 B / 0 B";
         DownloadSpeedText = "0 B/s";
         UploadSpeedText = "0 B/s";
+        DownloadGraphTotal = 0;
+        UploadGraphTotal = 0;
+        DownloadGraphMaxSpeed = 1;
+        UploadGraphMaxSpeed = 1;
         EtaText = "—";
         RatioText = "0.00";
         SizeText = "0 B";
