@@ -24,7 +24,7 @@ public sealed class CreateTorrentDownloadUseCase(ITorrentRuntimeGateway download
         var download = _downloadFactory.Create(metadata, command.Files, command.DownloadDirectory);
 
 
-        await _torrentRepository.AddAsync(download, ct);
+        await _torrentRepository.AddAsync(download, metadata.Source, ct);
 
         await _downloadEngine.AddAsync(download.Id, metadata.Source, download.SavePath, ct);
         await _downloadEngine.UpdateFileSelectionAsync(download.Id, download.FileEntries, ct);

@@ -1,30 +1,50 @@
-﻿using System.Text.Json;
+﻿using System.Collections.Concurrent;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public sealed class JsonTorrentRepository(IAppStorageService storage) : ITorrentRepository
+public sealed class JsonTorrentRepository : ITorrentRepository
 {
+    private readonly IAppStorageService _storage;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly string _filePath = storage.GetLocalPath(@"Torrents\torrent_downloads.json");
+    private readonly string _filePath;
+    private readonly string _torrentsRoot;
 
-    private List<TorrentDownload> _items = [];
+    private ConcurrentDictionary<Guid, TorrentDownloadRecord> _itemsById = new();
     private bool _loaded;
 
-    public async Task AddAsync(TorrentDownload download, CancellationToken ct)
+    public JsonTorrentRepository(IAppStorageService storage)
     {
+        _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+
+        _torrentsRoot = _storage.GetLocalPath(@"Torrents");
+        _filePath = _storage.GetLocalPath(@"Torrents\torrent_downloads.json");
+
+        _storage.EnsureDirectory(_torrentsRoot);
+        _storage.EnsureParentDirectory(_filePath);
+    }
+
+    public async Task AddAsync(TorrentDownload download, TorrentSource source, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(download);
+        ArgumentNullException.ThrowIfNull(source);
+
         await EnsureLoadedAsync(ct);
 
         await _gate.WaitAsync(ct);
         try
         {
-            if (_items.Any(x => x.Id == download.Id))
+            var record = ToRecord(download);
+            record.Source = await CreateSourceRecordAsync(download.Id, source, ct);
+
+            if (!_itemsById.TryAdd(download.Id, record))
                 throw new InvalidOperationException($"Torrent with id '{download.Id}' already exists.");
 
-            _items.Add(Clone(download));
             await SaveUnsafeAsync(ct);
         }
         finally
@@ -37,16 +57,26 @@ public sealed class JsonTorrentRepository(IAppStorageService storage) : ITorrent
     {
         await EnsureLoadedAsync(ct);
 
+        string? torrentFilePath = null;
+        var removed = false;
+
         await _gate.WaitAsync(ct);
         try
         {
-            _items.RemoveAll(x => x.Id == id);
+            if (!_itemsById.TryRemove(id, out var removedRecord))
+                return;
+
+            removed = true;
+            torrentFilePath = GetTorrentFilePath(removedRecord);
             await SaveUnsafeAsync(ct);
         }
         finally
         {
             _gate.Release();
         }
+
+        if (removed)
+            TryDeleteFile(torrentFilePath);
     }
 
     public async Task<bool> ExistsByInfoHash(string infoHash, CancellationToken ct)
@@ -56,46 +86,36 @@ public sealed class JsonTorrentRepository(IAppStorageService storage) : ITorrent
 
         await EnsureLoadedAsync(ct);
 
-        await _gate.WaitAsync(ct);
-        try
-        {
-            return _items.Any(x => string.Equals(x.InfoHash, infoHash, StringComparison.OrdinalIgnoreCase));
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        return _itemsById.Values.Any(x =>
+            string.Equals(x.InfoHash, infoHash, StringComparison.OrdinalIgnoreCase));
     }
 
-    public async Task<TorrentDownload> GetByIdAsync(Guid torrentId, CancellationToken ct)
+    public async Task<TorrentDownload?> GetByIdAsync(Guid torrentId, CancellationToken ct)
     {
         await EnsureLoadedAsync(ct);
 
-        await _gate.WaitAsync(ct);
-        try
-        {
-            var item = _items.FirstOrDefault(x => x.Id == torrentId);
-            return item is null ? null! : Clone(item);
-        }
-        finally
-        {
-            _gate.Release();
-        }
+        return _itemsById.TryGetValue(torrentId, out var record)
+            ? ToDomain(record)
+            : null;
     }
 
     public async Task UpdateAsync(TorrentDownload download, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(download);
+
         await EnsureLoadedAsync(ct);
 
         await _gate.WaitAsync(ct);
         try
         {
-            var index = _items.FindIndex(x => x.Id == download.Id);
-            if (index < 0)
+            if (!_itemsById.TryGetValue(download.Id, out var existing))
                 throw new InvalidOperationException($"Torrent with id '{download.Id}' was not found.");
 
-            _items[index] = Clone(download);
-            await SaveUnsafeAsync(ct).ConfigureAwait(false);
+            var updated = ToRecord(download);
+            updated.Source = existing.Source;
+
+            _itemsById[download.Id] = updated;
+            await SaveUnsafeAsync(ct);
         }
         finally
         {
@@ -114,24 +134,7 @@ public sealed class JsonTorrentRepository(IAppStorageService storage) : ITorrent
             if (_loaded)
                 return;
 
-            storage.EnsureParentDirectory(_filePath);
-
-            if (!File.Exists(_filePath))
-            {
-                _items = [];
-                _loaded = true;
-                return;
-            }
-
-            await using var stream = File.OpenRead(_filePath);
-            var document = await JsonSerializer.DeserializeAsync(
-                stream,
-                JsonTorrentRepositoryDocumentContext.Default.TorrentRepositoryDocument,
-                ct);
-
-            _items = (document?.Items ?? [])
-                .Select(ToDomain)
-                .ToList();
+            await LoadUnsafeAsync(ct);
             _loaded = true;
         }
         finally
@@ -140,31 +143,122 @@ public sealed class JsonTorrentRepository(IAppStorageService storage) : ITorrent
         }
     }
 
+    private async Task LoadUnsafeAsync(CancellationToken ct)
+    {
+        _storage.EnsureParentDirectory(_filePath);
+
+        if (!File.Exists(_filePath))
+        {
+            _itemsById = new ConcurrentDictionary<Guid, TorrentDownloadRecord>();
+            return;
+        }
+
+        await using var stream = File.OpenRead(_filePath);
+        var document = await JsonSerializer.DeserializeAsync(
+            stream,
+            JsonTorrentRepositoryDocumentContext.Default.TorrentRepositoryDocument,
+            ct);
+
+        var items = document?.Items ?? [];
+        _itemsById = new ConcurrentDictionary<Guid, TorrentDownloadRecord>(
+            items.ToDictionary(x => x.Id));
+    }
+
     private async Task SaveUnsafeAsync(CancellationToken ct)
     {
-        storage.EnsureParentDirectory(_filePath);
+        _storage.EnsureParentDirectory(_filePath);
 
         var document = new TorrentRepositoryDocument
         {
-            Items = _items.Select(ToRecord).ToList()
+            Items = _itemsById.Values.ToList()
         };
 
-        var json = JsonSerializer.Serialize(document, JsonTorrentRepositoryDocumentContext.Default.TorrentRepositoryDocument);
-        await File.WriteAllTextAsync(_filePath, json, ct);
+        await using var stream = File.Create(_filePath);
+        await JsonSerializer.SerializeAsync(
+            stream,
+            document,
+            JsonTorrentRepositoryDocumentContext.Default.TorrentRepositoryDocument,
+            ct);
     }
 
-    private static TorrentDownload Clone(TorrentDownload source)
-        => new(
-            source.Id,
-            source.InfoHash,
-            source.Name,
-            source.SavePath)
+    private async Task<TorrentSourceRecord> CreateSourceRecordAsync(
+        Guid torrentId,
+        TorrentSource source,
+        CancellationToken ct)
+        => source switch
         {
-            Status = source.Status,
-            FileEntries = source.FileEntries
-                .Select(x => new TorrentFileEntry(x.FullPath, x.SizeByte, x.IsSelected))
-                .ToList()
+            TorrentSource.TorrentFile tf => await CreateTorrentFileSourceAsync(torrentId, tf, ct),
+            TorrentSource.Magnet m => new TorrentSourceRecord
+            {
+                Kind = TorrentSourceKind.Magnet,
+                Value = m.Uri
+            },
+            TorrentSource.TorrentBytes => new TorrentSourceRecord
+            {
+                Kind = TorrentSourceKind.TorrentBytes,
+                Value = string.Empty
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown torrent source type.")
         };
+
+    private async Task<TorrentSourceRecord> CreateTorrentFileSourceAsync(
+        Guid torrentId,
+        TorrentSource.TorrentFile source,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(source.Path))
+            throw new InvalidOperationException("Torrent file path is empty.");
+
+        if (!File.Exists(source.Path))
+            throw new FileNotFoundException("Torrent file does not exist.", source.Path);
+
+        var extension = Path.GetExtension(source.Path);
+        if (string.IsNullOrWhiteSpace(extension))
+            extension = ".torrent";
+
+        var localPath = Path.Combine(_torrentsRoot, $"{torrentId:N}{extension}");
+        _storage.EnsureDirectory(_torrentsRoot);
+
+        await using var src = File.OpenRead(source.Path);
+        await using var dst = File.Create(localPath);
+        await src.CopyToAsync(dst, ct);
+
+        return new TorrentSourceRecord
+        {
+            Kind = TorrentSourceKind.TorrentFile,
+            Value = localPath
+        };
+    }
+
+    private static string? GetTorrentFilePath(TorrentDownloadRecord record)
+    {
+        if (record.Source is null)
+            return null;
+
+        if (record.Source.Kind != TorrentSourceKind.TorrentFile)
+            return null;
+
+        return string.IsNullOrWhiteSpace(record.Source.Value)
+            ? null
+            : record.Source.Value;
+    }
+
+    private static void TryDeleteFile(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch
+        {
+            // best-effort cleanup
+            // при необходимости можно добавить логирование
+        }
+    }
 
     private static TorrentDownload ToDomain(TorrentDownloadRecord record)
         => new(
@@ -211,6 +305,7 @@ internal sealed class TorrentDownloadRecord
     public string SavePath { get; set; } = string.Empty;
     public TorrentDownloadStatus Status { get; set; }
     public List<TorrentFileEntryRecord> FileEntries { get; set; } = [];
+    public TorrentSourceRecord? Source { get; set; }
 }
 
 internal sealed class TorrentFileEntryRecord
@@ -218,6 +313,19 @@ internal sealed class TorrentFileEntryRecord
     public string FullPath { get; set; } = string.Empty;
     public long SizeByte { get; set; }
     public bool IsSelected { get; set; }
+}
+
+internal sealed class TorrentSourceRecord
+{
+    public TorrentSourceKind Kind { get; set; }
+    public string Value { get; set; } = string.Empty;
+}
+
+internal enum TorrentSourceKind
+{
+    Magnet = 1,
+    TorrentFile = 2,
+    TorrentBytes = 3
 }
 
 [JsonSerializable(typeof(TorrentRepositoryDocument))]
