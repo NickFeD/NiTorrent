@@ -9,7 +9,7 @@ public sealed record SyncTorrentCollectionFromRuntimeResult(
 
 public sealed class SyncTorrentCollectionFromRuntimeWorkflow(
     ITorrentCollectionRepository repository,
-    ITorrentRuntimeFactsProvider runtimeFactsProvider)
+    ITorrentRuntimeFactsProvider runtimeFactsProvider) : ISyncTorrentCollectionFromRuntimeWorkflow
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -36,7 +36,7 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflow(
             // Runtime sync is high-frequency. Persist only durable catalog changes;
             // volatile runtime telemetry is intentionally not written every cycle.
             if (hasDurableChanges)
-                await repository.SaveAsync(force: false, ct).ConfigureAwait(false);
+                await repository.SaveAsync(ct).ConfigureAwait(false);
 
             return new SyncTorrentCollectionFromRuntimeResult(synced, runtimeFacts);
         }

@@ -7,11 +7,11 @@ namespace NiTorrent.Infrastructure.Torrents;
 public sealed class TorrentMonitor : BackgroundService
 {
     private readonly ITorrentReadModelFeed _readModelFeed;
-    private readonly SyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
+    private readonly ISyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
 
     public TorrentMonitor(
         ITorrentReadModelFeed readModelFeed,
-        SyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow)
+        ISyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow)
     {
         _readModelFeed = readModelFeed;
         _syncRuntimeWorkflow = syncRuntimeWorkflow;
@@ -27,7 +27,11 @@ public sealed class TorrentMonitor : BackgroundService
             {
                 await _syncRuntimeWorkflow.ExecuteAsync(ct).ConfigureAwait(false);
             }
-            catch
+            catch (InvalidOperationException)
+            {
+                // Background sync is best-effort; feed refresh still gives the latest query projection.
+            }
+            catch (IOException)
             {
                 // Background sync is best-effort; feed refresh still gives the latest query projection.
             }

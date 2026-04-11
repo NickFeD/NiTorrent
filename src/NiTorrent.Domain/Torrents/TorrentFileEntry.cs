@@ -1,7 +1,7 @@
-﻿namespace NiTorrent.Application.Torrents;
+﻿namespace NiTorrent.Domain.Torrents;
 
 public sealed record TorrentFileEntry(
     string FullPath,
-    long Length,
+    long SizeByte,
     bool IsSelected
 );

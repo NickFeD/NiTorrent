@@ -1,4 +1,4 @@
-using NiTorrent.Application.Abstractions;
+﻿using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Common;
 using NiTorrent.Domain.Torrents;
 
@@ -20,10 +20,24 @@ public sealed class TorrentPreviewFlow(
         if (dialogResult is null)
             return false;
 
-        await addTorrentUseCase.ExecuteAsync(new AddTorrentRequest(
+        var addResult = await addTorrentUseCase.ExecuteAsync(new AddTorrentRequest(
             prepared,
             dialogResult.OutputFolder,
             dialogResult.SelectedFilePaths.ToHashSet(StringComparer.OrdinalIgnoreCase)), ct).ConfigureAwait(false);
+
+        switch (addResult.Outcome)
+        {
+            case AddTorrentOutcome.Success:
+                break;
+            case AddTorrentOutcome.AlreadyExists:
+                throw new UserVisibleException(addResult.Message ?? "Этот торрент уже добавлен в приложение.");
+            case AddTorrentOutcome.InvalidInput:
+                throw new UserVisibleException(addResult.Message ?? "Неверные данные для добавления торрента.");
+            case AddTorrentOutcome.StorageError:
+                throw new UserVisibleException(addResult.Message ?? "Не удалось сохранить данные торрента.");
+            default:
+                throw new UserVisibleException("Не удалось добавить торрент.");
+        }
 
         return true;
     }

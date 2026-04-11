@@ -3,6 +3,7 @@ using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Shell;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Settings;
+using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 

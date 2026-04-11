@@ -180,7 +180,7 @@ public sealed class PriorityAcceptanceVerificationTests
             return Task.CompletedTask;
         }
 
-        public Task SaveAsync(bool force = true, CancellationToken ct = default)
+        public Task SaveAsync(CancellationToken ct = default)
         {
             SaveCalls++;
             return Task.CompletedTask;
@@ -241,6 +241,9 @@ public sealed class PriorityAcceptanceVerificationTests
 
         public Task<byte[]?> TryLoadAsync(TorrentId id, TorrentKey key, CancellationToken ct = default)
             => Task.FromResult<byte[]?>([1, 2, 3]);
+
+        public Task DeleteAsync(TorrentId id, CancellationToken ct = default)
+            => Task.CompletedTask;
     }
 
     private sealed class NoopWriteService : ITorrentWriteService

@@ -61,6 +61,6 @@ public sealed class TorrentStartupRecovery
             }
         }
 
-        await _catalogStore.SaveAsync(force: true, ct).ConfigureAwait(false);
+        await _catalogStore.SaveAsync(ct).ConfigureAwait(false);
     }
 }

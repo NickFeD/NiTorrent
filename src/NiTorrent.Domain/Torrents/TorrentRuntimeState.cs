@@ -3,9 +3,9 @@ namespace NiTorrent.Domain.Torrents;
 public sealed record TorrentRuntimeState(
     TorrentLifecycleState LifecycleState,
     bool IsComplete,
-    double Progress,
-    long DownloadRateBytesPerSecond,
-    long UploadRateBytesPerSecond,
+    TorrentProgress Progress,
+    TransferSpeed DownloadRateBytesPerSecond,
+    TransferSpeed UploadRateBytesPerSecond,
     string? Error,
     bool IsEngineBacked)
 {

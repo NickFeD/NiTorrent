@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Domain.Torrents;
@@ -150,7 +150,7 @@ public sealed class ReplayDeferredTorrentActionsWorkflowTests
             return Task.CompletedTask;
         }
 
-        public Task SaveAsync(bool force = true, CancellationToken ct = default)
+        public Task SaveAsync(CancellationToken ct = default)
             => Task.CompletedTask;
     }
 

@@ -165,3 +165,38 @@ When changing a contract:
 2. update `TARGET_ARCHITECTURE.md` if boundary semantics change;
 3. update `USER_APP_LOGIC.md` if user-visible behavior changes;
 4. add or update ADR when decision is architectural and non-trivial.
+
+## 12. 2026-04-10 Contract Update
+
+### 12.1 Domain safety baseline
+
+- Domain entities/value objects must reject invalid state at creation time.
+- Collections crossing domain boundaries must be copied defensively.
+
+### 12.2 Add flow result contract
+
+- `AddTorrentUseCase` returns an explicit result model:
+  - `AddTorrentOutcome.Success`
+  - `AddTorrentOutcome.AlreadyExists`
+  - `AddTorrentOutcome.InvalidInput`
+  - `AddTorrentOutcome.StorageError`
+- Add flow must not leave partial persisted state on storage failure; compensation is required.
+
+### 12.3 Command orchestration contract
+
+- User command execution (`Start`, `Pause`, `Remove`) is orchestrated via a unified command use case (`TorrentCommandUseCase`) with typed command input (`TorrentCommandType`).
+- Command result semantics remain based on `Success` / `Deferred` / `NotFound` at command-service boundary.
+
+### 12.4 Collection repository save boundary
+
+- `ITorrentCollectionRepository.SaveAsync` does not expose flush-policy flags (for example `force`).
+- Durability/flush strategy is an infrastructure concern.
+
+### 12.5 UI boundary rule (enforced)
+
+- Application layer must not own dialog contracts.
+- UI dialog contract (`IDialogService`) belongs to presentation-facing abstractions.
+
+### 12.6 Workflow dependency rule
+
+- Infrastructure orchestration components should consume application workflow interfaces, not concrete workflow classes, to keep coupling directional and replaceable.

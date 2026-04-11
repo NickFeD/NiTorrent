@@ -1,4 +1,4 @@
-using NiTorrent.Application.Abstractions;
+﻿using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents;
@@ -7,9 +7,7 @@ public sealed class TorrentWorkflowService(
     PickAndAddTorrentUseCase pickAndAddTorrentUseCase,
     AddMagnetUseCase addMagnetUseCase,
     AddTorrentFileWithPreviewUseCase addTorrentFileWithPreviewUseCase,
-    StartTorrentUseCase startTorrentUseCase,
-    PauseTorrentUseCase pauseTorrentUseCase,
-    RemoveTorrentUseCase removeTorrentUseCase,
+    TorrentCommandUseCase torrentCommandUseCase,
     OpenTorrentFolderUseCase openTorrentFolderUseCase) : ITorrentWorkflowService
 {
     public Task<bool> PickAndAddAsync(CancellationToken ct = default)
@@ -22,13 +20,13 @@ public sealed class TorrentWorkflowService(
         => addTorrentFileWithPreviewUseCase.ExecuteAsync(filePath, ct);
 
     public Task StartAsync(TorrentId id, CancellationToken ct = default)
-        => startTorrentUseCase.ExecuteAsync(id, ct);
+        => torrentCommandUseCase.ExecuteAsync(TorrentCommandType.Start, id, ct: ct);
 
     public Task PauseAsync(TorrentId id, CancellationToken ct = default)
-        => pauseTorrentUseCase.ExecuteAsync(id, ct);
+        => torrentCommandUseCase.ExecuteAsync(TorrentCommandType.Pause, id, ct: ct);
 
     public Task RemoveAsync(TorrentId id, bool deleteData, CancellationToken ct = default)
-        => removeTorrentUseCase.ExecuteAsync(id, deleteData, ct);
+        => torrentCommandUseCase.ExecuteAsync(TorrentCommandType.Remove, id, deleteData, ct);
 
     public Task OpenFolderAsync(string path, CancellationToken ct = default)
         => openTorrentFolderUseCase.ExecuteAsync(path, ct);

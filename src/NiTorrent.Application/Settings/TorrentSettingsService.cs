@@ -22,7 +22,17 @@ public sealed class TorrentSettingsService(
         {
             await writeService.ApplySettingsAsync(ct).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            await repository.SaveAsync(previous, ct).ConfigureAwait(false);
+            throw new UserVisibleException("Не удалось применить настройки.", ex);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            await repository.SaveAsync(previous, ct).ConfigureAwait(false);
+            throw new UserVisibleException("Не удалось применить настройки.", ex);
+        }
+        catch (InvalidOperationException ex)
         {
             await repository.SaveAsync(previous, ct).ConfigureAwait(false);
             throw new UserVisibleException("Не удалось применить настройки.", ex);

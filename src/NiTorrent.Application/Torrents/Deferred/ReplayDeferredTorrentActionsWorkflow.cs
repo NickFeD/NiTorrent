@@ -7,7 +7,7 @@ namespace NiTorrent.Application.Torrents.Deferred;
 public sealed class ReplayDeferredTorrentActionsWorkflow(
     ITorrentCollectionRepository repository,
     IApplyDeferredTorrentActionsWorkflow applyDeferredActionsWorkflow,
-    ILogger<ReplayDeferredTorrentActionsWorkflow> logger)
+    ILogger<ReplayDeferredTorrentActionsWorkflow> logger) : IReplayDeferredTorrentActionsWorkflow
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private long _cycleId;

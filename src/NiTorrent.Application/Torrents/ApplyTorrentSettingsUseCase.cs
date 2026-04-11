@@ -1,4 +1,4 @@
-using NiTorrent.Application.Abstractions;
+﻿using NiTorrent.Application.Abstractions;
 
 namespace NiTorrent.Application.Torrents;
 

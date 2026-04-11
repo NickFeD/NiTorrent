@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Common;
+using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.Presentation.Features.Settings;
 

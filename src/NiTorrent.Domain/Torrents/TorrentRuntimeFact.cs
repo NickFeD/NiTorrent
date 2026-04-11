@@ -5,6 +5,6 @@ public sealed record TorrentRuntimeFact(
     TorrentKey Key,
     string Name,
     long Size,
-    string SavePath,
+    SavePath SavePath,
     TorrentRuntimeState Runtime
 );

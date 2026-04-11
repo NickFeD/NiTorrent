@@ -27,7 +27,7 @@ public sealed class EngineBackedTorrentEngineMaintenanceService : ITorrentEngine
     public Task SaveStateAsync(CancellationToken ct = default)
         => _lifecycleExecutor.RunAsync(async () =>
         {
-            await _catalogStore.SaveAsync(force: true, ct).ConfigureAwait(false);
+            await _catalogStore.SaveAsync(ct).ConfigureAwait(false);
 
             if (_startupCoordinator.Engine is not null)
                 await _engineStateStore.SaveAsync(_startupCoordinator.Engine, ct).ConfigureAwait(false);

@@ -1,4 +1,4 @@
-﻿namespace NiTorrent.Application.Abstractions;
+namespace NiTorrent.Presentation.Abstractions;
 
 public enum WindowCloseAction
 {

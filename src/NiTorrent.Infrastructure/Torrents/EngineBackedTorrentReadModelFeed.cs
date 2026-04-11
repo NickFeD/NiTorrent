@@ -16,8 +16,8 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
 {
     private readonly GetTorrentListQuery _getTorrentListQuery;
     private readonly ITorrentRuntimeFactsProvider _runtimeFactsProvider;
-    private readonly SyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
-    private readonly ReplayDeferredTorrentActionsWorkflow _replayDeferredActionsWorkflow;
+    private readonly ISyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
+    private readonly IReplayDeferredTorrentActionsWorkflow _replayDeferredActionsWorkflow;
     private readonly ILogger<EngineBackedTorrentReadModelFeed> _logger;
     private readonly object _sync = new();
     private readonly object _workSync = new();
@@ -32,8 +32,8 @@ public sealed class EngineBackedTorrentReadModelFeed : ITorrentReadModelFeed, ID
     public EngineBackedTorrentReadModelFeed(
         GetTorrentListQuery getTorrentListQuery,
         ITorrentRuntimeFactsProvider runtimeFactsProvider,
-        SyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow,
-        ReplayDeferredTorrentActionsWorkflow replayDeferredActionsWorkflow,
+        ISyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow,
+        IReplayDeferredTorrentActionsWorkflow replayDeferredActionsWorkflow,
         ILogger<EngineBackedTorrentReadModelFeed> logger)
     {
         _getTorrentListQuery = getTorrentListQuery;

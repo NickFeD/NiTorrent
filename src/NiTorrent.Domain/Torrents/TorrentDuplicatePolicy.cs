@@ -12,7 +12,7 @@ public static class TorrentDuplicatePolicy
             string.Equals(x.Key.Value, key.Value, StringComparison.OrdinalIgnoreCase));
     }
 
-    public static TorrentEntry? FindDuplicate(IEnumerable<TorrentEntry> existing, TorrentKey key, string name, string savePath)
+    public static TorrentEntry? FindDuplicate(IEnumerable<TorrentEntry> existing, TorrentKey key, string name, SavePath savePath)
     {
         var byKey = FindDuplicateByKey(existing, key);
         if (byKey is not null)
@@ -20,6 +20,6 @@ public static class TorrentDuplicatePolicy
 
         return existing.FirstOrDefault(x =>
             string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(x.SavePath, savePath, StringComparison.OrdinalIgnoreCase));
+            string.Equals(x.SavePath.Value, savePath.Value, StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
@@ -105,8 +105,10 @@ public partial class App : WinUIApplication
         services.AddSingleton<HandleWindowCloseWorkflow>();
         services.AddSingleton<HandleTrayExitWorkflow>();
         services.AddSingleton<SyncTorrentCollectionFromRuntimeWorkflow>();
+        services.AddSingleton<ISyncTorrentCollectionFromRuntimeWorkflow>(sp => sp.GetRequiredService<SyncTorrentCollectionFromRuntimeWorkflow>());
         services.AddSingleton<StagedTorrentRehydrationWorkflow>();
         services.AddSingleton<ReplayDeferredTorrentActionsWorkflow>();
+        services.AddSingleton<IReplayDeferredTorrentActionsWorkflow>(sp => sp.GetRequiredService<ReplayDeferredTorrentActionsWorkflow>());
         services.AddSingleton<UpdatePerTorrentSettingsWorkflow>();
         services.AddSingleton<IAppCloseCoordinator, AppCloseCoordinator>();
         services.AddSingleton<IAppShutdownCoordinator, AppShutdownCoordinator>();
@@ -115,9 +117,7 @@ public partial class App : WinUIApplication
         services.AddTransient<PickAndAddTorrentUseCase>();
         services.AddTransient<AddTorrentFileWithPreviewUseCase>();
         services.AddTransient<AddMagnetUseCase>();
-        services.AddTransient<StartTorrentUseCase>();
-        services.AddTransient<PauseTorrentUseCase>();
-        services.AddTransient<RemoveTorrentUseCase>();
+        services.AddTransient<TorrentCommandUseCase>();
         services.AddTransient<OpenTorrentFolderUseCase>();
         services.AddTransient<ApplyTorrentSettingsUseCase>();
         services.AddTransient<ITorrentWorkflowService, TorrentWorkflowService>();

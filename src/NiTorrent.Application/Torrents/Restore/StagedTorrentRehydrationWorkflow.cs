@@ -11,6 +11,7 @@ public sealed class StagedTorrentRehydrationWorkflow(
     ILogger<StagedTorrentRehydrationWorkflow> logger)
 {
     private const string MissingSourceError = "Не удалось восстановить торрент: отсутствует сохраненный source.";
+    private const string RehydrateFailedError = "Не удалось восстановить торрент после запуска приложения.";
 
     public async Task<IReadOnlyList<TorrentEntry>> ExecuteAsync(IReadOnlyList<TorrentEntry> entries, CancellationToken ct = default)
     {
@@ -50,7 +51,7 @@ public sealed class StagedTorrentRehydrationWorkflow(
                 await repository.UpsertAsync(updated, ct).ConfigureAwait(false);
                 updatedEntries.Add(updated);
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 logger.LogWarning(ex, "Failed to rehydrate torrent {TorrentId}", entry.Id.Value);
                 var failed = entry.WithRuntime(new TorrentRuntimeState(
@@ -59,7 +60,37 @@ public sealed class StagedTorrentRehydrationWorkflow(
                     entry.Runtime.Progress,
                     0,
                     0,
-                    "Не удалось восстановить торрент после запуска приложения.",
+                    RehydrateFailedError,
+                    false));
+
+                await repository.UpsertAsync(failed, ct).ConfigureAwait(false);
+                updatedEntries.Add(failed);
+            }
+            catch (IOException ex)
+            {
+                logger.LogWarning(ex, "Failed to rehydrate torrent {TorrentId}", entry.Id.Value);
+                var failed = entry.WithRuntime(new TorrentRuntimeState(
+                    TorrentLifecycleState.Error,
+                    entry.Runtime.IsComplete,
+                    entry.Runtime.Progress,
+                    0,
+                    0,
+                    RehydrateFailedError,
+                    false));
+
+                await repository.UpsertAsync(failed, ct).ConfigureAwait(false);
+                updatedEntries.Add(failed);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                logger.LogWarning(ex, "Failed to rehydrate torrent {TorrentId}", entry.Id.Value);
+                var failed = entry.WithRuntime(new TorrentRuntimeState(
+                    TorrentLifecycleState.Error,
+                    entry.Runtime.IsComplete,
+                    entry.Runtime.Progress,
+                    0,
+                    0,
+                    RehydrateFailedError,
                     false));
 
                 await repository.UpsertAsync(failed, ct).ConfigureAwait(false);
@@ -67,7 +98,7 @@ public sealed class StagedTorrentRehydrationWorkflow(
             }
         }
 
-        await repository.SaveAsync(ct: ct).ConfigureAwait(false);
+        await repository.SaveAsync(ct).ConfigureAwait(false);
         return updatedEntries;
     }
 }

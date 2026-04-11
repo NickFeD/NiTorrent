@@ -18,7 +18,7 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
         await sut.ExecuteAsync();
 
         Assert.Equal(0, repository.UpsertCalls);
-        Assert.Empty(repository.SaveForceFlags);
+        Assert.Equal(0, repository.SaveCalls);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
         await sut.ExecuteAsync();
 
         Assert.Equal(1, repository.UpsertCalls);
-        Assert.Empty(repository.SaveForceFlags);
+        Assert.Equal(0, repository.SaveCalls);
     }
 
     [Fact]
@@ -57,9 +57,9 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
         var entry = new TorrentEntry(
             id,
             TorrentKey.Empty,
-            string.Empty,
+            "legacy",
             0,
-            string.Empty,
+            "C:\\legacy",
             DateTimeOffset.UtcNow,
             TorrentIntent.Running,
             TorrentLifecycleState.WaitingForEngine,
@@ -99,8 +99,7 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
         await sut.ExecuteAsync();
 
         Assert.Equal(1, repository.UpsertCalls);
-        Assert.Single(repository.SaveForceFlags);
-        Assert.False(repository.SaveForceFlags[0]);
+        Assert.Equal(1, repository.SaveCalls);
     }
 
     [Fact]
@@ -203,7 +202,7 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
         private readonly Dictionary<TorrentId, TorrentEntry> _entries;
 
         public int UpsertCalls { get; private set; }
-        public List<bool> SaveForceFlags { get; } = [];
+        public int SaveCalls { get; private set; }
 
         public TrackingCollectionRepository(IEnumerable<TorrentEntry> entries)
             => _entries = entries.ToDictionary(x => x.Id, x => x);
@@ -233,9 +232,9 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflowTests
             return Task.CompletedTask;
         }
 
-        public Task SaveAsync(bool force = true, CancellationToken ct = default)
+        public Task SaveAsync(CancellationToken ct = default)
         {
-            SaveForceFlags.Add(force);
+            SaveCalls++;
             return Task.CompletedTask;
         }
     }

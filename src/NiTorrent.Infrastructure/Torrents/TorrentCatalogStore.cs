@@ -343,24 +343,16 @@ public sealed class TorrentCatalogStore
         finally { _gate.Release(); }
     }
 
-    public async Task SaveAsync(bool force, CancellationToken ct)
+    public async Task SaveAsync(CancellationToken ct)
     {
         await EnsureLoadedAsync(ct).ConfigureAwait(false);
-
-        var now = DateTimeOffset.UtcNow;
-        if (!force && (now - _lastSaveUtc) < TimeSpan.FromSeconds(5))
-            return;
 
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            now = DateTimeOffset.UtcNow;
-            if (!force && (now - _lastSaveUtc) < TimeSpan.FromSeconds(5))
-                return;
-
             var json = JsonSerializer.Serialize(_catalog, TorrentCatalogJsonContext.Default.TorrentCatalog);
             await File.WriteAllTextAsync(_catalogFilePath, json, ct).ConfigureAwait(false);
-            _lastSaveUtc = now;
+            _lastSaveUtc = DateTimeOffset.UtcNow;
         }
         catch (Exception ex)
         {

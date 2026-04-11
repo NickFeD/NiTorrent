@@ -52,6 +52,24 @@ public sealed class TorrentSourceStore : ITorrentSourceStore
         }
     }
 
+    public async Task DeleteAsync(TorrentId id, CancellationToken ct = default)
+    {
+        var path = GetPath(id);
+        if (!File.Exists(path))
+            return;
+
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     private string GetPath(TorrentId id)
         => Path.Combine(_sourcesRoot, $"{id.Value:N}.torrent");
 }

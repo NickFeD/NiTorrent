@@ -1,4 +1,3 @@
-using NiTorrent.Application.Common;
 using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
@@ -11,18 +10,15 @@ public sealed class EngineBackedTorrentEngineStatusService : ITorrentEngineStatu
     private readonly TorrentEventOrchestrator _eventOrchestrator;
     private readonly TorrentStartupCoordinator _startupCoordinator;
     private readonly TorrentRuntimeContext _runtimeContext;
-    private readonly TorrentNotifier _notifier;
 
     public EngineBackedTorrentEngineStatusService(
         TorrentEventOrchestrator eventOrchestrator,
         TorrentStartupCoordinator startupCoordinator,
-        TorrentRuntimeContext runtimeContext,
-        TorrentNotifier notifier)
+        TorrentRuntimeContext runtimeContext)
     {
         _eventOrchestrator = eventOrchestrator;
         _startupCoordinator = startupCoordinator;
         _runtimeContext = runtimeContext;
-        _notifier = notifier;
 
         _eventOrchestrator.Loaded += OnLoaded;
     }
@@ -33,17 +29,9 @@ public sealed class EngineBackedTorrentEngineStatusService : ITorrentEngineStatu
 
     public async Task InitializeAsync(CancellationToken ct = default)
     {
-        try
-        {
-            await _startupCoordinator
-                .EnsureStartedAsync(_runtimeContext.OperationGate, _eventOrchestrator.RaiseLoaded, ct)
-                .ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            await _notifier.NotifyAsync("Ошибка запуска торрент-движка", UserErrorMapper.ToMessage(ex, "Не удалось запустить торрент-движок.")).ConfigureAwait(false);
-            throw;
-        }
+        await _startupCoordinator
+            .EnsureStartedAsync(_runtimeContext.OperationGate, _eventOrchestrator.RaiseLoaded, ct)
+            .ConfigureAwait(false);
     }
 
     private void OnLoaded()

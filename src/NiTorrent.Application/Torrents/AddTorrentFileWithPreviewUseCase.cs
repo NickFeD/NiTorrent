@@ -1,4 +1,4 @@
-using static NiTorrent.Application.Torrents.TorrentSource;
+﻿using static NiTorrent.Application.Torrents.TorrentSource;
 
 namespace NiTorrent.Application.Torrents;
 

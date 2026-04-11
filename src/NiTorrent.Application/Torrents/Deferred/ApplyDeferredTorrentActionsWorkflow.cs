@@ -84,20 +84,13 @@ public sealed class ApplyDeferredTorrentActionsWorkflow(
 
     private static async Task<bool> TryApplyAsync(TorrentId id, DeferredAction action, ITorrentEngineGateway engineGateway, CancellationToken ct)
     {
-        try
+        return action.Type switch
         {
-            return action.Type switch
-            {
-                DeferredActionType.Start => await engineGateway.StartAsync(id, ct).ConfigureAwait(false),
-                DeferredActionType.Pause => await engineGateway.PauseAsync(id, ct).ConfigureAwait(false),
-                DeferredActionType.RemoveKeepData => await engineGateway.RemoveAsync(id, deleteData: false, ct).ConfigureAwait(false),
-                DeferredActionType.RemoveWithData => await engineGateway.RemoveAsync(id, deleteData: true, ct).ConfigureAwait(false),
-                _ => false
-            };
-        }
-        catch
-        {
-            return false;
-        }
+            DeferredActionType.Start => await engineGateway.StartAsync(id, ct).ConfigureAwait(false),
+            DeferredActionType.Pause => await engineGateway.PauseAsync(id, ct).ConfigureAwait(false),
+            DeferredActionType.RemoveKeepData => await engineGateway.RemoveAsync(id, deleteData: false, ct).ConfigureAwait(false),
+            DeferredActionType.RemoveWithData => await engineGateway.RemoveAsync(id, deleteData: true, ct).ConfigureAwait(false),
+            _ => false
+        };
     }
 }

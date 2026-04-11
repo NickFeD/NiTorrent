@@ -34,21 +34,13 @@ public sealed class TorrentCommandService(
         await collectionRepository.UpsertAsync(updated, ct).ConfigureAwait(false);
         await collectionRepository.SaveAsync(ct: ct).ConfigureAwait(false);
 
-        bool appliedImmediately;
-        try
+        var appliedImmediately = commandType switch
         {
-            appliedImmediately = commandType switch
-            {
-                CommandType.Start => await engineGateway.StartAsync(id, ct).ConfigureAwait(false),
-                CommandType.Pause => await engineGateway.PauseAsync(id, ct).ConfigureAwait(false),
-                CommandType.Remove => await engineGateway.RemoveAsync(id, deleteData, ct).ConfigureAwait(false),
-                _ => false
-            };
-        }
-        catch
-        {
-            appliedImmediately = false;
-        }
+            CommandType.Start => await engineGateway.StartAsync(id, ct).ConfigureAwait(false),
+            CommandType.Pause => await engineGateway.PauseAsync(id, ct).ConfigureAwait(false),
+            CommandType.Remove => await engineGateway.RemoveAsync(id, deleteData, ct).ConfigureAwait(false),
+            _ => false
+        };
 
         if (!appliedImmediately)
         {

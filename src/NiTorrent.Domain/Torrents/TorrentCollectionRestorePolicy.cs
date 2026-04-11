@@ -37,7 +37,7 @@ public static class TorrentCollectionRestorePolicy
                 Key = fact.Key.IsEmpty ? entry.Key : fact.Key,
                 Name = string.IsNullOrWhiteSpace(fact.Name) ? entry.Name : fact.Name,
                 Size = fact.Size == 0 ? entry.Size : fact.Size,
-                SavePath = string.IsNullOrWhiteSpace(fact.SavePath) ? entry.SavePath : fact.SavePath,
+                SavePath = fact.SavePath,
                 HasMetadata = true,
                 Runtime = fact.Runtime
             };

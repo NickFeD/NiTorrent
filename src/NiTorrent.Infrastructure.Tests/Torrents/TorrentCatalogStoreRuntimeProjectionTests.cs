@@ -57,7 +57,7 @@ public sealed class TorrentCatalogStoreRuntimeProjectionTests
                 phase: TorrentPhase.Downloading);
 
             await store.UpsertEntryAsync(entry);
-            await store.SaveAsync(force: true, CancellationToken.None);
+            await store.SaveAsync(CancellationToken.None);
 
             var restored = Assert.Single(await store.GetEntriesAsync());
             Assert.True(restored.Runtime.IsEngineBacked);
@@ -82,7 +82,7 @@ public sealed class TorrentCatalogStoreRuntimeProjectionTests
 
             await store.UpsertEntryAsync(CreateEntryWithIdentity(collidingId, "A", @"C:\downloads\A"));
             await store.UpsertEntryAsync(CreateEntryWithIdentity(collidingId, "B", @"C:\downloads\B"));
-            await store.SaveAsync(force: true, CancellationToken.None);
+            await store.SaveAsync(CancellationToken.None);
 
             var entries = await store.GetEntriesAsync();
             Assert.Equal(2, entries.Count);
@@ -107,7 +107,7 @@ public sealed class TorrentCatalogStoreRuntimeProjectionTests
 
             await store.UpsertEntryAsync(CreateEntryWithIdentity(collidingId, "A", @"C:\downloads\A"));
             await store.UpsertEntryAsync(CreateEntryWithIdentity(collidingId, "B", @"C:\downloads\B"));
-            await store.SaveAsync(force: true, CancellationToken.None);
+            await store.SaveAsync(CancellationToken.None);
 
             var entries = await store.GetEntriesAsync();
             var entryB = Assert.Single(entries.Where(x => x.Name == "B"));
@@ -138,7 +138,7 @@ public sealed class TorrentCatalogStoreRuntimeProjectionTests
                 phase: TorrentPhase.Downloading);
 
             await first.UpsertEntryAsync(entry);
-            await first.SaveAsync(force: true, CancellationToken.None);
+            await first.SaveAsync(CancellationToken.None);
 
             var second = new TorrentCatalogStore(NullLogger<TorrentCatalogStore>.Instance, new TestStorage(root));
             var restored = Assert.Single(await second.GetEntriesAsync());

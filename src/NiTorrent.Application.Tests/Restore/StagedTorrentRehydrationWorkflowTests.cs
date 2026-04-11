@@ -148,7 +148,7 @@ public sealed class StagedTorrentRehydrationWorkflowTests
             return Task.CompletedTask;
         }
 
-        public Task SaveAsync(bool force = true, CancellationToken ct = default)
+        public Task SaveAsync(CancellationToken ct = default)
             => Task.CompletedTask;
     }
 
@@ -178,6 +178,12 @@ public sealed class StagedTorrentRehydrationWorkflowTests
 
             _byId.TryGetValue(id, out var bytes);
             return Task.FromResult(bytes);
+        }
+
+        public Task DeleteAsync(TorrentId id, CancellationToken ct = default)
+        {
+            _byId.Remove(id);
+            return Task.CompletedTask;
         }
     }
 

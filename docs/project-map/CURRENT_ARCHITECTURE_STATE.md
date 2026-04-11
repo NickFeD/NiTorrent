@@ -138,3 +138,34 @@ for UI scenarios remains manual in this environment.
   - added query `GetTorrentRuntimeDetailsQuery`;
   - added infrastructure adapter `EngineBackedTorrentDetailsRuntimeService` (runtime snapshot mapping for details/peers/trackers);
   - `TorrentDetailsViewModel` now consumes dedicated details query + runtime query + workflow commands, keeping UI and business boundaries separated.
+
+## Architecture Hardening Update (2026-04-10)
+
+- Domain invariants were strengthened for the torrent core model:
+  - `TorrentEntry` now validates identity/name/size and normalizes protected state;
+  - collection fields (`SelectedFiles`, `DeferredActions`) are defensively copied to avoid aliasing;
+  - `TorrentRuntimeState` now uses guarded value objects for progress and transfer rates.
+
+- New domain value objects were introduced to reduce primitive obsession:
+  - `SavePath`
+  - `TorrentProgress`
+  - `TransferSpeed`
+
+- Add flow now uses explicit result semantics and compensation:
+  - `AddTorrentUseCase` returns `AddTorrentResult` with `AddTorrentOutcome` (`Success`, `AlreadyExists`, `InvalidInput`, `StorageError`);
+  - source/catalog partial-state paths are compensated by rollback (`RemoveAsync` + source delete best-effort);
+  - broad `catch` blocks were removed from application add/command/deferred paths.
+
+- Application contracts were cleaned from UI dialog abstractions:
+  - `IDialogService` moved out of `NiTorrent.Application.Abstractions` to `NiTorrent.Presentation.Abstractions`.
+
+- Command use-case wrappers were unified:
+  - `StartTorrentUseCase`, `PauseTorrentUseCase`, `RemoveTorrentUseCase` replaced by `TorrentCommandUseCase` + `TorrentCommandType`.
+
+- Repository save boundary was simplified:
+  - `ITorrentCollectionRepository.SaveAsync` no longer exposes `force` flag;
+  - flush policy is internalized in infrastructure behavior.
+
+- Infrastructure now depends on workflow abstractions (not concrete application workflow classes) in read-feed orchestration:
+  - `ISyncTorrentCollectionFromRuntimeWorkflow`
+  - `IReplayDeferredTorrentActionsWorkflow`
