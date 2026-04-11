@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Application.Torrents.Restore;
@@ -38,6 +39,7 @@ public static class DependencyInjection
         services.AddSingleton<TorrentStartupCoordinator>();
         services.AddSingleton<TorrentRuntimeContext>();
         services.AddSingleton<ITorrentSourceStore, TorrentSourceStore>();
+        services.AddSingleton<ITorrentRepository, JsonTorrentRepository>();
         services.AddSingleton<ITorrentCollectionRepository, CatalogBackedTorrentCollectionRepository>();
         services.AddSingleton<ITorrentReadModelFeed, EngineBackedTorrentReadModelFeed>();
         services.AddSingleton<ITorrentWriteService, EngineBackedTorrentWriteService>();
