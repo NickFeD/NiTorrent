@@ -1,10 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
+using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Application.Torrents.Restore;
+using NiTorrent.Infrastructure;
 using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Infrastructure.Torrents;
 
@@ -38,8 +40,15 @@ public static class DependencyInjection
         services.AddSingleton<TorrentLifecycleExecutor>();
         services.AddSingleton<TorrentStartupCoordinator>();
         services.AddSingleton<TorrentRuntimeContext>();
+        services.AddSingleton<ClientEngine>(sp =>
+            sp.GetRequiredService<TorrentStartupCoordinator>().Engine
+            ?? throw new InvalidOperationException("Torrent engine is not initialized yet."));
+        services.AddSingleton<TorrentEngineCoordinator>();
         services.AddSingleton<ITorrentSourceStore, TorrentSourceStore>();
         services.AddSingleton<ITorrentRepository, JsonTorrentRepository>();
+        services.AddSingleton<ITorrentRuntimeGateway, TorrentRuntimeGateway>();
+        services.AddSingleton<ITorrentDownloadFactory, TorrentDownloadFactory>();
+        services.AddSingleton<ITorrentMetadataProvider, TorrentMetadataProvider>();
         services.AddSingleton<ITorrentCollectionRepository, CatalogBackedTorrentCollectionRepository>();
         services.AddSingleton<ITorrentReadModelFeed, EngineBackedTorrentReadModelFeed>();
         services.AddSingleton<ITorrentWriteService, EngineBackedTorrentWriteService>();
