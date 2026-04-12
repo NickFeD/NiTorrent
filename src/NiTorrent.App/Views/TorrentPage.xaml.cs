@@ -1,5 +1,4 @@
 ﻿using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Navigation;
 using NiTorrent.Presentation.Features.Torrents;
 
 // To learn more about WinUI, the WinUI project structure,

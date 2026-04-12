@@ -1,14 +1,11 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Common;
-using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.DTo;
-using NiTorrent.Application.Torrents.Enum;
 using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Abstractions;
-using static System.Net.Mime.MediaTypeNames;
 using TorrentLifecycleState = NiTorrent.Application.Torrents.Enum.TorrentLifecycleState;
 
 namespace NiTorrent.Presentation.Features.Torrents;
@@ -16,7 +13,7 @@ namespace NiTorrent.Presentation.Features.Torrents;
 public partial class TorrentItemViewModel : ObservableObject, IDisposable
 {
     private bool _isDisposed;
-    private readonly Func<TorrentItemViewModel,bool, Task> _removeAsync;
+    private readonly Func<TorrentItemViewModel, bool, Task> _removeAsync;
     private readonly StartTorrentUseCase _startTorrentUseCase;
     private readonly PauseTorrentUseCase _pauseTorrentUseCase;
     private readonly IFolderLauncher _folderLauncher;
@@ -64,7 +61,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         _folderLauncher = folderLauncher;
         _dialogs = dialogs;
         _item = item;
-        State = new TorrentRuntimeStatus(Id, Application.Torrents.Enum.TorrentLifecycleState.Unknown, null,0,0);
+        State = new TorrentRuntimeStatus(Id, Application.Torrents.Enum.TorrentLifecycleState.Unknown, null, 0, 0);
     }
 
     private static string BuildStateText(TorrentRuntimeStatus status)
@@ -88,7 +85,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     }
 
     private bool CanStart()
-        => _item.Status is TorrentDownloadStatus.Paused or TorrentDownloadStatus.Failed;    
+        => _item.Status is TorrentDownloadStatus.Paused or TorrentDownloadStatus.Failed;
     //=> State.State is TorrentLifecycleState.Stopped or TorrentLifecycleState.Paused or TorrentLifecycleState.Error;
 
     private bool CanPause()

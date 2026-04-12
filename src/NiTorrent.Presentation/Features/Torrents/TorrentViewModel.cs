@@ -1,8 +1,7 @@
 ﻿using System.Collections.ObjectModel;
-using System.Threading.Tasks;
+using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Common;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Abstract;
@@ -10,7 +9,6 @@ using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.DTo;
 using NiTorrent.Application.Torrents.Query;
 using NiTorrent.Application.Torrents.UseCase;
-using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Abstractions;
 using static NiTorrent.Application.Torrents.TorrentSource;
 
@@ -24,7 +22,7 @@ public partial class TorrentViewModel(
     GetTorrentListQuery getTorrentListQuery,
     IDialogService dialogs,
     IPickerHelper pickerHelper,
-    ITorrentRuntimeStateStore store,
+    ITorrentRuntimeStateSource store,
     IUiDispatcher dispatcher,
     ITorrentPreviewService torrentPreview,
     RestoreSessionUseCase restoreSessionUseCase) : ObservableObject
@@ -39,7 +37,7 @@ public partial class TorrentViewModel(
     private readonly ITorrentPreviewService _torrentPreview = torrentPreview;
     private readonly IDialogService _dialogs = dialogs;
     private readonly IUiDispatcher _dispatcher = dispatcher;
-    private readonly ITorrentRuntimeStateStore _store = store;
+    private readonly ITorrentRuntimeStateSource _store = store;
 
     private readonly Dictionary<Guid, TorrentItemViewModel> _torrents = new();
     public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
@@ -59,8 +57,7 @@ public partial class TorrentViewModel(
     public partial string TotalUploadSpeed { get; set; } = "^ 0 KB/s";
 
     public bool CanRemove => SelectedTorrent != null;
-
-    private async void OnRuntimeStateChanged(object? sender, TorrentRuntimeStateChangedEventArgs e)
+    private async Task OnRuntimeStateChanged(TorrentRuntimeStateChangedEventArgs e)
     {
         await _dispatcher.EnqueueAsync(() =>
         {
@@ -98,11 +95,11 @@ public partial class TorrentViewModel(
             _torrents.Add(torrentViewModel.Id, torrentViewModel);
         }
         _ = _restoreSessionUseCase.ExecuteAsync(ct);
-        _store.Changed += OnRuntimeStateChanged;
+        _store.Subscribe(OnRuntimeStateChanged);
     }
     public void TorrentUnloaded()
     {
-        _store.Changed -= OnRuntimeStateChanged;
+        _store.UnsubscribeAsync(OnRuntimeStateChanged).GetAwaiter().GetResult();
         Torrents.Clear();
         _torrents.Clear();
     }
@@ -124,7 +121,7 @@ public partial class TorrentViewModel(
             var path = await _pickerHelper.PickSingleFilePathAsync(".torrent");
             if (path is null)
                 return;
-            
+
             await PreviewTorrent(new TorrentFile(path), ct);
         }
         catch (Exception ex)
@@ -134,11 +131,11 @@ public partial class TorrentViewModel(
         }
     }
 
-    private async Task PreviewTorrent(TorrentSource  torrentSource, CancellationToken ct)
+    private async Task PreviewTorrent(TorrentSource torrentSource, CancellationToken ct)
     {
-        var previewTorrent = await _previewTorrentContentsUseCase.ExecuteAsync(new PreviewTorrentContentsCommand() { Source = torrentSource}, ct);
+        var previewTorrent = await _previewTorrentContentsUseCase.ExecuteAsync(new PreviewTorrentContentsCommand() { Source = torrentSource }, ct);
 
-        var previewDialogResult = await _torrentPreview.ShowAsync(previewTorrent,ct);
+        var previewDialogResult = await _torrentPreview.ShowAsync(previewTorrent, ct);
 
         if (previewDialogResult is null)
             return;
