@@ -9,6 +9,7 @@ public class TorrentDownload(Guid id, string infoHash, string name, string saveP
     public TorrentDownloadStatus Status { get; set; } = TorrentDownloadStatus.Created;
 
     public List<TorrentFileEntry> FileEntries { get; set; } = [];
+    public long Size { get; set; }
 
     public void Start()
     {

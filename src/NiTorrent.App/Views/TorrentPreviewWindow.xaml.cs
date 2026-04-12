@@ -1,4 +1,6 @@
 ﻿using Microsoft.UI.Windowing;
+using NiTorrent.Domain.Torrents;
+using NiTorrent.Presentation.Abstractions;
 using NiTorrent.Presentation.Features.Torrents;
 using NiTorrent.Presentation.Features.Torrents.Tree;
 using WinUIEx;
@@ -7,10 +9,12 @@ namespace NiTorrent.App.Views;
 
 public sealed partial class TorrentPreviewWindow : WindowEx
 {
-    public TorrentPreviewViewModel ViewModel { get; }
-    public bool Result { get; private set; } = false;
 
-    public List<string> SelectedFilePaths => ViewModel.GetSelectedFiles();
+    private readonly TaskCompletionSource<TorrentPreviewDialogResult?> _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    public TorrentPreviewViewModel ViewModel { get; }
+
+    public List<TorrentFileEntry> Files => ViewModel.GetFiles();
 
     public TorrentPreviewWindow(TorrentPreviewViewModel vm)
     {
@@ -20,6 +24,7 @@ public sealed partial class TorrentPreviewWindow : WindowEx
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         AppWindow.TitleBar.PreferredHeightOption = TitleBarHeightOption.Tall;
+        Closed += OnClosed;
     }
     private async void FilesTreeView_Expanding(TreeView sender, TreeViewExpandingEventArgs args)
     {
@@ -31,13 +36,16 @@ public sealed partial class TorrentPreviewWindow : WindowEx
 
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
-        Result = true;
+        _tcs.TrySetResult(new TorrentPreviewDialogResult(
+            SelectedFiles: Files,
+            OutputFolder: ViewModel.OutputFolder));
+
         Close();
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
-        Result = false;
+        _tcs.TrySetResult(null);
         Close();
     }
 
@@ -58,6 +66,13 @@ public sealed partial class TorrentPreviewWindow : WindowEx
     }
 
 
+    public Task<TorrentPreviewDialogResult?> WaitForResultAsync()
+       => _tcs.Task;
 
+    private void OnClosed(object sender, WindowEventArgs e)
+    {
+        Closed -= OnClosed;
+        _tcs.TrySetResult(null);
+    }
 }
 

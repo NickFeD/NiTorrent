@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml.Input;
+﻿using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
 using NiTorrent.Presentation.Features.Torrents;
 
@@ -26,7 +26,7 @@ public sealed partial class TorrentPage : Page
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        ViewModel.Activate();
+        _ = ViewModel.TorrentLoading(CancellationToken.None);
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -55,7 +55,7 @@ public sealed partial class TorrentPage : Page
 
         if (!string.IsNullOrWhiteSpace(magnet))
         {
-            await ViewModel.AddMagnet(magnet);
+            await ViewModel.AddMagnet(magnet, CancellationToken.None);
         }
 
         MagnetTip.IsOpen = false;

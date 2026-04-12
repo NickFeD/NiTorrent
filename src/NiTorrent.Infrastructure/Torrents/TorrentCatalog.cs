@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
@@ -44,7 +44,7 @@ internal sealed class TorrentCatalogEntry
 
     // Cached UI data (last known state from previous run).
     public double Progress { get; set; }
-    public TorrentPhase LastPhase { get; set; } = TorrentPhase.Stopped;
+    public TorrentLifecycleStateOld LastPhase { get; set; }
     public bool IsComplete { get; set; }
 
     /// <summary>

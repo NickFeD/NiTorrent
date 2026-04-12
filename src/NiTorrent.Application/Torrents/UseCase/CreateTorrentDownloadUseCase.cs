@@ -11,7 +11,7 @@ public sealed class CreateTorrentDownloadUseCase(ITorrentRuntimeGateway download
     private readonly ITorrentDownloadFactory _downloadFactory = downloadFactory;
     private readonly ITorrentRuntimeGateway _downloadEngine = downloadEngine;
 
-    public async Task<StartedTorrentDownloadResponse> Execute(
+    public async Task<StartedTorrentDownloadResponse> ExecuteAsync(
         StartTorrentDownloadCommand command,
         CancellationToken ct)
     {

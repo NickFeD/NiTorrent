@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Presentation.Features.Torrents.Tree;
 
@@ -9,9 +10,9 @@ public class TorrentTreeModel
 {
     public FolderModel Root { get; }
 
-    public TorrentTreeModel(IEnumerable<string> paths)
+    public TorrentTreeModel(IEnumerable<TorrentFileEntry> files)
     {
-        Root = BuildModel(paths);
+        Root = BuildModel(files);
     }
 
     public void SortIfNeeded(FolderModel folder)
@@ -93,9 +94,9 @@ public class TorrentTreeModel
             current = current.Parent;
         }
     }
-    public List<string> GetSelectedFiles()
+    public List<TorrentFileEntry> GetFiles()
     {
-        var result = new List<string>();
+        var result = new List<TorrentFileEntry>();
         var stack = new Stack<FolderModel>();
         stack.Push(Root);
 
@@ -104,8 +105,10 @@ public class TorrentTreeModel
             var folder = stack.Pop();
 
             foreach (var f in folder.Files.Values)
-                if (f.IsSelected)
-                    result.Add(f.FullPath);
+            {
+                result.Add(new TorrentFileEntry(f.FullPath, f.Size, f.IsSelected)); // размер не хранится в модели, нужно будет получать из торрента
+            }
+                
 
             foreach (var sub in folder.Folders.Values)
                 stack.Push(sub);
@@ -113,14 +116,14 @@ public class TorrentTreeModel
 
         return result;
     }
-    private FolderModel BuildModel(IEnumerable<string> paths)
+    private FolderModel BuildModel(IEnumerable<TorrentFileEntry> files)
     {
         var root = new FolderModel("<root>");
 
-        foreach (var path in paths)
+        foreach (var file in files)
         {
             // Torrent paths часто используют '/', даже на Windows.
-            var parts = path.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = file.FullPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
             FolderModel current = root;
 
             for (int i = 0; i < parts.Length; i++)
@@ -132,7 +135,7 @@ public class TorrentTreeModel
                 {
                     if (!current.Files.ContainsKey(name))
                     {
-                        current.Files[name] = new FileNode(name, path)
+                        current.Files[name] = new FileNode(name, file.FullPath, file.SizeByte, file.IsSelected)
                         {
                             Parent = current
                         };

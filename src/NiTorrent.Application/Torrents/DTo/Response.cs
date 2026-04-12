@@ -6,13 +6,6 @@ using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents.DTo;
 
-public sealed record PreviewTorrentContentsResponse(
-    bool AlreadyExists,
-    string Name,
-    string InfoHash,
-    long TotalSize,
-    IReadOnlyList<TorrentFileEntry> Files);
-
 public sealed record StartedTorrentDownloadResponse(
             Guid Id,
             string Name,

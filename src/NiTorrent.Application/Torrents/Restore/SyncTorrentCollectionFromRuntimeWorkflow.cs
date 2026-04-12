@@ -1,4 +1,4 @@
-using NiTorrent.Application.Abstractions;
+﻿using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents.Restore;
@@ -20,7 +20,7 @@ public sealed class SyncTorrentCollectionFromRuntimeWorkflow(
         {
             var entries = await repository.GetAllAsync(ct).ConfigureAwait(false);
             var runtimeFacts = runtimeFactsProvider.GetAll();
-            var synced = TorrentCollectionRestorePolicy.ApplyRuntimeFacts(entries, runtimeFacts).ToList();
+            var synced = new List<TorrentEntry>();
 
             var originalById = entries.ToDictionary(x => x.Id, x => x);
             var hasDurableChanges = false;

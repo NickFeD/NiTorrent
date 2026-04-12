@@ -1,4 +1,4 @@
-namespace NiTorrent.Domain.Torrents;
+﻿namespace NiTorrent.Domain.Torrents;
 
 public enum TorrentStatusSource
 {
@@ -7,7 +7,7 @@ public enum TorrentStatusSource
 }
 
 public sealed record TorrentStatus(
-    TorrentPhase Phase,
+    TorrentLifecycleStateOld Phase,
     bool IsComplete,
     double Progress,
     long DownloadRateBytesPerSecond,

@@ -1,24 +1,29 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NiTorrent.Application.Common;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.Commands;
+using NiTorrent.Application.Torrents.DTo;
+using NiTorrent.Application.Torrents.Enum;
+using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Domain.Torrents;
+using NiTorrent.Presentation.Abstractions;
+using TorrentLifecycleState = NiTorrent.Application.Torrents.Enum.TorrentLifecycleState;
 
 namespace NiTorrent.Presentation.Features.Torrents;
 
 public partial class TorrentItemViewModel : ObservableObject, IDisposable
 {
-    public readonly record struct UpdateResult(bool AnyChanged, bool CommandStateChanged);
-
     private bool _isDisposed;
-    private readonly Func<TorrentItemViewModel, Task> _startAsync;
-    private readonly Func<TorrentItemViewModel, Task> _pauseAsync;
-    private readonly Func<TorrentItemViewModel, Task> _openFolderAsync;
-    private readonly Func<TorrentItemViewModel, Task> _removeAsync;
-    private readonly Func<TorrentItemViewModel, Task> _removeWithDataAsync;
+    private readonly Func<TorrentItemViewModel,bool, Task> _removeAsync;
+    private readonly StartTorrentUseCase _startTorrentUseCase;
+    private readonly PauseTorrentUseCase _pauseTorrentUseCase;
+    private readonly IFolderLauncher _folderLauncher;
+    private readonly IDialogService _dialogs;
+    private readonly TorrentDownload _item;
 
-    public TorrentId Id => _item.Id;
+    public Guid Id => _item.Id;
 
-    private TorrentListItemReadModel _item;
     public string Size => SizeFormatter.FormatBytes(_item.Size);
     public string Name => _item.Name;
     public string SavePath => _item.SavePath;
@@ -30,7 +35,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     public string ProgressText => $"{Progress:F1}%";
 
     [ObservableProperty]
-    public partial TorrentStatus State { get; set; } = new(TorrentPhase.Unknown, false, 0, 0, 0);
+    public partial TorrentRuntimeStatus State { get; set; }
 
     [ObservableProperty]
     public partial string StateText { get; set; } = "";
@@ -45,125 +50,128 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     public partial string UploadSpeed { get; set; } = "0 B";
 
     public TorrentItemViewModel(
-        TorrentListItemReadModel item,
-        Func<TorrentItemViewModel, Task> startAsync,
-        Func<TorrentItemViewModel, Task> pauseAsync,
-        Func<TorrentItemViewModel, Task> openFolderAsync,
-        Func<TorrentItemViewModel, Task> removeAsync,
-        Func<TorrentItemViewModel, Task> removeWithDataAsync)
+        TorrentDownload item,
+        Func<TorrentItemViewModel, bool, Task> removeAsync,
+        StartTorrentUseCase startTorrentUseCase,
+        PauseTorrentUseCase pauseTorrentUseCase,
+        IDialogService dialogs,
+        IFolderLauncher folderLauncher)
     {
-        _startAsync = startAsync;
-        _pauseAsync = pauseAsync;
-        _openFolderAsync = openFolderAsync;
         _removeAsync = removeAsync;
-        _removeWithDataAsync = removeWithDataAsync;
-
+        _startTorrentUseCase = startTorrentUseCase;
+        _pauseTorrentUseCase = pauseTorrentUseCase;
+        _folderLauncher = folderLauncher;
+        _dialogs = dialogs;
         _item = item;
-        Apply(item);
+        State = new TorrentRuntimeStatus(Id, Application.Torrents.Enum.TorrentLifecycleState.Unknown, null,0,0);
     }
 
-    public UpdateResult Update(TorrentListItemReadModel item)
+    private static string BuildStateText(TorrentRuntimeStatus status)
     {
-        if (_isDisposed)
-            return default;
+        if (!string.IsNullOrWhiteSpace(status.ErrorMessage))
+            return status.ErrorMessage;
 
-        if (EqualityComparer<TorrentListItemReadModel>.Default.Equals(_item, item))
-            return default;
-
-        var previousPhase = State.Phase;
-        Apply(item);
-        return new UpdateResult(
-            AnyChanged: true,
-            CommandStateChanged: previousPhase != State.Phase);
+        return status.State switch
+        {
+            TorrentLifecycleState.Unknown => "Неизвестно",
+            TorrentLifecycleState.Stopped => "Остановлен",
+            TorrentLifecycleState.Paused => "На паузе",
+            TorrentLifecycleState.FetchingMetadata => "Получение метаданных",
+            TorrentLifecycleState.Checking => "Проверка",
+            TorrentLifecycleState.Downloading => "Скачивание",
+            TorrentLifecycleState.Seeding => "Раздача",
+            //TorrentLifecycleState.Completed => "Завершён",
+            TorrentLifecycleState.Error => "Ошибка",
+            _ => "Неизвестно"
+        };
     }
-
-    private static string BuildStateText(TorrentStatus status)
-        => TorrentStatusTextMapper.ToUserFacingText(status);
 
     private bool CanStart()
-        => State.Phase is TorrentPhase.Stopped or TorrentPhase.Paused or TorrentPhase.Error;
+        => State.State is TorrentLifecycleState.Stopped or TorrentLifecycleState.Paused or TorrentLifecycleState.Error;
 
     private bool CanPause()
-        => State.Phase is TorrentPhase.WaitingForEngine or TorrentPhase.FetchingMetadata or TorrentPhase.Checking or TorrentPhase.Downloading or TorrentPhase.Seeding;
+        => State.State is TorrentLifecycleState.FetchingMetadata or TorrentLifecycleState.Checking or TorrentLifecycleState.Downloading or TorrentLifecycleState.Seeding;
 
     private bool CanOpenFolder()
         => !string.IsNullOrWhiteSpace(SavePath);
 
-    private bool CanRemove()
+    private static bool CanRemove()
         => true;
 
     [RelayCommand(CanExecute = nameof(CanStart))]
-    private Task StartAsync()
-        => _startAsync(this);
+    private async Task StartAsync(CancellationToken ct)
+    {
+        try
+        {
+            await _startTorrentUseCase.ExecuteAsync(new StartTorrentCommand(Id), ct);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ShowTextAsync("Ошибка запуска", UserErrorMapper.ToMessage(ex, "Не удалось запустить торрент."), ct);
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanPause))]
-    private Task PauseAsync()
-        => _pauseAsync(this);
+    private async Task PauseAsync(CancellationToken ct)
+    {
+        try
+        {
+            await _pauseTorrentUseCase.ExecuteAsync(new PauseTorrentCommand(Id), ct);
+        }
+        catch (Exception ex)
+        {
+            await _dialogs.ShowTextAsync("Ошибка паузы", UserErrorMapper.ToMessage(ex, "Не удалось поставить торрент на паузу."), ct);
+        }
+    }
 
     [RelayCommand(CanExecute = nameof(CanOpenFolder))]
     private Task OpenFolderAsync()
-        => _openFolderAsync(this);
+        => _folderLauncher.OpenAsync(SavePath);
 
     [RelayCommand(CanExecute = nameof(CanRemove))]
     private Task RemoveAsync()
-        => _removeAsync(this);
+        => _removeAsync(this, false);
 
     [RelayCommand(CanExecute = nameof(CanRemove))]
     private Task RemoveWithDataAsync()
-        => _removeWithDataAsync(this);
-
-    private void Apply(TorrentListItemReadModel item)
-    {
-        var previous = _item;
-        _item = item;
-
-        if (!string.Equals(previous.Name, item.Name, StringComparison.Ordinal))
-            OnPropertyChanged(nameof(Name));
-
-        if (previous.Size != item.Size)
-            OnPropertyChanged(nameof(Size));
-
-        if (!string.Equals(previous.SavePath, item.SavePath, StringComparison.Ordinal))
-            OnPropertyChanged(nameof(SavePath));
-
-        var previousPhase = State.Phase;
-        if (!EqualityComparer<TorrentStatus>.Default.Equals(State, item.Status))
-            State = item.Status;
-
-        if (Progress != item.Status.Progress)
-            Progress = item.Status.Progress;
-
-        if (IsCompleted != item.Status.IsComplete)
-            IsCompleted = item.Status.IsComplete;
-
-        var downloadSpeed = SizeFormatter.FormatSpeed(item.Status.DownloadRateBytesPerSecond);
-        if (!string.Equals(DownloadSpeed, downloadSpeed, StringComparison.Ordinal))
-            DownloadSpeed = downloadSpeed;
-
-        var uploadSpeed = SizeFormatter.FormatSpeed(item.Status.UploadRateBytesPerSecond);
-        if (!string.Equals(UploadSpeed, uploadSpeed, StringComparison.Ordinal))
-            UploadSpeed = uploadSpeed;
-
-        var stateText = BuildStateText(item.Status);
-        if (!string.Equals(StateText, stateText, StringComparison.Ordinal))
-            StateText = stateText;
-
-        if (previousPhase != State.Phase)
-        {
-            StartCommand.NotifyCanExecuteChanged();
-            PauseCommand.NotifyCanExecuteChanged();
-        }
-
-        OpenFolderCommand.NotifyCanExecuteChanged();
-        RemoveCommand.NotifyCanExecuteChanged();
-        RemoveWithDataCommand.NotifyCanExecuteChanged();
-    }
-
+        => _removeAsync(this, true);
     public void Dispose()
     {
         if (_isDisposed) return;
         _isDisposed = true;
 
         GC.SuppressFinalize(this);
+    }
+
+    public void UpdateRuntime(TorrentRuntimeStatus status)
+    {
+        if (status.TorrentId != Id)
+            return;
+
+        var previousLifecycleState = State.State;
+
+        if (State != status)
+            State = status;
+
+        if (Progress != status.Progress)
+            Progress = status.Progress;
+
+        //var isCompleted = status.State == TorrentLifecycleState.Completed;
+        //if (IsCompleted != isCompleted)
+        //    IsCompleted = isCompleted;
+
+        var formattedDownloadSpeed = SizeFormatter.FormatSpeed(status.DownloadSpeed);
+        if (!string.Equals(DownloadSpeed, formattedDownloadSpeed, StringComparison.Ordinal))
+            DownloadSpeed = formattedDownloadSpeed;
+
+        var stateText = BuildStateText(status);
+        if (!string.Equals(StateText, stateText, StringComparison.Ordinal))
+            StateText = stateText;
+
+        if (previousLifecycleState != status.State)
+        {
+            StartCommand.NotifyCanExecuteChanged();
+            PauseCommand.NotifyCanExecuteChanged();
+        }
     }
 }

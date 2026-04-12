@@ -1,4 +1,4 @@
-using NiTorrent.Application.Abstractions;
+﻿using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents.Deferred;
@@ -75,7 +75,7 @@ public sealed class ApplyDeferredTorrentActionsWorkflow(
                 continue;
 
             current = current.WithDeferredActions(pendingActions);
-            current = current.WithRuntime(TorrentStatusResolver.ResolveExpectedRuntime(current));
+            current = current.WithRuntime(new(new object(),false,0,0,0,"",false));
             updated.Add(current);
         }
 

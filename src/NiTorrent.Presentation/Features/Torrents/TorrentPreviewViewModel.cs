@@ -1,7 +1,8 @@
 ﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.DTo;
+using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Features.Torrents.Tree;
 
 namespace NiTorrent.Presentation.Features.Torrents;
@@ -16,7 +17,7 @@ public partial class TorrentPreviewViewModel : ObservableObject
     public partial string OutputFolder { get; set; }
 
     public TorrentTreeModel Tree { get; }
-    public ObservableCollection<TorrentTreeItemViewModel> RootItems { get; } = new();
+    public ObservableCollection<TorrentTreeItemViewModel> RootItems { get; } = [];
 
     public TorrentPreviewViewModel(TorrentPreview torrentPreview, ITorrentPreferences prefs)
     {
@@ -26,7 +27,7 @@ public partial class TorrentPreviewViewModel : ObservableObject
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
             : prefs.DefaultDownloadPath;
 
-        Tree = new TorrentTreeModel(torrentPreview.Files.Select(f => f.FullPath));
+        Tree = new TorrentTreeModel(torrentPreview.Files);
 
         foreach (var root in TorrentTreeItemViewModel.CreateRootItems(Tree))
             RootItems.Add(root);
@@ -34,15 +35,15 @@ public partial class TorrentPreviewViewModel : ObservableObject
 
 
 
-    private string FormatSize(long bytes)
+    private static string FormatSize(long bytes)
     {
         if (bytes < 1024) return $"{bytes} B";
         if (bytes < 1024 * 1024) return $"{bytes / 1024d:F1} KB";
         if (bytes < 1024 * 1024 * 1024) return $"{bytes / 1024d / 1024d:F1} MB";
         return $"{bytes / 1024d / 1024d / 1024d:F1} GB";
     }
-    public List<string> GetSelectedFiles()
-        => Tree.GetSelectedFiles();
+    public List<TorrentFileEntry> GetFiles()
+        => Tree.GetFiles();
 
 }
 

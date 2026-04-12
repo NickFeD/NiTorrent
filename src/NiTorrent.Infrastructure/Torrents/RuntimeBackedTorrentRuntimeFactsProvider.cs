@@ -1,8 +1,9 @@
-using MonoTorrent;
+﻿using MonoTorrent;
 using MonoTorrent.Client;
 using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Torrents;
+using NiTorrent.Application.Torrents.Enum;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
@@ -74,14 +75,14 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
         var stableKey = _stableKeyAccessor.GetStableKey(manager);
         var phase = manager.State switch
         {
-            TorrentState.Metadata => TorrentPhase.FetchingMetadata,
-            TorrentState.Hashing or TorrentState.FetchingHashes => TorrentPhase.Checking,
-            TorrentState.Downloading => TorrentPhase.Downloading,
-            TorrentState.Seeding => TorrentPhase.Seeding,
-            TorrentState.Paused => TorrentPhase.Paused,
-            TorrentState.Stopped => TorrentPhase.Stopped,
-            TorrentState.Error => TorrentPhase.Error,
-            _ => TorrentPhase.Unknown
+            TorrentState.Metadata => TorrentLifecycleState.FetchingMetadata,
+            TorrentState.Hashing or TorrentState.FetchingHashes => TorrentLifecycleState.Checking,
+            TorrentState.Downloading => TorrentLifecycleState.Downloading,
+            TorrentState.Seeding => TorrentLifecycleState.Seeding,
+            TorrentState.Paused => TorrentLifecycleState.Paused,
+            TorrentState.Stopped => TorrentLifecycleState.Stopped,
+            TorrentState.Error => TorrentLifecycleState.Error,
+            _ => TorrentLifecycleState.Unknown
         };
 
         var rawRuntimeError = manager.Error;
@@ -95,14 +96,14 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
         }
 
         var progress = manager.PartialProgress;
-        var runtime = new TorrentRuntimeState(
-            TorrentLifecycleStateMapper.FromPhase(phase),
+        var runtime = new TorrentRuntimeStateOld(
+            new object(),
             progress >= 100.0,
             progress,
-            manager.Monitor.DownloadRate,
-            manager.Monitor.UploadRate,
+            int.MaxValue,
+            int.MaxValue,
             rawRuntimeError is null ? null : UserSafeRuntimeErrorMessage,
-            IsEngineBacked: true);
+             true);
 
         return new TorrentRuntimeFact(
             id,
@@ -110,7 +111,7 @@ public sealed class RuntimeBackedTorrentRuntimeFactsProvider : ITorrentRuntimeFa
             manager.Name,
             manager.Torrent?.Size ?? 0,
             manager.SavePath,
-            runtime);
+            new());
     }
 
     public void Dispose()

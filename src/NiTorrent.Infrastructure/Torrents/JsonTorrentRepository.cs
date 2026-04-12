@@ -36,11 +36,11 @@ public sealed class JsonTorrentRepository : ITorrentRepository
         await _gate.WaitAsync(ct);
         try
         {
-            if (!_itemsById.TryAdd(download.Id, record))
-                throw new InvalidOperationException($"Torrent with id '{download.Id}' already exists.");
-
             var record = ToRecord(download);
             record.Source = await CreateSourceRecordAsync(download.Id, source, ct);
+
+            if (!_itemsById.TryAdd(download.Id, record))
+                throw new InvalidOperationException($"Torrent with id '{download.Id}' already exists.");
 
             await SaveUnsafeAsync(ct);
         }
@@ -285,6 +285,12 @@ public sealed class JsonTorrentRepository : ITorrentRepository
                 })
                 .ToList()
         };
+
+    public async Task<List<TorrentDownload>> GetAllAsync(CancellationToken ct)
+    {
+        await EnsureLoadedAsync(ct);
+        return _itemsById.Values.Select(ToDomain).ToList();
+    }
 }
 
 internal sealed class TorrentRepositoryDocument

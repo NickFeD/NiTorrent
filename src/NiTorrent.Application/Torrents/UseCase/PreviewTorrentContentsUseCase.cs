@@ -9,7 +9,7 @@ public sealed class PreviewTorrentContentsUseCase(ITorrentMetadataProvider metad
     private readonly ITorrentMetadataProvider _metadataProvider = metadataProvider;
     private readonly ITorrentRepository _torrentRepository = torrentRepository;
 
-    public async Task<PreviewTorrentContentsResponse> ExecuteAsync(
+    public async Task<TorrentPreview> ExecuteAsync(
         PreviewTorrentContentsCommand command,
         CancellationToken ct = default)
     {
@@ -17,7 +17,7 @@ public sealed class PreviewTorrentContentsUseCase(ITorrentMetadataProvider metad
 
         var alreadyExists = await _torrentRepository.ExistsByInfoHash(metadata.InfoHash, ct);
 
-        var response = new PreviewTorrentContentsResponse(
+        var response = new TorrentPreview(
             AlreadyExists: alreadyExists,
             Name: metadata.Name,
             InfoHash: metadata.InfoHash,

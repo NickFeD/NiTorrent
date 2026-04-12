@@ -1,8 +1,9 @@
-using System.Collections;
+﻿using System.Collections;
 using MonoTorrent;
 using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.Enum;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
@@ -38,21 +39,21 @@ public sealed class EngineBackedTorrentDetailsRuntimeService(
     {
         var phase = manager.State switch
         {
-            TorrentState.Metadata => TorrentPhase.FetchingMetadata,
-            TorrentState.Hashing or TorrentState.FetchingHashes => TorrentPhase.Checking,
-            TorrentState.Downloading => TorrentPhase.Downloading,
-            TorrentState.Seeding => TorrentPhase.Seeding,
-            TorrentState.Paused => TorrentPhase.Paused,
-            TorrentState.Stopped => TorrentPhase.Stopped,
-            TorrentState.Error => TorrentPhase.Error,
-            _ => TorrentPhase.Unknown
+            TorrentState.Metadata => TorrentLifecycleState.FetchingMetadata,
+            TorrentState.Hashing or TorrentState.FetchingHashes => TorrentLifecycleState.Checking,
+            TorrentState.Downloading => TorrentLifecycleState.Downloading,
+            TorrentState.Seeding => TorrentLifecycleState.Seeding,
+            TorrentState.Paused => TorrentLifecycleState.Paused,
+            TorrentState.Stopped => TorrentLifecycleState.Stopped,
+            TorrentState.Error => TorrentLifecycleState.Error,
+            _ => TorrentLifecycleState.Unknown
         };
 
         var progress = manager.PartialProgress;
         var downloadRate = manager.Monitor.DownloadRate;
         var uploadRate = manager.Monitor.UploadRate;
         var status = new TorrentStatus(
-            Phase: phase,
+            Phase: new TorrentLifecycleStateOld(),
             IsComplete: manager.Complete || progress >= 100.0,
             Progress: progress,
             DownloadRateBytesPerSecond: downloadRate,

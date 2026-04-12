@@ -1,4 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
@@ -57,7 +57,6 @@ public static class DependencyInjection
         services.AddSingleton<ITorrentEngineGateway, InfrastructureTorrentEngineGateway>();
         services.AddSingleton<ITorrentEngineLifecycle, InfrastructureTorrentEngineLifecycle>();
         services.AddSingleton<ITorrentEngineStateStore, InfrastructureTorrentEngineStateStore>();
-        services.AddSingleton<ITorrentCommandService, TorrentCommandService>();
         services.AddSingleton<IApplyDeferredTorrentActionsWorkflow, ApplyDeferredTorrentActionsWorkflow>();
         services.AddSingleton<IRestoreTorrentCollectionWorkflow, RestoreTorrentCollectionWorkflow>();
         services.AddSingleton<ITorrentEngineStatusService, EngineBackedTorrentEngineStatusService>();

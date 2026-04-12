@@ -1,4 +1,4 @@
-namespace NiTorrent.Domain.Torrents;
+﻿namespace NiTorrent.Domain.Torrents;
 
 public sealed record TorrentEntry
 {
@@ -9,8 +9,8 @@ public sealed record TorrentEntry
     public SavePath SavePath { get; internal init; }
     public DateTimeOffset AddedAtUtc { get; internal init; }
     public TorrentIntent Intent { get; internal init; }
-    public TorrentLifecycleState LifecycleState { get; internal init; }
-    public TorrentRuntimeState Runtime { get; internal init; }
+    public TorrentLifecycleStateOld LifecycleState { get; internal init; }
+    public TorrentRuntimeStateOld Runtime { get; internal init; }
     public TorrentStatus LastKnownStatus { get; internal init; }
     public bool HasMetadata { get; internal init; }
     public IReadOnlyList<string> SelectedFiles { get; internal init; }
@@ -25,8 +25,8 @@ public sealed record TorrentEntry
         SavePath SavePath,
         DateTimeOffset AddedAtUtc,
         TorrentIntent Intent,
-        TorrentLifecycleState LifecycleState,
-        TorrentRuntimeState Runtime,
+        TorrentLifecycleStateOld LifecycleState,
+        TorrentRuntimeStateOld Runtime,
         TorrentStatus LastKnownStatus,
         bool HasMetadata,
         IReadOnlyList<string> SelectedFiles,
@@ -58,7 +58,7 @@ public sealed record TorrentEntry
         this.DeferredActions = CloneDeferredActions(DeferredActions);
     }
 
-    public TorrentEntry WithRuntime(TorrentRuntimeState runtime)
+    public TorrentEntry WithRuntime(TorrentRuntimeStateOld runtime)
         => this with
         {
             Runtime = runtime,
@@ -72,9 +72,9 @@ public sealed record TorrentEntry
     public TorrentEntry WithSelectedFiles(IReadOnlyList<string> selectedFiles) => this with { SelectedFiles = CloneSelectedFiles(selectedFiles) };
     public TorrentEntry WithMetadata(bool hasMetadata) => this with { HasMetadata = hasMetadata };
 
-    private static TorrentStatus BuildStatus(TorrentRuntimeState runtime)
+    private static TorrentStatus BuildStatus(TorrentRuntimeStateOld runtime)
         => new(
-            TorrentLifecycleStateMapper.ToPhase(runtime.LifecycleState),
+            runtime.LifecycleState,
             runtime.IsComplete,
             runtime.Progress,
             runtime.DownloadRateBytesPerSecond,

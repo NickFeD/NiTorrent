@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
@@ -17,7 +17,6 @@ namespace NiTorrent.Infrastructure.Torrents;
 [JsonSerializable(typeof(List<TorrentPendingRemovalEntry>))]
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(TorrentIntent))]
-[JsonSerializable(typeof(TorrentPhase))]
 [JsonSerializable(typeof(TorrentStatusSource))]
 [JsonSerializable(typeof(DeferredActionType))]
 internal partial class TorrentCatalogJsonContext : JsonSerializerContext

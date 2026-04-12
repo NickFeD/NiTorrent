@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Torrents;
 
@@ -30,8 +30,8 @@ public sealed class StagedTorrentRehydrationWorkflow(
             if (sourceBytes is null || sourceBytes.Length == 0)
             {
                 logger.LogWarning("Missing persisted source for torrent {TorrentId}", entry.Id.Value);
-                var failed = entry.WithRuntime(new TorrentRuntimeState(
-                    TorrentLifecycleState.Error,
+                var failed = entry.WithRuntime(new TorrentRuntimeStateOld(
+                    TorrentLifecycleStateOld.Error,
                     entry.Runtime.IsComplete,
                     entry.Runtime.Progress,
                     0,
@@ -54,8 +54,8 @@ public sealed class StagedTorrentRehydrationWorkflow(
             catch (InvalidOperationException ex)
             {
                 logger.LogWarning(ex, "Failed to rehydrate torrent {TorrentId}", entry.Id.Value);
-                var failed = entry.WithRuntime(new TorrentRuntimeState(
-                    TorrentLifecycleState.Error,
+                var failed = entry.WithRuntime(new TorrentRuntimeStateOld(
+                    TorrentLifecycleStateOld.Error,
                     entry.Runtime.IsComplete,
                     entry.Runtime.Progress,
                     0,
@@ -69,8 +69,8 @@ public sealed class StagedTorrentRehydrationWorkflow(
             catch (IOException ex)
             {
                 logger.LogWarning(ex, "Failed to rehydrate torrent {TorrentId}", entry.Id.Value);
-                var failed = entry.WithRuntime(new TorrentRuntimeState(
-                    TorrentLifecycleState.Error,
+                var failed = entry.WithRuntime(new TorrentRuntimeStateOld(
+                    TorrentLifecycleStateOld.Error,
                     entry.Runtime.IsComplete,
                     entry.Runtime.Progress,
                     0,
@@ -84,8 +84,8 @@ public sealed class StagedTorrentRehydrationWorkflow(
             catch (UnauthorizedAccessException ex)
             {
                 logger.LogWarning(ex, "Failed to rehydrate torrent {TorrentId}", entry.Id.Value);
-                var failed = entry.WithRuntime(new TorrentRuntimeState(
-                    TorrentLifecycleState.Error,
+                var failed = entry.WithRuntime(new TorrentRuntimeStateOld(
+                    TorrentLifecycleStateOld.Error,
                     entry.Runtime.IsComplete,
                     entry.Runtime.Progress,
                     0,

@@ -1,4 +1,4 @@
-namespace NiTorrent.Domain.Torrents;
+﻿namespace NiTorrent.Domain.Torrents;
 
 public sealed record TorrentRuntimeFact(
     TorrentId? Id,
@@ -6,5 +6,5 @@ public sealed record TorrentRuntimeFact(
     string Name,
     long Size,
     SavePath SavePath,
-    TorrentRuntimeState Runtime
+    TorrentLifecycleStateOld Runtime
 );

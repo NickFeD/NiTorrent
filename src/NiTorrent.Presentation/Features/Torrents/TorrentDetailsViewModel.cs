@@ -1,10 +1,13 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Common;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.Commands;
+using NiTorrent.Application.Torrents.Enum;
 using NiTorrent.Application.Torrents.Queries;
+using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Abstractions;
 
@@ -18,7 +21,10 @@ public partial class TorrentDetailsViewModel : ObservableObject
     private readonly GetTorrentDetailsQuery _detailsQuery;
     private readonly GetTorrentRuntimeDetailsQuery _runtimeQuery;
     private readonly UpdatePerTorrentSettingsWorkflow _updateSettingsWorkflow;
-    private readonly ITorrentWorkflowService _torrentWorkflowService;
+    private readonly StartTorrentUseCase _startTorrentUseCase;
+    private readonly PauseTorrentUseCase _pauseTorrentUseCase;
+    private readonly DeleteTorrentUseCase _deleteTorrentUseCase;
+    private readonly IFolderLauncher _folderLauncher;
     private readonly IDialogService _dialogs;
     private readonly IUiDispatcher _ui;
 
@@ -34,14 +40,20 @@ public partial class TorrentDetailsViewModel : ObservableObject
         GetTorrentDetailsQuery detailsQuery,
         GetTorrentRuntimeDetailsQuery runtimeQuery,
         UpdatePerTorrentSettingsWorkflow updateSettingsWorkflow,
-        ITorrentWorkflowService torrentWorkflowService,
+        StartTorrentUseCase startTorrentUseCase,
+        PauseTorrentUseCase pauseTorrentUseCase,
+        DeleteTorrentUseCase deleteTorrentUseCase,
+        IFolderLauncher folderLauncher,
         IDialogService dialogs,
         IUiDispatcher ui)
     {
         _detailsQuery = detailsQuery;
         _runtimeQuery = runtimeQuery;
         _updateSettingsWorkflow = updateSettingsWorkflow;
-        _torrentWorkflowService = torrentWorkflowService;
+        _startTorrentUseCase = startTorrentUseCase;
+        _pauseTorrentUseCase = pauseTorrentUseCase;
+        _deleteTorrentUseCase = deleteTorrentUseCase;
+        _folderLauncher = folderLauncher;
         _dialogs = dialogs;
         _ui = ui;
     }
@@ -112,13 +124,13 @@ public partial class TorrentDetailsViewModel : ObservableObject
     public bool HasTorrent => _currentTorrentId != TorrentId.Empty;
     public bool CanSave => HasTorrent;
 
-    private TorrentPhase CurrentPhase { get; set; } = TorrentPhase.Unknown;
+    private TorrentLifecycleState CurrentPhase { get; set; } = TorrentLifecycleState.Unknown;
 
     private bool CanStart()
-        => HasTorrent && CurrentPhase is TorrentPhase.Stopped or TorrentPhase.Paused or TorrentPhase.Error;
+        => HasTorrent && CurrentPhase is TorrentLifecycleState.Stopped or TorrentLifecycleState.Paused or TorrentLifecycleState.Error;
 
     private bool CanPause()
-        => HasTorrent && CurrentPhase is TorrentPhase.WaitingForEngine or TorrentPhase.FetchingMetadata or TorrentPhase.Checking or TorrentPhase.Downloading or TorrentPhase.Seeding;
+        => HasTorrent && CurrentPhase is  TorrentLifecycleState.FetchingMetadata or TorrentLifecycleState.Checking or TorrentLifecycleState.Downloading or TorrentLifecycleState.Seeding;
 
     private bool CanOpenFolder()
         => HasTorrent && !string.IsNullOrWhiteSpace(SavePath);
@@ -146,7 +158,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
             AddedAtText = details.AddedAtUtc.ToLocalTime().ToString("g");
             HasMetadataText = details.HasMetadata ? "Yes" : "No";
             StatusLabel = TorrentStatusTextMapper.ToUserFacingText(details.Status);
-            CurrentPhase = details.Status.Phase;
+            CurrentPhase = TorrentLifecycleState.Error;
             ProgressPercent = details.Status.Progress;
             SizeText = SizeFormatter.FormatBytes(_knownTotalSize);
             DownloadPathOverride = details.Settings.DownloadPathOverride;
@@ -226,7 +238,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(snapshot.StableKey))
             Hash = snapshot.StableKey;
 
-        CurrentPhase = snapshot.Status.Phase;
+        CurrentPhase = TorrentLifecycleState.Error;
         StatusLabel = TorrentStatusTextMapper.ToUserFacingText(snapshot.Status);
         ProgressPercent = snapshot.Status.Progress;
         DownloadSpeedText = SizeFormatter.FormatSpeed(snapshot.Status.DownloadRateBytesPerSecond);
@@ -352,7 +364,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
         try
         {
-            await _torrentWorkflowService.StartAsync(_currentTorrentId).ConfigureAwait(false);
+            await _startTorrentUseCase.ExecuteAsync(new StartTorrentCommand(_currentTorrentId.Value), CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -368,7 +380,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
         try
         {
-            await _torrentWorkflowService.PauseAsync(_currentTorrentId).ConfigureAwait(false);
+            await _pauseTorrentUseCase.ExecuteAsync(new PauseTorrentCommand(_currentTorrentId.Value), CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -384,7 +396,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
         try
         {
-            await _torrentWorkflowService.OpenFolderAsync(SavePath).ConfigureAwait(false);
+            await _folderLauncher.OpenAsync(SavePath, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -407,7 +419,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
         try
         {
-            await _torrentWorkflowService.RemoveAsync(_currentTorrentId, deleteData).ConfigureAwait(false);
+            await _deleteTorrentUseCase.ExecuteAsync(new DeleteTorrentCommand(_currentTorrentId.Value, deleteData), CancellationToken.None).ConfigureAwait(false);
             await _ui.EnqueueAsync(ResetToEmptyState).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -454,7 +466,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
         Deactivate();
         _currentTorrentId = TorrentId.Empty;
         _knownTotalSize = 0;
-        CurrentPhase = TorrentPhase.Unknown;
+        CurrentPhase = TorrentLifecycleState.Unknown;
         Title = string.Empty;
         SavePath = string.Empty;
         Hash = string.Empty;

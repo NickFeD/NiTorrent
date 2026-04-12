@@ -5,26 +5,42 @@ using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Common;
 using NiTorrent.Application.Torrents;
+using NiTorrent.Application.Torrents.Abstract;
+using NiTorrent.Application.Torrents.Commands;
+using NiTorrent.Application.Torrents.DTo;
+using NiTorrent.Application.Torrents.Query;
+using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Abstractions;
+using static NiTorrent.Application.Torrents.TorrentSource;
 
 namespace NiTorrent.Presentation.Features.Torrents;
 
-public partial class TorrentViewModel : ObservableObject
+public partial class TorrentViewModel(
+    ITorrentItemViewModelFactory itemViewModelFactory,
+    DeleteTorrentUseCase deleteTorrentUseCase,
+    PreviewTorrentContentsUseCase previewTorrentContentsUseCase,
+    CreateTorrentDownloadUseCase createTorrentDownloadUseCase,
+    GetTorrentListQuery getTorrentListQuery,
+    IDialogService dialogs,
+    IPickerHelper pickerHelper,
+    ITorrentRuntimeStateStore store,
+    IUiDispatcher dispatcher,
+    ITorrentPreviewService torrentPreview) : ObservableObject
 {
-    private readonly ITorrentReadModelFeed _readModelFeed;
-    private readonly ITorrentEngineStatusService _engineStatusService;
-    private readonly ITorrentWorkflowService _torrentWorkflowService;
-    private readonly IDialogService _dialogs;
-    private readonly IUiDispatcher _ui;
-    private readonly object _pendingUpdateSync = new();
-    private IReadOnlyList<TorrentListItemReadModel> _pendingItems = Array.Empty<TorrentListItemReadModel>();
-    private int _uiUpdateScheduled;
-    private bool _isActive;
+    private readonly PreviewTorrentContentsUseCase _previewTorrentContentsUseCase = previewTorrentContentsUseCase;
+    private readonly CreateTorrentDownloadUseCase _createTorrentDownloadUseCase = createTorrentDownloadUseCase;
+    private readonly ITorrentItemViewModelFactory _itemViewModelFactory = itemViewModelFactory;
+    private readonly DeleteTorrentUseCase _deleteTorrentUseCase = deleteTorrentUseCase;
+    private readonly GetTorrentListQuery _getTorrentListQuery = getTorrentListQuery;
+    private readonly IPickerHelper _pickerHelper = pickerHelper;
+    private readonly ITorrentPreviewService _torrentPreview = torrentPreview;
+    private readonly IDialogService _dialogs = dialogs;
+    private readonly IUiDispatcher _dispatcher = dispatcher;
+    private readonly ITorrentRuntimeStateStore _store = store;
 
+    private readonly Dictionary<Guid, TorrentItemViewModel> _torrents = new();
     public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
-
-    private readonly Dictionary<TorrentId, TorrentItemViewModel> _torrents = new();
     public bool IsEmpty => Torrents.Count < 1;
 
     [ObservableProperty]
@@ -42,144 +58,57 @@ public partial class TorrentViewModel : ObservableObject
 
     public bool CanRemove => SelectedTorrent != null;
 
-    public TorrentViewModel(
-        ITorrentReadModelFeed readModelFeed,
-        ITorrentEngineStatusService engineStatusService,
-        IDialogService dialogs,
-        IUiDispatcher ui,
-        ITorrentWorkflowService torrentWorkflowService)
+    private async void OnRuntimeStateChanged(object? sender, TorrentRuntimeStateChangedEventArgs e)
     {
-        _ui = ui;
-        _readModelFeed = readModelFeed;
-        _engineStatusService = engineStatusService;
-        _dialogs = dialogs;
-        _torrentWorkflowService = torrentWorkflowService;
-
-        if (_engineStatusService.IsReady)
-            StatusText = "Движок торрентов готов";
-    }
-
-    public void Activate()
-    {
-        if (_isActive)
-            return;
-
-        _isActive = true;
-        _readModelFeed.Updated += UpdateTorrent;
-        _engineStatusService.Ready += TorrentEngineReady;
-        UpdateTorrent(_readModelFeed.Current);
-    }
-
-    public void Deactivate()
-    {
-        if (!_isActive)
-            return;
-
-        _isActive = false;
-        _readModelFeed.Updated -= UpdateTorrent;
-        _engineStatusService.Ready -= TorrentEngineReady;
-
-        lock (_pendingUpdateSync)
-            _pendingItems = Array.Empty<TorrentListItemReadModel>();
-    }
-
-    private void TorrentEngineReady()
-    {
-        _ui.TryEnqueue(() => { StatusText = "Движок торрентов готов"; });
-    }
-
-    private void UpdateTorrent(IReadOnlyList<TorrentListItemReadModel> torrents)
-    {
-        if (!_isActive)
-            return;
-
-        lock (_pendingUpdateSync)
-            _pendingItems = torrents;
-
-        if (Interlocked.Exchange(ref _uiUpdateScheduled, 1) == 1)
-            return;
-
-        if (!_ui.TryEnqueue(DrainPendingUpdatesOnUiThread))
-            Interlocked.Exchange(ref _uiUpdateScheduled, 0);
-    }
-
-    private void DrainPendingUpdatesOnUiThread()
-    {
-        if (!_isActive)
+        await _dispatcher.EnqueueAsync(() =>
         {
-            Interlocked.Exchange(ref _uiUpdateScheduled, 0);
-            return;
-        }
+            foreach (var removed in e.RemovedIds)
+            {
+                if (_torrents.TryGetValue(removed, out var toRemove))
+                {
+                    _torrents.Remove(removed);
+                    toRemove.Dispose();
+                    Torrents.Remove(toRemove);
+                    if (ReferenceEquals(SelectedTorrent, toRemove))
+                        SelectedTorrent = null;
+                }
+            }
+            var byId = e.UpdatedStatuses.ToDictionary(x => x.TorrentId);
 
-        IReadOnlyList<TorrentListItemReadModel> torrents;
-        lock (_pendingUpdateSync)
-            torrents = _pendingItems;
+            foreach (var item in Torrents)
+            {
+                if (byId.TryGetValue(item.Id, out var status))
+                {
+                    item.UpdateRuntime(status);
+                }
+            }
+        });
+    }
 
-        var previousCount = Torrents.Count;
-        var commandsNeedRefresh = false;
-
-        long totalDownloadSpeed = 0;
-        long totalUploadSpeed = 0;
-        var actualIds = torrents.Select(x => x.Id).ToHashSet();
-
-        foreach (var stale in _torrents.Keys.Where(id => !actualIds.Contains(id)).ToList())
-        {
-            var staleVm = _torrents[stale];
-            staleVm.Dispose();
-            _torrents.Remove(stale);
-            Torrents.Remove(staleVm);
-
-            if (ReferenceEquals(SelectedTorrent, staleVm))
-                SelectedTorrent = null;
-        }
+    public async Task TorrentLoading(CancellationToken ct)
+    {
+        var torrents = await _getTorrentListQuery.ExecuteAsync(ct);
 
         foreach (var torrent in torrents)
         {
-            totalDownloadSpeed += torrent.Status.DownloadRateBytesPerSecond;
-            totalUploadSpeed += torrent.Status.UploadRateBytesPerSecond;
-
-            if (_torrents.TryGetValue(torrent.Id, out var oldTorrent))
-            {
-                var update = oldTorrent.Update(torrent);
-                if (update.CommandStateChanged && ReferenceEquals(oldTorrent, SelectedTorrent))
-                    commandsNeedRefresh = true;
-            }
-            else
-            {
-                var newTorrent = new TorrentItemViewModel(
-                    torrent,
-                    ExecuteStartAsync,
-                    ExecutePauseAsync,
-                    ExecuteOpenFolderAsync,
-                    ExecuteRemoveAsync,
-                    ExecuteRemoveWithDataAsync);
-                _torrents.Add(newTorrent.Id, newTorrent);
-                Torrents.Add(newTorrent);
-            }
+            var torrentViewModel = _itemViewModelFactory.Create(torrent, RemoveTorrentAsync);
+            Torrents.Add(torrentViewModel);
+            _torrents.Add(torrentViewModel.Id, torrentViewModel);
         }
+        _store.Changed += OnRuntimeStateChanged;
+    }
+    public void Deactivate()
+    {
+        //if (!_isActive)
+        //    return;
 
-        TotalDownloadSpeed = SizeFormatter.FormatSpeed(totalDownloadSpeed);
-        TotalUploadSpeed = SizeFormatter.FormatSpeed(totalUploadSpeed);
+        //_isActive = false;
+        //_readModelFeed.Updated -= UpdateTorrent;
+        //_engineStatusService.Ready -= TorrentEngineReady;
 
-        if (previousCount != Torrents.Count)
-            OnPropertyChanged(nameof(IsEmpty));
-
-        if (commandsNeedRefresh)
-            RefreshCommands();
-
-        Interlocked.Exchange(ref _uiUpdateScheduled, 0);
-
-        lock (_pendingUpdateSync)
-        {
-            if (ReferenceEquals(torrents, _pendingItems))
-                return;
-        }
-
-        if (Interlocked.Exchange(ref _uiUpdateScheduled, 1) == 0)
-        {
-            if (!_ui.TryEnqueue(DrainPendingUpdatesOnUiThread))
-                Interlocked.Exchange(ref _uiUpdateScheduled, 0);
-        }
+        //lock (_pendingUpdateSync)
+        //    _pendingItems = Array.Empty<TorrentListItemReadModel>();
+        _store.Changed -= OnRuntimeStateChanged;
     }
 
     partial void OnSelectedTorrentChanged(TorrentItemViewModel? value)
@@ -192,11 +121,15 @@ public partial class TorrentViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task PickTorrent()
+    private async Task PickTorrent(CancellationToken ct)
     {
         try
         {
-            await _torrentWorkflowService.PickAndAddAsync();
+            var path = await _pickerHelper.PickSingleFilePathAsync(".torrent");
+            if (path is null)
+                return;
+            
+            await PreviewTorrent(new TorrentFile(path), ct);
         }
         catch (Exception ex)
         {
@@ -205,73 +138,38 @@ public partial class TorrentViewModel : ObservableObject
         }
     }
 
-    public async Task AddMagnet(string magnet)
+    private async Task PreviewTorrent(TorrentSource  torrentSource, CancellationToken ct)
+    {
+        var previewTorrent = await _previewTorrentContentsUseCase.ExecuteAsync(new PreviewTorrentContentsCommand() { Source = torrentSource}, ct);
+
+        var previewDialogResult = await _torrentPreview.ShowAsync(previewTorrent,ct);
+
+        if (previewDialogResult is null)
+            return;
+        var command = new StartTorrentDownloadCommand(torrentSource, previewDialogResult.OutputFolder, previewDialogResult.SelectedFiles.ToList());
+        await _createTorrentDownloadUseCase.ExecuteAsync(command, ct);
+    }
+
+    public Task AddMagnet(string magnet, CancellationToken ct)
     {
         try
         {
-            await _torrentWorkflowService.AddMagnetAsync(magnet);
+            return PreviewTorrent(new Magnet(magnet), ct);
         }
         catch (Exception ex)
         {
             StatusText = "Не удалось добавить magnet-ссылку";
-            await _dialogs.ShowTextAsync("Ошибка добавления", UserErrorMapper.ToMessage(ex, "Не удалось добавить торрент."));
+            return _dialogs.ShowTextAsync("Ошибка добавления", UserErrorMapper.ToMessage(ex, "Не удалось добавить торрент."));
         }
     }
 
-    private async Task ExecuteStartAsync(TorrentItemViewModel torrent)
-    {
-        try
-        {
-            StatusText = "Запуск торрента...";
-            await _torrentWorkflowService.StartAsync(torrent.Id);
-        }
-        catch (Exception ex)
-        {
-            StatusText = "Не удалось запустить торрент";
-            await _dialogs.ShowTextAsync("Ошибка запуска", UserErrorMapper.ToMessage(ex, "Не удалось запустить торрент."));
-        }
-    }
-
-    private async Task ExecutePauseAsync(TorrentItemViewModel torrent)
-    {
-        try
-        {
-            StatusText = "Пауза торрента...";
-            await _torrentWorkflowService.PauseAsync(torrent.Id);
-        }
-        catch (Exception ex)
-        {
-            StatusText = "Не удалось поставить торрент на паузу";
-            await _dialogs.ShowTextAsync("Ошибка паузы", UserErrorMapper.ToMessage(ex, "Не удалось поставить торрент на паузу."));
-        }
-    }
-
-    private async Task ExecuteOpenFolderAsync(TorrentItemViewModel torrent)
-    {
-        try
-        {
-            await _torrentWorkflowService.OpenFolderAsync(torrent.SavePath);
-        }
-        catch (Exception ex)
-        {
-            StatusText = "Не удалось открыть папку торрента";
-            await _dialogs.ShowTextAsync("Ошибка открытия папки", UserErrorMapper.ToMessage(ex, "Не удалось открыть папку торрента."));
-        }
-    }
-
-    private Task ExecuteRemoveAsync(TorrentItemViewModel torrent)
-        => RemoveTorrentCoreAsync(torrent, deleteData: false);
-
-    private Task ExecuteRemoveWithDataAsync(TorrentItemViewModel torrent)
-        => RemoveTorrentCoreAsync(torrent, deleteData: true);
-
-    private async Task RemoveTorrentCoreAsync(TorrentItemViewModel torrent, bool deleteData)
+    private async Task RemoveTorrentAsync(TorrentItemViewModel torrent, bool deleteData)
     {
         var toRemove = torrent;
 
         try
         {
-            await _torrentWorkflowService.RemoveAsync(toRemove.Id, deleteData);
+            await _deleteTorrentUseCase.ExecuteAsync(new DeleteTorrentCommand(toRemove.Id, deleteData), CancellationToken.None);
 
             _torrents.Remove(toRemove.Id);
             toRemove.Dispose();

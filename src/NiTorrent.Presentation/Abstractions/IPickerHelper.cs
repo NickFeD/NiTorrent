@@ -1,5 +1,5 @@
 ﻿
-namespace NiTorrent.Application.Abstractions;
+namespace NiTorrent.Presentation.Abstractions;
 
 public interface IPickerHelper
 {

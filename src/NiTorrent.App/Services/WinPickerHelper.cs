@@ -1,5 +1,5 @@
 ﻿using Microsoft.Windows.Storage.Pickers;
-using NiTorrent.Application.Abstractions;
+using NiTorrent.Presentation.Abstractions;
 using WinRT.Interop;
 
 namespace NiTorrent.App.Services;

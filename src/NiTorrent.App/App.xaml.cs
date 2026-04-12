@@ -92,7 +92,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<IDialogService, WinUiDialogService>();
         services.AddSingleton<IUpdateService, DevWinUiUpdateService>();
         services.AddSingleton<IJsonNavigationService, JsonNavigationService>();
-        services.AddSingleton<ITorrentPreviewDialogService, TorrentPreviewDialogService>();
+        services.AddSingleton<ITorrentPreviewService, TorrentPreviewDialogService>();
         services.AddSingleton<IAppStartupService, AppStartupService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
         services.AddSingleton<IMainWindowLifecycle, MainWindowLifecycle>();
@@ -113,20 +113,12 @@ public partial class App : WinUIApplication
         services.AddSingleton<UpdatePerTorrentSettingsWorkflow>();
         services.AddSingleton<IAppCloseCoordinator, AppCloseCoordinator>();
         services.AddSingleton<IAppShutdownCoordinator, AppShutdownCoordinator>();
-        services.AddTransient<AddTorrentUseCase>();
         services.AddTransient<CreateTorrentDownloadUseCase>();
         services.AddTransient<PreviewTorrentContentsUseCase>();
         services.AddTransient<StartTorrentUseCase>();
         services.AddTransient<PauseTorrentUseCase>();
         services.AddTransient<DeleteTorrentUseCase>();
-        services.AddTransient<ITorrentPreviewFlow, TorrentPreviewFlow>();
-        services.AddTransient<PickAndAddTorrentUseCase>();
-        services.AddTransient<AddTorrentFileWithPreviewUseCase>();
-        services.AddTransient<AddMagnetUseCase>();
-        services.AddTransient<TorrentCommandUseCase>();
-        services.AddTransient<OpenTorrentFolderUseCase>();
         services.AddTransient<ApplyTorrentSettingsUseCase>();
-        services.AddTransient<ITorrentWorkflowService, TorrentWorkflowService>();
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)

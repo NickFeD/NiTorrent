@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
@@ -201,9 +201,6 @@ public sealed class TorrentCatalogStore
 
             entry.Intent = shouldRun ? TorrentIntent.Running : TorrentIntent.Paused;
             entry.ShouldRun = null;
-
-            if (!shouldRun && entry.LastPhase is TorrentPhase.Downloading or TorrentPhase.Seeding or TorrentPhase.Checking or TorrentPhase.FetchingMetadata or TorrentPhase.WaitingForEngine)
-                entry.LastPhase = TorrentPhase.Paused;
         }
         finally { _gate.Release(); }
     }
@@ -460,12 +457,12 @@ public sealed class TorrentCatalogStore
         var statusSource = entry.RuntimeStatusSource ?? TorrentStatusSource.Cached;
         var isEngineBacked = statusSource == TorrentStatusSource.Live;
 
-        var runtime = new TorrentRuntimeState(
-            TorrentLifecycleStateMapper.FromPhase(entry.LastPhase),
+        var runtime = new TorrentRuntimeStateOld(
+            new object(),
             entry.IsComplete,
             entry.Progress,
-            entry.RuntimeDownloadRateBytesPerSecond,
-            entry.RuntimeUploadRateBytesPerSecond,
+            int.MaxValue,
+            int.MaxValue,
             entry.Error,
             isEngineBacked);
 

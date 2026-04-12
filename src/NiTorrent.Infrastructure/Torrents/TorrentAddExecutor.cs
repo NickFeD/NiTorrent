@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using MonoTorrent;
 using MonoTorrent.Client;
 using NiTorrent.Application.Torrents;
@@ -22,7 +22,7 @@ public sealed class TorrentAddExecutor
         _peerEndpointCooldown = peerEndpointCooldown;
     }
 
-    public async Task<TorrentRuntimeState> AddAsync(
+    public async Task<TorrentRuntimeStateOld> AddAsync(
         ClientEngine engine,
         TorrentId id,
         AddTorrentRequest request,
@@ -56,23 +56,23 @@ public sealed class TorrentAddExecutor
 
         var phase = manager.State switch
         {
-            TorrentState.Metadata => TorrentPhase.FetchingMetadata,
-            TorrentState.Hashing or TorrentState.FetchingHashes => TorrentPhase.Checking,
-            TorrentState.Downloading => TorrentPhase.Downloading,
-            TorrentState.Seeding => TorrentPhase.Seeding,
-            TorrentState.Paused => TorrentPhase.Paused,
-            TorrentState.Stopped => TorrentPhase.Stopped,
-            TorrentState.Error => TorrentPhase.Error,
-            _ => TorrentPhase.Unknown
+            TorrentState.Metadata => TorrentLifecycleStateOld.FetchingMetadata,
+            TorrentState.Hashing or TorrentState.FetchingHashes => TorrentLifecycleStateOld.Checking,
+            TorrentState.Downloading => TorrentLifecycleStateOld.Downloading,
+            TorrentState.Seeding => TorrentLifecycleStateOld.Seeding,
+            TorrentState.Paused => TorrentLifecycleStateOld.Paused,
+            TorrentState.Stopped => TorrentLifecycleStateOld.Stopped,
+            TorrentState.Error => TorrentLifecycleStateOld.Error,
+            _ => TorrentLifecycleStateOld.Unknown
         };
 
         var progress = manager.PartialProgress;
-        return new TorrentRuntimeState(
-            TorrentLifecycleStateMapper.FromPhase(phase),
+        return new TorrentRuntimeStateOld(
+            new object(),
             progress >= 100.0,
             progress,
-            manager.Monitor.DownloadRate,
-            manager.Monitor.UploadRate,
+            int.MaxValue,
+            int.MaxValue,
             manager.Error?.ToString(),
             true);
     }

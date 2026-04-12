@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using Microsoft.Windows.AppLifecycle;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Common;
@@ -10,16 +10,13 @@ namespace NiTorrent.App.Services.AppLifecycle;
 
 public sealed class AppActivationService : IAppActivationService
 {
-    private readonly ITorrentWorkflowService _torrentWorkflowService;
     private readonly IDialogService _dialogService;
     private readonly ILogger<AppActivationService> _logger;
 
     public AppActivationService(
-        ITorrentWorkflowService torrentWorkflowService,
         IDialogService dialogService,
         ILogger<AppActivationService> logger)
     {
-        _torrentWorkflowService = torrentWorkflowService;
         _dialogService = dialogService;
         _logger = logger;
     }
@@ -57,8 +54,6 @@ public sealed class AppActivationService : IAppActivationService
         {
             if (item is not StorageFile file || !file.FileType.Equals(".torrent", StringComparison.OrdinalIgnoreCase))
                 continue;
-
-            await _torrentWorkflowService.AddTorrentFileWithPreviewAsync(file.Path).ConfigureAwait(false);
         }
     }
 }

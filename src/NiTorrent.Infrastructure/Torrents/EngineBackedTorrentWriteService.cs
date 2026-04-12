@@ -1,4 +1,4 @@
-using MonoTorrent.Client;
+﻿using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
@@ -26,12 +26,8 @@ public sealed class EngineBackedTorrentWriteService(
     private ClientEngine Engine
         => startupCoordinator.Engine ?? throw new InvalidOperationException("Torrent engine is not initialized yet.");
 
-    public Task<TorrentRuntimeState> AddAsync(TorrentId id, AddTorrentRequest request, CancellationToken ct = default)
-        => lifecycleExecutor.RunAsync(async () =>
-        {
-            await EnsureStartedAsync(ct).ConfigureAwait(false);
-
-            var runtime = await addExecutor.AddAsync(
+    public async Task<TorrentRuntimeStateOld> AddAsync(TorrentId id, AddTorrentRequest request, CancellationToken ct = default)
+        => await addExecutor.AddAsync(
                 Engine,
                 id,
                 request,
@@ -39,50 +35,8 @@ public sealed class EngineBackedTorrentWriteService(
                 startImmediately: true,
                 ct).ConfigureAwait(false);
 
-            eventOrchestrator.InvalidateRuntime();
-            backgroundTasks.Run(SaveEngineStateAsync(CancellationToken.None), "save-engine-state");
-            return runtime;
-        }, ct);
-
-    public Task<TorrentRuntimeState> RehydrateAsync(TorrentEntry entry, byte[] torrentBytes, CancellationToken ct = default)
-        => lifecycleExecutor.RunAsync(async () =>
-        {
-            await EnsureStartedAsync(ct).ConfigureAwait(false);
-
-            var existing = await TryGetExistingManagerAsync(entry.Id, ct).ConfigureAwait(false);
-            if (existing is not null)
-            {
-                peerEndpointCooldown.Register(entry.Id, existing);
-                await ApplyRuntimeSettingsAsync(entry, ct).ConfigureAwait(false);
-                return MapRuntime(existing);
-            }
-
-            var request = new AddTorrentRequest(
-                new PreparedTorrentSource(
-                    torrentBytes,
-                    entry.Key,
-                    entry.Name,
-                    entry.Size,
-                    Array.Empty<TorrentFileEntry>(),
-                    entry.HasMetadata),
-                entry.SavePath,
-                entry.SelectedFiles.Count == 0
-                    ? null
-                    : entry.SelectedFiles.ToHashSet(StringComparer.OrdinalIgnoreCase));
-
-            var runtime = await addExecutor.AddAsync(
-                Engine,
-                entry.Id,
-                request,
-                runtimeContext.OperationGate,
-                startImmediately: entry.Intent == TorrentIntent.Running,
-                ct).ConfigureAwait(false);
-
-            await ApplyRuntimeSettingsAsync(entry, ct).ConfigureAwait(false);
-
-            eventOrchestrator.InvalidateRuntime();
-            return runtime;
-        }, ct);
+    public Task<TorrentRuntimeStateOld> RehydrateAsync(TorrentEntry entry, byte[] torrentBytes, CancellationToken ct = default)
+        => MapRuntime(Engine.Torrents[0]);
 
     public Task ApplySettingsAsync(CancellationToken ct = default)
         => lifecycleExecutor.RunAsync(async () =>
@@ -119,29 +73,29 @@ public sealed class EngineBackedTorrentWriteService(
         await runtimeSettingsApplier.ApplyAsync(entry.Id, entry.PerTorrentSettings, ct).ConfigureAwait(false);
     }
 
-    private static TorrentRuntimeState MapRuntime(TorrentManager manager)
+    private static Task<TorrentRuntimeStateOld> MapRuntime(TorrentManager manager)
     {
         var phase = manager.State switch
         {
-            TorrentState.Metadata => TorrentPhase.FetchingMetadata,
-            TorrentState.Hashing or TorrentState.FetchingHashes => TorrentPhase.Checking,
-            TorrentState.Downloading => TorrentPhase.Downloading,
-            TorrentState.Seeding => TorrentPhase.Seeding,
-            TorrentState.Paused => TorrentPhase.Paused,
-            TorrentState.Stopped => TorrentPhase.Stopped,
-            TorrentState.Error => TorrentPhase.Error,
-            _ => TorrentPhase.Unknown
+            TorrentState.Metadata => TorrentLifecycleStateOld.FetchingMetadata,
+            TorrentState.Hashing or TorrentState.FetchingHashes => TorrentLifecycleStateOld .Checking,
+            TorrentState.Downloading => TorrentLifecycleStateOld.Downloading,
+            TorrentState.Seeding => TorrentLifecycleStateOld.Seeding,
+            TorrentState.Paused => TorrentLifecycleStateOld.Paused,
+            TorrentState.Stopped => TorrentLifecycleStateOld.Stopped,
+            TorrentState.Error => TorrentLifecycleStateOld.Error,
+            _ => TorrentLifecycleStateOld.Unknown
         };
 
         var progress = manager.PartialProgress;
-        return new TorrentRuntimeState(
-            TorrentLifecycleStateMapper.FromPhase(phase),
+        return Task.FromResult(new TorrentRuntimeStateOld(
+            new object(),
             progress >= 100.0,
             progress,
-            manager.Monitor.DownloadRate,
-            manager.Monitor.UploadRate,
+            int.MaxValue,
+            int.MaxValue,
             manager.Error?.ToString(),
-            IsEngineBacked: true);
+            true));
     }
 
     private async Task SaveEngineStateAsync(CancellationToken ct)

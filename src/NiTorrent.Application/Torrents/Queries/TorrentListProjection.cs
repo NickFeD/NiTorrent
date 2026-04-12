@@ -1,4 +1,4 @@
-using NiTorrent.Domain.Torrents;
+﻿using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents.Queries;
 
@@ -24,7 +24,7 @@ internal static class TorrentListProjection
 
         return entry.LastKnownStatus with
         {
-            Phase = TorrentLifecycleStateMapper.ToPhase(runtime.LifecycleState),
+            Phase = new TorrentLifecycleStateOld(),
             IsComplete = runtime.IsComplete,
             Progress = runtime.Progress,
             DownloadRateBytesPerSecond = runtime.DownloadRateBytesPerSecond,
