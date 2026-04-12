@@ -1,21 +1,15 @@
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Restore;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public sealed class TorrentMonitor : BackgroundService
+public sealed class TorrentMonitor(
+    ITorrentReadModelFeed readModelFeed,
+    ISyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow) : BackgroundService
 {
-    private readonly ITorrentReadModelFeed _readModelFeed;
-    private readonly ISyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow;
-
-    public TorrentMonitor(
-        ITorrentReadModelFeed readModelFeed,
-        ISyncTorrentCollectionFromRuntimeWorkflow syncRuntimeWorkflow)
-    {
-        _readModelFeed = readModelFeed;
-        _syncRuntimeWorkflow = syncRuntimeWorkflow;
-    }
+    private readonly ITorrentReadModelFeed _readModelFeed = readModelFeed;
+    private readonly ISyncTorrentCollectionFromRuntimeWorkflow _syncRuntimeWorkflow = syncRuntimeWorkflow;
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
@@ -25,7 +19,7 @@ public sealed class TorrentMonitor : BackgroundService
         {
             try
             {
-                await _syncRuntimeWorkflow.ExecuteAsync(ct).ConfigureAwait(false);
+                await _syncRuntimeWorkflow.ExecuteAsync(ct);
             }
             catch (InvalidOperationException)
             {

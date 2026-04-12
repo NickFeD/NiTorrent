@@ -35,9 +35,6 @@ public sealed class CreateTorrentDownloadUseCase(ITorrentRuntimeGateway download
 
         await _downloadEngine.StartAsync(download.Id, ct);
 
-        return new StartedTorrentDownloadResponse(
-            download.Id,
-            metadata.Name,
-            metadata.InfoHash);
+        return new StartedTorrentDownloadResponse(download);
     }
 }

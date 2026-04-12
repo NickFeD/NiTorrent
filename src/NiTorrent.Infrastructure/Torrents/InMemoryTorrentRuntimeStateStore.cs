@@ -9,6 +9,7 @@ namespace NiTorrent.Infrastructure.Torrents;
 public sealed class InMemoryTorrentRuntimeStateStore : ITorrentRuntimeStateStore
 {
     private readonly Dictionary<Guid, TorrentRuntimeStatus> _statuses = new();
+    private readonly HashSet<Guid> _equalAlreadyHandled = new();
 
     public event EventHandler<TorrentRuntimeStateChangedEventArgs>? Changed;
 
@@ -26,7 +27,13 @@ public sealed class InMemoryTorrentRuntimeStateStore : ITorrentRuntimeStateStore
         foreach (var status in statuses)
         {
             if (_statuses.TryGetValue(status.TorrentId, out var existing) && existing == status)
+            {
+                if (_equalAlreadyHandled.Add(status.TorrentId))
+                {
+                    changed.Add(status);
+                }
                 continue;
+            }
 
             _statuses[status.TorrentId] = status;
             changed.Add(status);

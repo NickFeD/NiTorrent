@@ -68,4 +68,9 @@ public class TorrentRuntimeGateway(TorrentEngineCoordinator coordinator) : ITorr
         await manager.StopAsync(TorrentStopTimeout);
         await _coordinator.Engine.RemoveAsync(manager);
     }
+
+    public Task<bool> ExistsByIdAsync(Guid id)
+    {
+        return Task.FromResult(_coordinator.TryGetTorrent(id, out _));
+    }
 }

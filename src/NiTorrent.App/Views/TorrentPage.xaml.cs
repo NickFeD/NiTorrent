@@ -20,23 +20,26 @@ public sealed partial class TorrentPage : Page
     {
         ViewModel = App.GetService<TorrentViewModel>();
         InitializeComponent();
+        Loaded += OnLoaded;
         Unloaded += OnUnloaded;
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        _ = ViewModel.TorrentLoading(CancellationToken.None);
+        //_ = ViewModel.TorrentLoading(CancellationToken.None);
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
-        ViewModel.Deactivate();
+        //ViewModel.TorrentUnloaded();
         base.OnNavigatedFrom(e);
     }
 
+    private void OnLoaded(object sender, RoutedEventArgs e)
+        => _ = ViewModel.TorrentLoading(CancellationToken.None);
     private void OnUnloaded(object sender, RoutedEventArgs e)
-        => ViewModel.Deactivate();
+        => ViewModel.TorrentUnloaded();
 
     private void AddMagnet_Click(object sender, RoutedEventArgs e)
     {

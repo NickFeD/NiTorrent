@@ -27,6 +27,6 @@ public sealed class PauseTorrentUseCase(ITorrentRepository repository, ITorrentR
 
         await _repository.UpdateAsync(download, ct);
 
-        return new PauseTorrentResponse(download.Id, download.Status.ToString());
+        return new PauseTorrentResponse(download.Id, download.Status);
     }
 }

@@ -27,6 +27,6 @@ public sealed class StartTorrentUseCase(ITorrentRepository repository, ITorrentR
 
         await _repository.UpdateAsync(download, ct);
 
-        return new StartTorrentResponse(download.Id, download.Status.ToString());
+        return new StartTorrentResponse(download.Id, download.Status);
     }
 }

@@ -8,6 +8,7 @@ using NiTorrent.Application.Torrents.Enum;
 using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Abstractions;
+using static System.Net.Mime.MediaTypeNames;
 using TorrentLifecycleState = NiTorrent.Application.Torrents.Enum.TorrentLifecycleState;
 
 namespace NiTorrent.Presentation.Features.Torrents;
@@ -20,7 +21,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     private readonly PauseTorrentUseCase _pauseTorrentUseCase;
     private readonly IFolderLauncher _folderLauncher;
     private readonly IDialogService _dialogs;
-    private readonly TorrentDownload _item;
+    private TorrentDownload _item;
 
     public Guid Id => _item.Id;
 
@@ -87,10 +88,12 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     }
 
     private bool CanStart()
-        => State.State is TorrentLifecycleState.Stopped or TorrentLifecycleState.Paused or TorrentLifecycleState.Error;
+        => _item.Status is TorrentDownloadStatus.Paused or TorrentDownloadStatus.Failed;    
+    //=> State.State is TorrentLifecycleState.Stopped or TorrentLifecycleState.Paused or TorrentLifecycleState.Error;
 
     private bool CanPause()
-        => State.State is TorrentLifecycleState.FetchingMetadata or TorrentLifecycleState.Checking or TorrentLifecycleState.Downloading or TorrentLifecycleState.Seeding;
+        => _item.Status == TorrentDownloadStatus.Running;
+    // => State.State is TorrentLifecycleState.FetchingMetadata or TorrentLifecycleState.Checking or TorrentLifecycleState.Downloading or TorrentLifecycleState.Seeding;
 
     private bool CanOpenFolder()
         => !string.IsNullOrWhiteSpace(SavePath);
@@ -103,7 +106,8 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     {
         try
         {
-            await _startTorrentUseCase.ExecuteAsync(new StartTorrentCommand(Id), ct);
+            var test = await _startTorrentUseCase.ExecuteAsync(new StartTorrentCommand(Id), ct);
+            _item.Status = test.Status;
         }
         catch (Exception ex)
         {
@@ -116,7 +120,8 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     {
         try
         {
-            await _pauseTorrentUseCase.ExecuteAsync(new PauseTorrentCommand(Id), ct);
+            var test = await _pauseTorrentUseCase.ExecuteAsync(new PauseTorrentCommand(Id), ct);
+            _item.Status = test.Status;
         }
         catch (Exception ex)
         {

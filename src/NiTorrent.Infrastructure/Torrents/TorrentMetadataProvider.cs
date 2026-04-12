@@ -12,9 +12,9 @@ using static NiTorrent.Application.Torrents.TorrentSource;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-internal class TorrentMetadataProvider(ClientEngine clientEngine) : ITorrentMetadataProvider
+internal class TorrentMetadataProvider(TorrentEngineCoordinator coordinator) : ITorrentMetadataProvider
 {
-    private readonly ClientEngine _clientEngine = clientEngine;
+    private readonly ClientEngine _clientEngine = coordinator.Engine;
 
     public async Task<TorrentMetadata> ExtractAsync(TorrentSource source, CancellationToken ct)
     {

@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Abstract;
+using NiTorrent.Application.Torrents.DTo;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
@@ -188,10 +189,10 @@ public sealed class JsonTorrentRepository : ITorrentRepository
                 Kind = TorrentSourceKind.Magnet,
                 Value = m.Uri
             },
-            TorrentSource.TorrentBytes => new TorrentSourceRecord
+            TorrentSource.TorrentBytes tb => new TorrentSourceRecord
             {
                 Kind = TorrentSourceKind.TorrentBytes,
-                Value = string.Empty
+                Value = Convert.ToBase64String(tb.Bytes.ToArray()),
             },
             _ => throw new ArgumentOutOfRangeException(nameof(source), source, "Unknown torrent source type.")
         };
@@ -290,6 +291,28 @@ public sealed class JsonTorrentRepository : ITorrentRepository
     {
         await EnsureLoadedAsync(ct);
         return _itemsById.Values.Select(ToDomain).ToList();
+    }
+
+    public async Task<IReadOnlyList<StoredTorrent>> GetAllForRestoreAsync(CancellationToken ct)
+    {
+        await EnsureLoadedAsync(ct);
+        var result = _itemsById.Values.Select(record =>
+        {
+            var download = ToDomain(record);
+            TorrentSource? source = null;
+            if (record.Source is not null)
+            {
+                source = record.Source.Kind switch
+                {
+                    TorrentSourceKind.Magnet => new TorrentSource.Magnet(record.Source.Value),
+                    TorrentSourceKind.TorrentFile => new TorrentSource.TorrentFile(record.Source.Value),
+                    TorrentSourceKind.TorrentBytes => new TorrentSource.TorrentBytes(Convert.FromBase64String(record.Source.Value)),
+                    _ => throw new InvalidOperationException($"Unknown torrent source kind: {record.Source.Kind}")
+                };
+            }
+            return new StoredTorrent(download,source!);
+        }).ToList();
+        return result;
     }
 }
 

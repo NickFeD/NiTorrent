@@ -1,21 +1,16 @@
-﻿using NiTorrent.Application.Torrents.Abstract;
+﻿using Microsoft.Extensions.Hosting;
+using NiTorrent.Application.Torrents.Abstract;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public sealed class TorrentRuntimeMonitor
+public sealed class TorrentRuntimeMonitor(
+    ITorrentRuntimeStatusProvider provider,
+    ITorrentRuntimeStateStore store) : BackgroundService
 {
-    private readonly ITorrentRuntimeStatusProvider _provider;
-    private readonly ITorrentRuntimeStateStore _store;
+    private readonly ITorrentRuntimeStatusProvider _provider = provider;
+    private readonly ITorrentRuntimeStateStore _store = store;
 
-    public TorrentRuntimeMonitor(
-        ITorrentRuntimeStatusProvider provider,
-        ITorrentRuntimeStateStore store)
-    {
-        _provider = provider;
-        _store = store;
-    }
-
-    public async Task RunAsync(CancellationToken ct)
+    protected override async Task ExecuteAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {

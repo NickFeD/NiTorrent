@@ -21,6 +21,7 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddNiTorrentInfrastructure(this IServiceCollection services)
     {
+        services.AddHostedService<TorrentRuntimeMonitor>();
         services.AddSingleton(TorrentEntrySettingsConfigLoader.Load());
         services.AddSingleton<ILegacyTorrentEntrySettingsMigrationSource, LegacyTorrentEntrySettingsMigrationSource>();
         services.AddSingleton<ITorrentEntrySettingsRuntimeApplier, TorrentEntrySettingsRuntimeApplier>();
@@ -44,8 +45,10 @@ public static class DependencyInjection
             sp.GetRequiredService<TorrentStartupCoordinator>().Engine
             ?? throw new InvalidOperationException("Torrent engine is not initialized yet."));
         services.AddSingleton<TorrentEngineCoordinator>();
+        services.AddSingleton<ITorrentRuntimeStatusProvider, TorrentRuntimeStatusProvider>();
         services.AddSingleton<ITorrentSourceStore, TorrentSourceStore>();
         services.AddSingleton<ITorrentRepository, JsonTorrentRepository>();
+        services.AddSingleton<ITorrentRuntimeStateStore, InMemoryTorrentRuntimeStateStore>();
         services.AddSingleton<ITorrentRuntimeGateway, TorrentRuntimeGateway>();
         services.AddSingleton<ITorrentDownloadFactory, TorrentDownloadFactory>();
         services.AddSingleton<ITorrentMetadataProvider, TorrentMetadataProvider>();

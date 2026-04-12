@@ -26,10 +26,12 @@ public partial class TorrentViewModel(
     IPickerHelper pickerHelper,
     ITorrentRuntimeStateStore store,
     IUiDispatcher dispatcher,
-    ITorrentPreviewService torrentPreview) : ObservableObject
+    ITorrentPreviewService torrentPreview,
+    RestoreSessionUseCase restoreSessionUseCase) : ObservableObject
 {
     private readonly PreviewTorrentContentsUseCase _previewTorrentContentsUseCase = previewTorrentContentsUseCase;
     private readonly CreateTorrentDownloadUseCase _createTorrentDownloadUseCase = createTorrentDownloadUseCase;
+    private readonly RestoreSessionUseCase _restoreSessionUseCase = restoreSessionUseCase;
     private readonly ITorrentItemViewModelFactory _itemViewModelFactory = itemViewModelFactory;
     private readonly DeleteTorrentUseCase _deleteTorrentUseCase = deleteTorrentUseCase;
     private readonly GetTorrentListQuery _getTorrentListQuery = getTorrentListQuery;
@@ -95,20 +97,14 @@ public partial class TorrentViewModel(
             Torrents.Add(torrentViewModel);
             _torrents.Add(torrentViewModel.Id, torrentViewModel);
         }
+        _ = _restoreSessionUseCase.ExecuteAsync(ct);
         _store.Changed += OnRuntimeStateChanged;
     }
-    public void Deactivate()
+    public void TorrentUnloaded()
     {
-        //if (!_isActive)
-        //    return;
-
-        //_isActive = false;
-        //_readModelFeed.Updated -= UpdateTorrent;
-        //_engineStatusService.Ready -= TorrentEngineReady;
-
-        //lock (_pendingUpdateSync)
-        //    _pendingItems = Array.Empty<TorrentListItemReadModel>();
         _store.Changed -= OnRuntimeStateChanged;
+        Torrents.Clear();
+        _torrents.Clear();
     }
 
     partial void OnSelectedTorrentChanged(TorrentItemViewModel? value)
@@ -147,7 +143,12 @@ public partial class TorrentViewModel(
         if (previewDialogResult is null)
             return;
         var command = new StartTorrentDownloadCommand(torrentSource, previewDialogResult.OutputFolder, previewDialogResult.SelectedFiles.ToList());
-        await _createTorrentDownloadUseCase.ExecuteAsync(command, ct);
+        var startedTorrent = await _createTorrentDownloadUseCase.ExecuteAsync(command, ct);
+
+        var torrent = _itemViewModelFactory.Create(startedTorrent.TorrentDownload, RemoveTorrentAsync);
+
+        _torrents.Add(torrent.Id, torrent);
+        Torrents.Add(torrent);
     }
 
     public Task AddMagnet(string magnet, CancellationToken ct)

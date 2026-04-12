@@ -98,6 +98,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<IMainWindowLifecycle, MainWindowLifecycle>();
         services.AddSingleton<ITorrentSettingsService, TorrentSettingsService>();
         services.AddSingleton<ThemeSettingsViewModel>();
+        services.AddSingleton<NiTorrent.Application.Torrents.Query.GetTorrentListQuery>();
         services.AddSingleton<GetTorrentListQuery>();
         services.AddSingleton<GetTorrentDetailsQuery>();
         services.AddSingleton<GetTorrentRuntimeDetailsQuery>();
@@ -113,6 +114,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<UpdatePerTorrentSettingsWorkflow>();
         services.AddSingleton<IAppCloseCoordinator, AppCloseCoordinator>();
         services.AddSingleton<IAppShutdownCoordinator, AppShutdownCoordinator>();
+        services.AddTransient<RestoreSessionUseCase>();
         services.AddTransient<CreateTorrentDownloadUseCase>();
         services.AddTransient<PreviewTorrentContentsUseCase>();
         services.AddTransient<StartTorrentUseCase>();
