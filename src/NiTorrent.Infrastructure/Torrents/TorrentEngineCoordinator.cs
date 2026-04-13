@@ -1,22 +1,40 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Collections.Concurrent;
 using MonoTorrent.Client;
-using NiTorrent.Application.Torrents.Abstract;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
 public class TorrentEngineCoordinator
 {
-    private readonly ITorrentRepository _torrentRepository;
     private readonly ConcurrentDictionary<Guid, TorrentManager> _torrentManagers = new();
-    public ClientEngine Engine { get; set; }
+    private ClientEngine? _engine;
 
-    public TorrentEngineCoordinator(TorrentEngineFactory torrentEngineFactory, ITorrentRepository torrentRepository)
+    public bool IsInitialized => _engine is not null;
+
+    public ClientEngine Engine =>
+        _engine ?? throw new InvalidOperationException("ClientEngine is not initialized.");
+
+    public Task InitializeAsync(EngineSettings settings, CancellationToken ct)
     {
-        _torrentRepository = torrentRepository;
-        Engine = torrentEngineFactory.CreateAsync().GetAwaiter().GetResult();
+        ct.ThrowIfCancellationRequested();
+
+        if (_engine is not null)
+            throw new InvalidOperationException("ClientEngine already initialized.");
+        _engine = new ClientEngine(settings);
+
+        return Task.CompletedTask;
+    }
+
+    public async Task ApplySettingsAsync(EngineSettings settings, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        if (_engine is null)
+        {
+            _engine = new ClientEngine(settings);
+            return;
+        }
+
+        await _engine.UpdateSettingsAsync(settings).WaitAsync(ct);
     }
 
     public void AddTorrent(Guid id, TorrentManager manager)
@@ -41,6 +59,6 @@ public class TorrentEngineCoordinator
 
     internal bool TryGetTorrent(Guid id, out TorrentManager? manager)
     {
-       return _torrentManagers.TryGetValue(id, out manager);
+        return _torrentManagers.TryGetValue(id, out manager);
     }
 }

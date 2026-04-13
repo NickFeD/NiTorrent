@@ -1,25 +1,19 @@
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NiTorrent.Application.Settings;
 using NiTorrent.Application.Torrents.Restore;
 using WinUIEx;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
-public sealed class AppStartupService : IAppStartupService
+public sealed class AppStartupService(
+    ContextMenuService menuService,
+    IEngineSettingsService engineSettingsService,
+    ILogger<AppStartupService> logger) : IAppStartupService
 {
-    private readonly ContextMenuService _menuService;
-    private readonly IRestoreTorrentCollectionWorkflow _restoreWorkflow;
-    private readonly ILogger<AppStartupService> _logger;
-
-    public AppStartupService(
-        ContextMenuService menuService,
-        IRestoreTorrentCollectionWorkflow restoreWorkflow,
-        ILogger<AppStartupService> logger)
-    {
-        _menuService = menuService;
-        _restoreWorkflow = restoreWorkflow;
-        _logger = logger;
-    }
+    private readonly ContextMenuService _menuService = menuService;
+    private readonly ILogger<AppStartupService> _logger = logger;
+    private readonly IEngineSettingsService _engineSettingsService = engineSettingsService;
 
     public async Task StartHostAndShellAsync(IHost host)
     {
@@ -43,7 +37,7 @@ public sealed class AppStartupService : IAppStartupService
                 Exe = "NiTorrent.App.exe"
             };
 
-            await _menuService.SaveAsync(menu).ConfigureAwait(false);
+            await _menuService.SaveAsync(menu);
         }
         catch (Exception ex)
         {
@@ -51,11 +45,12 @@ public sealed class AppStartupService : IAppStartupService
         }
     }
 
-    public async Task InitializeTorrentEngineAsync()
+    public async Task InitializeTorrentEngineAsync(CancellationToken ct)
     {
         try
         {
-            await _restoreWorkflow.ExecuteAsync().ConfigureAwait(false);
+            await _engineSettingsService.InitializeAsync(ct);
+            //await _restoreWorkflow.ExecuteAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
         {

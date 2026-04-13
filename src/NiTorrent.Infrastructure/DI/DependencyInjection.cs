@@ -53,14 +53,12 @@ public static class DependencyInjection
         services.AddSingleton<ITorrentMetadataProvider, TorrentMetadataProvider>();
         services.AddSingleton<ITorrentCollectionRepository, CatalogBackedTorrentCollectionRepository>();
         services.AddSingleton<ITorrentReadModelFeed, EngineBackedTorrentReadModelFeed>();
-        services.AddSingleton<ITorrentWriteService, EngineBackedTorrentWriteService>();
         services.AddSingleton<ITorrentDetailsRuntimeService, EngineBackedTorrentDetailsRuntimeService>();
         services.AddSingleton<ITorrentRuntimeFactsProvider, RuntimeBackedTorrentRuntimeFactsProvider>();
         services.AddSingleton<ITorrentEngineGateway, InfrastructureTorrentEngineGateway>();
         services.AddSingleton<ITorrentEngineLifecycle, InfrastructureTorrentEngineLifecycle>();
         services.AddSingleton<ITorrentEngineStateStore, InfrastructureTorrentEngineStateStore>();
         services.AddSingleton<IApplyDeferredTorrentActionsWorkflow, ApplyDeferredTorrentActionsWorkflow>();
-        services.AddSingleton<IRestoreTorrentCollectionWorkflow, RestoreTorrentCollectionWorkflow>();
         services.AddSingleton<ITorrentEngineStatusService, EngineBackedTorrentEngineStatusService>();
         services.AddSingleton<ITorrentEngineMaintenanceService, EngineBackedTorrentEngineMaintenanceService>();
         services.AddSingleton(TorrentConfigLoader.Load());

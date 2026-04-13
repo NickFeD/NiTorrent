@@ -1,10 +1,11 @@
-using NiTorrent.Application.Abstractions;
+﻿using NiTorrent.Application.Abstractions;
 using NiTorrent.Domain.Settings;
 
 namespace NiTorrent.Application.Settings;
 
-public sealed class GetSettingsQuery(ITorrentSettingsRepository repository)
+public sealed class GetSettingsQuery(ISettingsRepository settingsRepositorys)
 {
-    public Task<TorrentSettingsDraft> ExecuteAsync(CancellationToken ct = default)
-        => repository.LoadAsync(ct);
+    private readonly ISettingsRepository repository = settingsRepositorys;
+    public Task<AppSettings> ExecuteAsync(CancellationToken ct = default)
+        => repository.GetAppSettings(ct);
 }

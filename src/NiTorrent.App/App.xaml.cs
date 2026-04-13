@@ -15,9 +15,11 @@ using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Infrastructure.DI;
+using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using NiTorrent.Presentation.Features.Settings;
+using Nucs.JsonSettings;
 using WinUIEx;
 using WinUIApplication = Microsoft.UI.Xaml.Application;
 
@@ -96,7 +98,6 @@ public partial class App : WinUIApplication
         services.AddSingleton<IAppStartupService, AppStartupService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
         services.AddSingleton<IMainWindowLifecycle, MainWindowLifecycle>();
-        services.AddSingleton<ITorrentSettingsService, TorrentSettingsService>();
         services.AddSingleton<ThemeSettingsViewModel>();
         services.AddSingleton<NiTorrent.Application.Torrents.Query.GetTorrentListQuery>();
         services.AddSingleton<GetTorrentListQuery>();
@@ -108,7 +109,6 @@ public partial class App : WinUIApplication
         services.AddSingleton<HandleTrayExitWorkflow>();
         services.AddSingleton<SyncTorrentCollectionFromRuntimeWorkflow>();
         services.AddSingleton<ISyncTorrentCollectionFromRuntimeWorkflow>(sp => sp.GetRequiredService<SyncTorrentCollectionFromRuntimeWorkflow>());
-        services.AddSingleton<StagedTorrentRehydrationWorkflow>();
         services.AddSingleton<ReplayDeferredTorrentActionsWorkflow>();
         services.AddSingleton<IReplayDeferredTorrentActionsWorkflow>(sp => sp.GetRequiredService<ReplayDeferredTorrentActionsWorkflow>());
         services.AddSingleton<UpdatePerTorrentSettingsWorkflow>();
@@ -120,7 +120,18 @@ public partial class App : WinUIApplication
         services.AddTransient<StartTorrentUseCase>();
         services.AddTransient<PauseTorrentUseCase>();
         services.AddTransient<DeleteTorrentUseCase>();
-        services.AddTransient<ApplyTorrentSettingsUseCase>();
+        services.AddTransient<UpdateSettingsUseCase>();
+        services.AddSingleton<IEngineSettingsService, EngineSettingsService>();
+        services.AddSingleton<ISettingsRepository, SettingsRepository>();
+        services.AddSingleton<AppJsonSettings>(sp =>
+        {
+            var storage = sp.GetRequiredService<IAppStorageService>();
+            var path = storage.GetLocalPath("torrent_settings.json");
+            storage.EnsureParentDirectory(path);
+
+            return JsonSettings.Load<AppJsonSettings>(path);
+        });
+
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -155,7 +166,8 @@ public partial class App : WinUIApplication
     {
         var startup = GetService<IAppStartupService>();
         _hostStartTask ??= startup.StartHostAndShellAsync(_host);
-        _engineInitTask ??= startup.InitializeTorrentEngineAsync();
+        // HACK: use CancellationToken.None
+        _engineInitTask ??= startup.InitializeTorrentEngineAsync(CancellationToken.None);
     }
 
     private void ShowMainWindow()
