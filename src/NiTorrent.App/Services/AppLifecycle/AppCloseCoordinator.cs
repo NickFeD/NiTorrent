@@ -7,6 +7,8 @@ using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
+// HACK: нужно будет сделать систему координации закрытия приложения более гибкой, чтобы не завязываться на конкретные сценарии и юзать ее для разных частей приложения, а не только для главного окна и трея также сохронять при закрытии не только состояние движка, но и состояние приложения в целом, чтобы при открытии восстанавливать его в том же состоянии
+
 public sealed class AppCloseCoordinator : IAppCloseCoordinator
 {
     private readonly SemaphoreSlim _exitGate = new(1, 1);
@@ -16,7 +18,6 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
     private readonly ITorrentEngineMaintenanceService _engineMaintenanceService;
     private readonly IMainWindowLifecycle _mainWindowLifecycle;
     private readonly IDialogService _dialogService;
-    private readonly ITorrentSettingsRepository _settingsRepository;
     private readonly ILogger<AppCloseCoordinator> _logger;
 
     private bool _isExiting;
@@ -28,7 +29,6 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
         ITorrentEngineMaintenanceService engineMaintenanceService,
         IMainWindowLifecycle mainWindowLifecycle,
         IDialogService dialogService,
-        ITorrentSettingsRepository settingsRepository,
         ILogger<AppCloseCoordinator> logger)
     {
         _handleWindowCloseWorkflow = handleWindowCloseWorkflow;
@@ -36,7 +36,6 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
         _engineMaintenanceService = engineMaintenanceService;
         _mainWindowLifecycle = mainWindowLifecycle;
         _dialogService = dialogService;
-        _settingsRepository = settingsRepository;
         _logger = logger;
     }
 
@@ -75,14 +74,14 @@ public sealed class AppCloseCoordinator : IAppCloseCoordinator
 
                         if (choice.RememberChoice)
                         {
-                            var settings = await _settingsRepository.LoadAsync().ConfigureAwait(false);
-                            var updated = settings with
-                            {
-                                CloseBehavior = choice.Action == WindowCloseAction.MinimizeToTray
-                                    ? AppCloseBehavior.MinimizeToTray
-                                    : AppCloseBehavior.ExitApplication
-                            };
-                            await _settingsRepository.SaveAsync(updated).ConfigureAwait(false);
+                            //var settings = await _settingsRepository.LoadAsync().ConfigureAwait(false);
+                            //var updated = settings with
+                            //{
+                            //    CloseBehavior = choice.Action == WindowCloseAction.MinimizeToTray
+                            //        ? AppCloseBehavior.MinimizeToTray
+                            //        : AppCloseBehavior.ExitApplication
+                            //};
+                            //await _settingsRepository.SaveAsync(updated).ConfigureAwait(false);
                         }
 
                         if (choice.Action == WindowCloseAction.MinimizeToTray)

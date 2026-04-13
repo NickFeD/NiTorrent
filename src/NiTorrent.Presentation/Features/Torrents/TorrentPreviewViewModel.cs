@@ -19,13 +19,16 @@ public partial class TorrentPreviewViewModel : ObservableObject
     public TorrentTreeModel Tree { get; }
     public ObservableCollection<TorrentTreeItemViewModel> RootItems { get; } = [];
 
-    public TorrentPreviewViewModel(TorrentPreview torrentPreview, ITorrentPreferences prefs)
+    public TorrentPreviewViewModel(TorrentPreview torrentPreview)
     {
         Torrent = torrentPreview;
 
-        OutputFolder = string.IsNullOrWhiteSpace(prefs.DefaultDownloadPath)
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
-            : prefs.DefaultDownloadPath;
+        //HACK нужно сдеалть настройки более правдивыми и юзать их, а не просто юзать загрузки
+
+        OutputFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+           // string.IsNullOrWhiteSpace(prefs.DefaultDownloadPath)
+           // ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
+           // : prefs.DefaultDownloadPath;
 
         Tree = new TorrentTreeModel(torrentPreview.Files);
 

@@ -15,7 +15,6 @@ using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Infrastructure.DI;
-using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using NiTorrent.Presentation.Features.Settings;
@@ -121,17 +120,6 @@ public partial class App : WinUIApplication
         services.AddTransient<PauseTorrentUseCase>();
         services.AddTransient<DeleteTorrentUseCase>();
         services.AddTransient<UpdateSettingsUseCase>();
-        services.AddSingleton<IEngineSettingsService, EngineSettingsService>();
-        services.AddSingleton<ISettingsRepository, SettingsRepository>();
-        services.AddSingleton<AppJsonSettings>(sp =>
-        {
-            var storage = sp.GetRequiredService<IAppStorageService>();
-            var path = storage.GetLocalPath("torrent_settings.json");
-            storage.EnsureParentDirectory(path);
-
-            return JsonSettings.Load<AppJsonSettings>(path);
-        });
-
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)

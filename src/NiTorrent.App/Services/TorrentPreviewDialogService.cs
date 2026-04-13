@@ -14,7 +14,7 @@ public sealed class TorrentPreviewDialogService(IServiceProvider services) : ITo
         CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        var window = new TorrentPreviewWindow(new TorrentPreviewViewModel(preview, _services.GetRequiredService<ITorrentPreferences>()));
+        var window = new TorrentPreviewWindow(new TorrentPreviewViewModel(preview));
         window.Activate();
 
         return window.WaitForResultAsync();
