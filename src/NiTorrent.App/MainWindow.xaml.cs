@@ -42,5 +42,17 @@ public sealed partial class MainWindow : WindowEx
     {
         AutoSuggestBoxHelper.OnITitleBarAutoSuggestBoxQuerySubmittedEvent(sender, args, NavFrame);
     }
+
+    public void OpenTorrentFileFromActivation(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+            return;
+
+        if (NavFrame.Content is not TorrentPage)
+            NavFrame.Navigate(typeof(TorrentPage));
+
+        if (NavFrame.Content is TorrentPage torrentPage)
+            _ = torrentPage.ViewModel.AddTorrentFileAsync(filePath, CancellationToken.None);
+    }
 }
 

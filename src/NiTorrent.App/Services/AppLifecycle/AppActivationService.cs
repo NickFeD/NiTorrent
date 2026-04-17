@@ -11,13 +11,16 @@ public sealed class AppActivationService : IAppActivationService
 {
     private readonly IDialogService _dialogService;
     private readonly ILogger<AppActivationService> _logger;
+    private readonly MainWindowLifecycle _mainWindowLifecycle;
 
     public AppActivationService(
         IDialogService dialogService,
-        ILogger<AppActivationService> logger)
+        ILogger<AppActivationService> logger,
+        MainWindowLifecycle mainWindowLifecycle)
     {
         _dialogService = dialogService;
         _logger = logger;
+        _mainWindowLifecycle = mainWindowLifecycle;
     }
 
     public async Task HandleAsync(AppActivationArguments args, Action showMainWindow, Action startBackgroundInitialization)
@@ -53,6 +56,8 @@ public sealed class AppActivationService : IAppActivationService
         {
             if (item is not StorageFile file || !file.FileType.Equals(".torrent", StringComparison.OrdinalIgnoreCase))
                 continue;
+
+            await _mainWindowLifecycle.OpenTorrentFileAsync(file.Path).ConfigureAwait(false);
         }
     }
 }

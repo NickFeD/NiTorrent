@@ -85,6 +85,17 @@ public sealed partial class MainWindowLifecycle(
             window.Close();
         });
 
+    public Task OpenTorrentFileAsync(string filePath)
+        => _dispatcher.EnqueueAsync(() =>
+        {
+            EnsureWindowCreated();
+            var window = _window!;
+            _trayService.SetVisible(false);
+            window.Show();
+            window.Activate();
+            window.OpenTorrentFileFromActivation(filePath);
+        });
+
     private void InitializeTray()
     {
         if (_trayInitialized)

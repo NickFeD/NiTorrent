@@ -147,6 +147,22 @@ public partial class TorrentViewModel(
         Torrents.Add(torrent);
     }
 
+    public async Task AddTorrentFileAsync(string path, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            await PreviewTorrent(new TorrentFile(path), ct);
+        }
+        catch (Exception ex)
+        {
+            StatusText = "Не удалось добавить торрент";
+            await _dialogs.ShowTextAsync("Ошибка добавления", UserErrorMapper.ToMessage(ex, "Не удалось добавить торрент."), ct);
+        }
+    }
+
     public Task AddMagnet(string magnet, CancellationToken ct)
     {
         try
