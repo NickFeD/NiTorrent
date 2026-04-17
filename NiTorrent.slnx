@@ -21,4 +21,9 @@
     <Project Path="src/NiTorrent.Presentation/NiTorrent.Presentation.csproj" Id="51bc6d76-5b82-4907-ba8d-cf2f4e33a4da" />
   </Folder>
   <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Tests/">
+    <File Path="src/NiTorrent.Application.Tests/NiTorrent.Application.Tests.csproj" />
+    <File Path="src/NiTorrent.Domain.Tests/NiTorrent.Domain.Tests.csproj" />
+    <File Path="src/NiTorrent.Infrastructure.Tests/NiTorrent.Infrastructure.Tests.csproj" />
+  </Folder>
 </Solution>
