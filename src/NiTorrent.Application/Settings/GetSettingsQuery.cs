@@ -1,5 +1,4 @@
 ﻿using NiTorrent.Application.Abstractions;
-using NiTorrent.Domain.Settings;
 
 namespace NiTorrent.Application.Settings;
 

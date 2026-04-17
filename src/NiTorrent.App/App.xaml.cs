@@ -7,7 +7,6 @@ using NiTorrent.App.Services.AppLifecycle;
 using NiTorrent.Application;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Settings;
-using NiTorrent.Application.Shell;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.UseCase;
@@ -95,8 +94,6 @@ public partial class App : WinUIApplication
         services.AddSingleton<NiTorrent.Application.Torrents.Queries.GetTorrentListQuery>();
         services.AddSingleton<GetTorrentListQuery>();
         services.AddSingleton<GetSettingsQuery>();
-        services.AddSingleton<HandleWindowCloseWorkflow>();
-        services.AddSingleton<HandleTrayExitWorkflow>();
         services.AddSingleton<AppCloseCoordinator>();
         services.AddTransient<RestoreSessionUseCase>();
         services.AddTransient<CreateTorrentDownloadUseCase>();

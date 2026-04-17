@@ -2,7 +2,7 @@
 using Microsoft.UI.Xaml;
 using NiTorrent.App.Views;
 using NiTorrent.Application.Settings;
-using NiTorrent.Domain.Settings;
+using NiTorrent.Application.Settings.Enums;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using WinUIEx;

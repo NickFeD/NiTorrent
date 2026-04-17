@@ -1,4 +1,4 @@
-namespace NiTorrent.Domain.Settings;
+﻿namespace NiTorrent.Application.Settings.Enums;
 
 public enum AppCloseBehavior
 {

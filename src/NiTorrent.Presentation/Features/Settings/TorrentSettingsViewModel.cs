@@ -3,7 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Settings;
-using NiTorrent.Domain.Settings;
+using NiTorrent.Application.Settings.Enums;
 using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.Presentation.Features.Settings;

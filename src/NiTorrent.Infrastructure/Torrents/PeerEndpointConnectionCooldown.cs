@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Linq.Expressions;
 using Microsoft.Extensions.Logging;
 using MonoTorrent.Client;
@@ -20,7 +20,7 @@ public sealed class PeerEndpointConnectionCooldown
     private readonly ILogger<PeerEndpointConnectionCooldown> _logger;
     private readonly object _gate = new();
 
-    private readonly Dictionary<TorrentId, Dictionary<string, EndpointCooldownState>> _statesByTorrent = new();
+    private readonly Dictionary<Guid, Dictionary<string, EndpointCooldownState>> _statesByTorrent = new();
     private readonly Dictionary<TorrentManager, Subscription> _subscriptions = new();
 
     public PeerEndpointConnectionCooldown(ILogger<PeerEndpointConnectionCooldown> logger)
@@ -28,7 +28,7 @@ public sealed class PeerEndpointConnectionCooldown
         _logger = logger;
     }
 
-    public void Register(TorrentId torrentId, TorrentManager manager)
+    public void Register(Guid torrentId, TorrentManager manager)
     {
         lock (_gate)
         {
@@ -58,7 +58,7 @@ public sealed class PeerEndpointConnectionCooldown
         }
     }
 
-    public void Unregister(TorrentId torrentId, TorrentManager manager)
+    public void Unregister(Guid torrentId, TorrentManager manager)
     {
         lock (_gate)
         {
@@ -73,7 +73,7 @@ public sealed class PeerEndpointConnectionCooldown
         }
     }
 
-    public void ResetForTorrent(TorrentId torrentId)
+    public void ResetForTorrent(Guid torrentId)
     {
         List<TorrentManager> affectedManagers;
         lock (_gate)
@@ -90,7 +90,7 @@ public sealed class PeerEndpointConnectionCooldown
             ApplyBanToAllPeers(manager, shouldBan: false);
     }
 
-    private void OnConnectionAttemptFailed(TorrentManager manager, TorrentId torrentId, object? eventArgs)
+    private void OnConnectionAttemptFailed(TorrentManager manager, Guid torrentId, object? eventArgs)
     {
         var peer = TryReadProperty(eventArgs, "Peer");
         var endpoint = TryGetEndpointKey(peer);
@@ -137,14 +137,14 @@ public sealed class PeerEndpointConnectionCooldown
 
         _logger.LogDebug(
             "Peer endpoint cooldown applied. Torrent={TorrentId}; Endpoint={Endpoint}; FailCount={FailCount}; CooldownUntilUtc={CooldownUntilUtc}; Reason={Reason}",
-            torrentId.Value,
+            torrentId,
             endpoint,
             failCount,
             cooldownUntil,
             reason);
     }
 
-    private void OnPeerConnected(TorrentManager manager, TorrentId torrentId, object? eventArgs)
+    private void OnPeerConnected(TorrentManager manager, Guid torrentId, object? eventArgs)
     {
         var peer = TryReadProperty(eventArgs, "Peer");
         var endpoint = TryGetEndpointKey(peer);
@@ -169,7 +169,7 @@ public sealed class PeerEndpointConnectionCooldown
 
     private void ScheduleCooldownRelease(
         TorrentManager manager,
-        TorrentId torrentId,
+        Guid torrentId,
         string endpoint,
         CancellationTokenSource cts,
         DateTimeOffset cooldownUntilUtc)
@@ -209,7 +209,7 @@ public sealed class PeerEndpointConnectionCooldown
         });
     }
 
-    private void ClearTorrentStateUnsafe(TorrentId torrentId)
+    private void ClearTorrentStateUnsafe(Guid torrentId)
     {
         if (!_statesByTorrent.TryGetValue(torrentId, out var byEndpoint))
             return;
@@ -223,7 +223,7 @@ public sealed class PeerEndpointConnectionCooldown
         _statesByTorrent.Remove(torrentId);
     }
 
-    private Dictionary<string, EndpointCooldownState> GetOrCreateTorrentMapUnsafe(TorrentId torrentId)
+    private Dictionary<string, EndpointCooldownState> GetOrCreateTorrentMapUnsafe(Guid torrentId)
     {
         if (_statesByTorrent.TryGetValue(torrentId, out var existing))
             return existing;
@@ -235,7 +235,7 @@ public sealed class PeerEndpointConnectionCooldown
 
     private void PruneStaleUnsafe(DateTimeOffset now)
     {
-        var emptyTorrents = new List<TorrentId>();
+        var emptyTorrents = new List<Guid>();
 
         foreach (var (torrentId, byEndpoint) in _statesByTorrent)
         {
@@ -457,14 +457,14 @@ public sealed class PeerEndpointConnectionCooldown
 
     private sealed class Subscription
     {
-        public TorrentId TorrentId { get; set; }
+        public Guid TorrentId { get; set; }
         public System.Reflection.EventInfo FailedEvent { get; }
         public System.Reflection.EventInfo ConnectedEvent { get; }
         public Delegate FailedHandler { get; }
         public Delegate ConnectedHandler { get; }
 
         public Subscription(
-            TorrentId torrentId,
+            Guid torrentId,
             System.Reflection.EventInfo failedEvent,
             System.Reflection.EventInfo connectedEvent,
             Delegate failedHandler,

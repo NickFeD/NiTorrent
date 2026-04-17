@@ -2,7 +2,7 @@
 using MonoTorrent.Client;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Settings;
-using NiTorrent.Domain.Settings;
+using NiTorrent.Application.Settings.Enums;
 using NiTorrent.Infrastructure.Torrents;
 
 namespace NiTorrent.Infrastructure.Settings;

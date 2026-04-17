@@ -1,4 +1,5 @@
-﻿using NiTorrent.Domain.Settings;
+﻿
+using NiTorrent.Application.Settings.Enums;
 
 namespace NiTorrent.Application.Settings;
 

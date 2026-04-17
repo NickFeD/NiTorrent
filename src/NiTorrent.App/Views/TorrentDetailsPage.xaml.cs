@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml.Navigation;
+﻿using Microsoft.UI.Xaml.Navigation;
 using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Features.Torrents;
 
@@ -20,12 +20,12 @@ public sealed partial class TorrentDetailsPage : Page
 
         try
         {
-            if (e.Parameter is string raw && Guid.TryParse(raw, out var guid))
-                await ViewModel.LoadAsync(new TorrentId(guid));
-            else if (e.Parameter is TorrentId torrentId)
-                await ViewModel.LoadAsync(torrentId);
+            //if (e.Parameter is string raw && Guid.TryParse(raw, out var guid))
+            //    await ViewModel.LoadAsync(new TorrentId(guid));
+            //else if (e.Parameter is TorrentId torrentId)
+            //    await ViewModel.LoadAsync(torrentId);
 
-            ViewModel.Activate();
+            //ViewModel.Activate();
         }
         catch
         {

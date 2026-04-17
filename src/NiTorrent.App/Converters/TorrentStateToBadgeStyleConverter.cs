@@ -8,10 +8,11 @@ public partial class TorrentStateToBadgeStyleConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, string language)
     {
-        if (value is not TorrentStatus info)
-            return App.Current.Resources["TorrentStoppedBadgeStyle"];
-        if (info.IsComplete) return App.Current.Resources["TorrentCompletedBadgeStyle"];
-        return App.Current.Resources["TorrentStartingBadgeStyle"];
+        return new object();
+        //if (value is not TorrentStatus info)
+        //    return App.Current.Resources["TorrentStoppedBadgeStyle"];
+        //if (info.IsComplete) return App.Current.Resources["TorrentCompletedBadgeStyle"];
+        //return App.Current.Resources["TorrentStartingBadgeStyle"];
         //return info.Phase switch
         //{
         //    TorrentLifecycleState.EngineStarting => App.Current.Resources["TorrentStartingBadgeStyle"],

@@ -30,7 +30,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
     private readonly List<SpeedSamplePoint> _speedHistory = [];
 
     private CancellationTokenSource? _liveCts;
-    private TorrentId _currentTorrentId;
+    private Guid _currentTorrentId;
     private long _knownTotalSize;
 
     public TorrentDetailsViewModel(
@@ -112,7 +112,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsLiveUpdating { get; set; }
 
-    public bool HasTorrent => _currentTorrentId != TorrentId.Empty;
+    public bool HasTorrent => _currentTorrentId != Guid.Empty;
     public bool CanSave => HasTorrent;
 
     private TorrentLifecycleState CurrentPhase { get; set; } = TorrentLifecycleState.Unknown;
@@ -129,7 +129,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
     private bool CanDelete()
         => HasTorrent;
 
-    public async Task LoadAsync(TorrentId torrentId)
+    public async Task LoadAsync(Guid torrentId)
     {
 
             await _ui.EnqueueAsync(ResetToEmptyState).ConfigureAwait(false);
@@ -349,7 +349,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
         try
         {
-            await _startTorrentUseCase.ExecuteAsync(new StartTorrentCommand(_currentTorrentId.Value), CancellationToken.None).ConfigureAwait(false);
+            await _startTorrentUseCase.ExecuteAsync(new StartTorrentCommand(_currentTorrentId), CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -365,7 +365,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
         try
         {
-            await _pauseTorrentUseCase.ExecuteAsync(new PauseTorrentCommand(_currentTorrentId.Value), CancellationToken.None).ConfigureAwait(false);
+            await _pauseTorrentUseCase.ExecuteAsync(new PauseTorrentCommand(_currentTorrentId), CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -404,7 +404,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
         try
         {
-            await _deleteTorrentUseCase.ExecuteAsync(new DeleteTorrentCommand(_currentTorrentId.Value, deleteData), CancellationToken.None).ConfigureAwait(false);
+            await _deleteTorrentUseCase.ExecuteAsync(new DeleteTorrentCommand(_currentTorrentId, deleteData), CancellationToken.None).ConfigureAwait(false);
             await _ui.EnqueueAsync(ResetToEmptyState).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -414,42 +414,42 @@ public partial class TorrentDetailsViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private Task SaveAsync()
+    private async Task SaveAsync()
     {
-        if (!HasTorrent)
-            return Task.CompletedTask;
+        //if (!HasTorrent)
+        //    return Task.CompletedTask;
 
-        if (!TryParseNullableInt(MaximumDownloadRateText, out var maxDownload) || !TryParseNullableInt(MaximumUploadRateText, out var maxUpload))
-            return _dialogs.ShowTextAsync("Torrent settings", "Speed limits should be empty or non-negative integers.");
+        //if (!TryParseNullableInt(MaximumDownloadRateText, out var maxDownload) || !TryParseNullableInt(MaximumUploadRateText, out var maxUpload))
+        //    return _dialogs.ShowTextAsync("Torrent settings", "Speed limits should be empty or non-negative integers.");
 
-        var settings = new TorrentEntrySettings
-        {
-            DownloadPathOverride = string.IsNullOrWhiteSpace(DownloadPathOverride) ? null : DownloadPathOverride,
-            MaximumDownloadRateBytesPerSecond = maxDownload,
-            MaximumUploadRateBytesPerSecond = maxUpload,
-            SequentialDownload = SequentialDownload
-        };
+        //var settings = new TorrentEntrySettings
+        //{
+        //    DownloadPathOverride = string.IsNullOrWhiteSpace(DownloadPathOverride) ? null : DownloadPathOverride,
+        //    MaximumDownloadRateBytesPerSecond = maxDownload,
+        //    MaximumUploadRateBytesPerSecond = maxUpload,
+        //    SequentialDownload = SequentialDownload
+        //};
 
-        return SaveCoreAsync(settings);
+        //return SaveCoreAsync(settings);
     }
 
-    private async Task SaveCoreAsync(TorrentEntrySettings settings)
-    {
-        try
-        {
-            //await _updateSettingsWorkflow.ExecuteAsync(_currentTorrentId, settings).ConfigureAwait(false);
-            await _dialogs.ShowTextAsync("Torrent settings", "Torrent settings were saved.").ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            await _dialogs.ShowTextAsync("Torrent settings", UserErrorMapper.ToMessage(ex, "Failed to save torrent settings.")).ConfigureAwait(false);
-        }
-    }
+    //private async Task SaveCoreAsync(TorrentEntrySettings settings)
+    //{
+    //    try
+    //    {
+    //        //await _updateSettingsWorkflow.ExecuteAsync(_currentTorrentId, settings).ConfigureAwait(false);
+    //        await _dialogs.ShowTextAsync("Torrent settings", "Torrent settings were saved.").ConfigureAwait(false);
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        await _dialogs.ShowTextAsync("Torrent settings", UserErrorMapper.ToMessage(ex, "Failed to save torrent settings.")).ConfigureAwait(false);
+    //    }
+    //}
 
     private void ResetToEmptyState()
     {
         Deactivate();
-        _currentTorrentId = TorrentId.Empty;
+        _currentTorrentId = Guid.Empty;
         _knownTotalSize = 0;
         CurrentPhase = TorrentLifecycleState.Unknown;
         Title = string.Empty;
