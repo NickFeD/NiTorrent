@@ -1,7 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Settings;
 using NiTorrent.Application.Settings.Enums;
 using NiTorrent.Presentation.Abstractions;
@@ -140,8 +139,8 @@ public partial class TorrentSettingsViewModel : ObservableObject
             {
                 //DefaultDownloadPath = DefaultDownloadPath,
                 MaximumDownloadRate = (int)SizeFormatter.Parse(DownloadRateValue, SelectedDownloadUnit),
-                MaximumUploadRate = (int) SizeFormatter.Parse(UploadRateValue, SelectedUploadUnit),
-                MaximumDiskReadRate = (int) SizeFormatter.Parse(DiskReadRateValue, SelectedDiskReadUnit),
+                MaximumUploadRate = (int)SizeFormatter.Parse(UploadRateValue, SelectedUploadUnit),
+                MaximumDiskReadRate = (int)SizeFormatter.Parse(DiskReadRateValue, SelectedDiskReadUnit),
                 MaximumDiskWriteRate = (int)SizeFormatter.Parse(DiskWriteRateValue, SelectedDiskWriteUnit),
                 AllowDht = AllowDht,
                 AllowPortForwarding = AllowPortForwarding,
@@ -154,7 +153,7 @@ public partial class TorrentSettingsViewModel : ObservableObject
                 //CloseBehavior = MinimizeToTrayOnClose ? AppCloseBehavior.MinimizeToTray : AppCloseBehavior.Exit
             }
         };
-        await _updateSettingsUseCase.ExecuteAsync(new(settings),ct);
+        await _updateSettingsUseCase.ExecuteAsync(new(settings), ct);
         HasUnsavedChanges = false;
         _settings = settings;
     }

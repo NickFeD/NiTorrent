@@ -1,6 +1,4 @@
-﻿using Microsoft.UI.Xaml.Navigation;
-using NiTorrent.Domain.Torrents;
-using NiTorrent.Presentation.Features.Torrents;
+﻿using NiTorrent.Presentation.Features.Torrents;
 
 namespace NiTorrent.App.Views;
 

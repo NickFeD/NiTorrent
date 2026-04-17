@@ -1,9 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
-using Microsoft.UI.Xaml;
-using NiTorrent.App.Views;
-using NiTorrent.Application.Settings;
+﻿using NiTorrent.Application.Settings;
 using NiTorrent.Application.Settings.Enums;
-using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using WinUIEx;
 
@@ -21,10 +17,10 @@ public sealed partial class MainWindowLifecycle(
     private readonly IUiDispatcher _dispatcher = dispatcher;
     private readonly AppSettingsService _settingsService = settingsService;
 
-    private readonly  NiTorrent.Application.AppCloseCoordinator _closeCoordinator = closeCoordinator;
+    private readonly NiTorrent.Application.AppCloseCoordinator _closeCoordinator = closeCoordinator;
 
     private MainWindow _window;
-    private AppCloseBehavior _closeBehavior; 
+    private AppCloseBehavior _closeBehavior;
     private bool _allowClose = false;
     private bool _trayInitialized;
 

@@ -6,7 +6,7 @@ public sealed class TorrentFileEntry(
     bool IsSelected
 )
 {
-   public string FullPath { get; set; } = FullPath;
+    public string FullPath { get; set; } = FullPath;
     public long SizeByte { get; set; } = SizeByte;
     public bool IsSelected { get; set; } = IsSelected;
 };

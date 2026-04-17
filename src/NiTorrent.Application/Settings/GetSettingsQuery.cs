@@ -1,6 +1,4 @@
-﻿using NiTorrent.Application.Abstractions;
-
-namespace NiTorrent.Application.Settings;
+﻿namespace NiTorrent.Application.Settings;
 
 public sealed class GetSettingsQuery(ISettingsRepository settingsRepositorys)
 {

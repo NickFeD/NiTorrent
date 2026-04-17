@@ -1,6 +1,5 @@
 ﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
-using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Torrents.DTo;
 using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Features.Torrents.Tree;
@@ -26,9 +25,9 @@ public partial class TorrentPreviewViewModel : ObservableObject
         //HACK нужно сдеалть настройки более правдивыми и юзать их, а не просто юзать загрузки
 
         OutputFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-           // string.IsNullOrWhiteSpace(prefs.DefaultDownloadPath)
-           // ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
-           // : prefs.DefaultDownloadPath;
+        // string.IsNullOrWhiteSpace(prefs.DefaultDownloadPath)
+        // ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")
+        // : prefs.DefaultDownloadPath;
 
         Tree = new TorrentTreeModel(torrentPreview.Files);
 

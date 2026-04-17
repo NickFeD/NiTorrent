@@ -310,7 +310,7 @@ public sealed class JsonTorrentRepository : ITorrentRepository
                     _ => throw new InvalidOperationException($"Unknown torrent source kind: {record.Source.Kind}")
                 };
             }
-            return new StoredTorrent(download,source!);
+            return new StoredTorrent(download, source!);
         }).ToList();
         return result;
     }

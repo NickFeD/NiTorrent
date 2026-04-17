@@ -7,7 +7,7 @@ internal class TorrentEngineStartupTask(IEngineSettingsService settingsService) 
 {
     private readonly IEngineSettingsService _settingsService = settingsService;
 
-    public StartupStage Stage =>StartupStage.Background;
+    public StartupStage Stage => StartupStage.Background;
 
     public int Order => 200;
 

@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.Presentation.Features.Torrents;
 

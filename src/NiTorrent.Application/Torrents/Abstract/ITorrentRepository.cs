@@ -1,5 +1,4 @@
-﻿using NiTorrent.Application.Torrents;
-using NiTorrent.Application.Torrents.DTo;
+﻿using NiTorrent.Application.Torrents.DTo;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents.Abstract;

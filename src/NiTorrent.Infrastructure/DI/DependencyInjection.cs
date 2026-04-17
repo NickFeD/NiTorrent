@@ -1,13 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using MonoTorrent;
-using MonoTorrent.Client;
 using NiTorrent.Application;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Settings;
-using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Abstract;
-using NiTorrent.Application.Torrents.Commands;
-using NiTorrent.Infrastructure;
 using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Infrastructure.Torrents;
 using Nucs.JsonSettings;
@@ -23,14 +18,14 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddNiTorrentInfrastructure(this IServiceCollection services)
     {
-;
+        ;
         services.AddSingleton<ITorrentRuntimeStatusProvider, TorrentRuntimeStatusProvider>();
         services.AddSingleton<ITorrentRepository, JsonTorrentRepository>();
         services.AddSingleton<ITorrentRuntimeStateSource, InMemoryTorrentRuntimeStateSource>();
         services.AddSingleton<ITorrentRuntimeGateway, TorrentRuntimeGateway>();
         services.AddSingleton<ITorrentDownloadFactory, TorrentDownloadFactory>();
         services.AddSingleton<ITorrentMetadataProvider, TorrentMetadataProvider>();
-        services.AddTransient<IAppStartupTask,TorrentEngineStartupTask>();
+        services.AddTransient<IAppStartupTask, TorrentEngineStartupTask>();
         services.AddSingleton<IEngineSettingsService, EngineSettingsService>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
         services.AddSingleton<TorrentEngineCoordinator>();

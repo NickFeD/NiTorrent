@@ -1,6 +1,6 @@
 ﻿namespace NiTorrent.Application.Settings;
 
-public sealed class AppSettingsService(ISettingsRepository repository): IAppStartupTask
+public sealed class AppSettingsService(ISettingsRepository repository) : IAppStartupTask
 {
     private readonly ISettingsRepository _repository = repository;
 

@@ -1,5 +1,4 @@
-﻿using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Settings;
+﻿using NiTorrent.Application.Settings;
 using Nucs.JsonSettings;
 
 namespace NiTorrent.Infrastructure.Settings;

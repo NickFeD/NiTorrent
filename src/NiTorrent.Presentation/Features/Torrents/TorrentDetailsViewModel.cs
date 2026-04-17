@@ -1,14 +1,10 @@
 ﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Common;
-using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.Enum;
-using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.UseCase;
-using NiTorrent.Domain.Torrents;
 using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.Presentation.Features.Torrents;
@@ -121,7 +117,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
         => HasTorrent && CurrentPhase is TorrentLifecycleState.Stopped or TorrentLifecycleState.Paused or TorrentLifecycleState.Error;
 
     private bool CanPause()
-        => HasTorrent && CurrentPhase is  TorrentLifecycleState.FetchingMetadata or TorrentLifecycleState.Checking or TorrentLifecycleState.Downloading or TorrentLifecycleState.Seeding;
+        => HasTorrent && CurrentPhase is TorrentLifecycleState.FetchingMetadata or TorrentLifecycleState.Checking or TorrentLifecycleState.Downloading or TorrentLifecycleState.Seeding;
 
     private bool CanOpenFolder()
         => HasTorrent && !string.IsNullOrWhiteSpace(SavePath);
@@ -132,7 +128,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
     public async Task LoadAsync(Guid torrentId)
     {
 
-            await _ui.EnqueueAsync(ResetToEmptyState).ConfigureAwait(false);
+        await _ui.EnqueueAsync(ResetToEmptyState).ConfigureAwait(false);
 
 
         //await _ui.EnqueueAsync(() =>

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using NiTorrent.Domain.Torrents;
+﻿using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Presentation.Features.Torrents.Tree;
 
@@ -108,7 +104,7 @@ public class TorrentTreeModel
             {
                 result.Add(new TorrentFileEntry(f.FullPath, f.Size, f.IsSelected)); // размер не хранится в модели, нужно будет получать из торрента
             }
-                
+
 
             foreach (var sub in folder.Folders.Values)
                 stack.Push(sub);

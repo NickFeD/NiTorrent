@@ -1,6 +1,4 @@
-﻿using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Data;
-using NiTorrent.Domain.Torrents;
+﻿using Microsoft.UI.Xaml.Data;
 
 namespace NiTorrent.App.Converters;
 

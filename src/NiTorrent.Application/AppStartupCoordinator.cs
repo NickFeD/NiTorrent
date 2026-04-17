@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace NiTorrent.Application;
+﻿namespace NiTorrent.Application;
 
 public sealed class AppStartupCoordinator(IEnumerable<IAppStartupTask> tasks)
 {

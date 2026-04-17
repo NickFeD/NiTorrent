@@ -1,6 +1,4 @@
-using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
-using NiTorrent.Presentation.Abstractions;
+﻿using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.App.Services;
 

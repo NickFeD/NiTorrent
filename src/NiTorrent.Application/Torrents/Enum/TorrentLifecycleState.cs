@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace NiTorrent.Application.Torrents.Enum;
 
-namespace NiTorrent.Application.Torrents.Enum;
 public enum TorrentLifecycleState
 {
     Unknown = 0,

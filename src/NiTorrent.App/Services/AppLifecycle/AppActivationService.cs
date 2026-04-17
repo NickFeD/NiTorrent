@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Windows.AppLifecycle;
-using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Common;
 using NiTorrent.Presentation.Abstractions;
 using Windows.ApplicationModel.Activation;

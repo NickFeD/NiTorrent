@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace NiTorrent.Presentation;
+﻿namespace NiTorrent.Presentation;
 
 public static class SizeFormatter
 {
@@ -21,7 +19,7 @@ public static class SizeFormatter
             unitIndex++;
         }
 
-        return  $"{Math.Round(value, decimals)} {Units[unitIndex]}";
+        return $"{Math.Round(value, decimals)} {Units[unitIndex]}";
     }
 
     public static string FormatSpeed(long bytesPerSecond, int decimals = 2)
@@ -29,36 +27,38 @@ public static class SizeFormatter
         return FormatBytes(bytesPerSecond, decimals) + "/s";
     }
 
-    public static string Format(long bytes, SizeUnit unit) 
-    { 
-        return unit switch 
-        { 
+    public static string Format(long bytes, SizeUnit unit)
+    {
+        return unit switch
+        {
             SizeUnit.B => $"{bytes} B",
-            SizeUnit.KB => $"{bytes / 1024.0:F2} KB", 
+            SizeUnit.KB => $"{bytes / 1024.0:F2} KB",
             SizeUnit.MB => $"{bytes / 1024.0 / 1024.0:F2} MB",
-            SizeUnit.GB => $"{bytes / 1024.0 / 1024.0 / 1024.0:F2} GB", 
-            _ => $"{bytes} B" }; }
-    public static long Parse(double value, SizeUnit unit) 
-    { 
-        return unit switch 
-        { 
+            SizeUnit.GB => $"{bytes / 1024.0 / 1024.0 / 1024.0:F2} GB",
+            _ => $"{bytes} B"
+        };
+    }
+    public static long Parse(double value, SizeUnit unit)
+    {
+        return unit switch
+        {
             SizeUnit.B => (long)value,
-            SizeUnit.KB => (long)(value * 1024), 
-            SizeUnit.MB => (long)(value * 1024 * 1024), 
-            SizeUnit.GB => (long)(value * 1024 * 1024 * 1024), 
-            _ => (long)value 
-        }; 
+            SizeUnit.KB => (long)(value * 1024),
+            SizeUnit.MB => (long)(value * 1024 * 1024),
+            SizeUnit.GB => (long)(value * 1024 * 1024 * 1024),
+            _ => (long)value
+        };
     }
 
-    public static double ToUnit(long bytes, SizeUnit unit) 
+    public static double ToUnit(long bytes, SizeUnit unit)
     {
-        return unit switch 
+        return unit switch
         {
-            SizeUnit.B => bytes, 
+            SizeUnit.B => bytes,
             SizeUnit.KB => bytes / 1024.0,
             SizeUnit.MB => bytes / 1024.0 / 1024.0,
             SizeUnit.GB => bytes / 1024.0 / 1024.0 / 1024.0,
-            _ => bytes 
+            _ => bytes
         };
     }
 }

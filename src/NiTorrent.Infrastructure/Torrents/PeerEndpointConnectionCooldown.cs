@@ -2,7 +2,6 @@
 using System.Linq.Expressions;
 using Microsoft.Extensions.Logging;
 using MonoTorrent.Client;
-using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 

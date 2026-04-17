@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using MonoTorrent;
+﻿using MonoTorrent;
 using MonoTorrent.Client;
-using MonoTorrent.Dht;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Application.Torrents.DTo;
@@ -21,8 +17,8 @@ internal class TorrentMetadataProvider(TorrentEngineCoordinator coordinator) : I
         var torrentMetadata = await (source switch
         {
             TorrentSource.TorrentFile tf => MetadataFromFileAsync(tf.Path, ct),
-            TorrentSource.Magnet m =>  MetadataFromMagnetAsync(m.Uri, ct),
-            TorrentSource.TorrentBytes b =>  MetadataFromBytesAsync(b.Bytes, ct),
+            TorrentSource.Magnet m => MetadataFromMagnetAsync(m.Uri, ct),
+            TorrentSource.TorrentBytes b => MetadataFromBytesAsync(b.Bytes, ct),
             _ => throw new ArgumentOutOfRangeException(nameof(source))
         });
         return torrentMetadata;
@@ -49,12 +45,12 @@ internal class TorrentMetadataProvider(TorrentEngineCoordinator coordinator) : I
     {
         var magnet = MagnetLink.Parse(magnetUri);
         var metadata = await _clientEngine.DownloadMetadataAsync(magnet, ct);
-        return await MetadataFromBytesAsync(metadata.ToArray(),ct);
+        return await MetadataFromBytesAsync(metadata.ToArray(), ct);
     }
 
     private async Task<TorrentMetadata> MetadataFromFileAsync(string path, CancellationToken ct)
     {
         var bytes = await File.ReadAllBytesAsync(path, ct);
-        return await MetadataFromBytesAsync(bytes,ct);
+        return await MetadataFromBytesAsync(bytes, ct);
     }
 }

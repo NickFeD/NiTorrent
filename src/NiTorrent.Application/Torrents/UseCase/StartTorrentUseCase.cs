@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Torrents.Abstract;
+﻿using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.DTo;
 
