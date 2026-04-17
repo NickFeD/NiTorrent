@@ -1,17 +1,13 @@
-using NiTorrent.Application.Abstractions;
+﻿using NiTorrent.Application.Torrents.Abstract;
+using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Application.Torrents.Queries;
 
-public sealed class GetTorrentListQuery(ITorrentCollectionRepository collectionRepository)
+public class GetTorrentListQuery(ITorrentRepository torrentDownloadRepository)
 {
-    public async Task<IReadOnlyList<TorrentListItemReadModel>> ExecuteAsync(CancellationToken ct = default)
+    private readonly ITorrentRepository _torrentDownloadRepository = torrentDownloadRepository;
+    public Task<List<TorrentDownload>> ExecuteAsync(CancellationToken ct)
     {
-        var entries = await collectionRepository.GetAllAsync(ct).ConfigureAwait(false);
-
-        return entries
-            .Where(x => x.Intent != NiTorrent.Domain.Torrents.TorrentIntent.Removed)
-            .Select(TorrentListProjection.Project)
-            .OrderByDescending(x => x.AddedAtUtc)
-            .ToList();
+        return _torrentDownloadRepository.GetAllAsync(ct);
     }
 }

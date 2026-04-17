@@ -1,40 +1,37 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using NiTorrent.App.Views;
+using NiTorrent.Application.Settings;
+using NiTorrent.Domain.Settings;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using WinUIEx;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
-public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
+public sealed partial class MainWindowLifecycle(
+    IThemeService themeService,
+    ITrayService trayService,
+    IUiDispatcher dispatcher,
+    AppSettingsService settingsService,
+     NiTorrent.Application.AppCloseCoordinator closeCoordinator) : IDisposable
 {
-    private readonly IThemeService _themeService;
-    private readonly ITrayService _trayService;
-    private readonly IUiDispatcher _dispatcher;
-    private readonly ILogger<MainWindowLifecycle> _logger;
+    private readonly IThemeService _themeService = themeService;
+    private readonly ITrayService _trayService = trayService;
+    private readonly IUiDispatcher _dispatcher = dispatcher;
+    private readonly AppSettingsService _settingsService = settingsService;
 
-    private MainWindow? _window;
-    private bool _allowClose;
+    private readonly  NiTorrent.Application.AppCloseCoordinator _closeCoordinator = closeCoordinator;
+
+    private MainWindow _window;
+    private AppCloseBehavior _closeBehavior; 
+    private bool _allowClose = false;
     private bool _trayInitialized;
-
-    public MainWindowLifecycle(
-        IThemeService themeService,
-        ITrayService trayService,
-        IUiDispatcher dispatcher,
-        ILogger<MainWindowLifecycle> logger)
-    {
-        _themeService = themeService;
-        _trayService = trayService;
-        _dispatcher = dispatcher;
-        _logger = logger;
-    }
-
-    public event Func<Task>? CloseRequested;
-    public event Func<Task>? ExplicitExitRequested;
 
     public Window CreateAndInitialize()
     {
+        _closeBehavior = _settingsService.Current.CloseBehavior;
+        _settingsService.Changed += OnSettingsChanged;
         if (_window is not null)
             return _window;
 
@@ -48,7 +45,13 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
 
         _window = window;
         App.MainWindow = window;
+
         return window;
+    }
+
+    private void OnSettingsChanged(AppSettings settings)
+    {
+        _closeBehavior = settings.CloseBehavior;
     }
 
     public void Activate()
@@ -93,48 +96,36 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
 
         _trayService.Initialize();
         _trayService.OpenRequested += OnTrayOpenRequested;
-        _trayService.ExitRequested += OnTrayExitRequestedAsync;
+        _trayService.ExitRequested += CloseForShutdownAsync;
         _trayInitialized = true;
     }
 
-    private void OnMainWindowClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs e)
+    private async void OnMainWindowClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs e)
     {
         if (_allowClose)
-            return;
-
-        e.Cancel = true;
-
-        var handler = CloseRequested;
-        if (handler is null)
-            return;
-
-        _ = ProcessCloseRequestAsync(handler);
-    }
-
-    private async Task ProcessCloseRequestAsync(Func<Task> handler)
-    {
-        try
         {
-            await handler().ConfigureAwait(false);
+            _closeCoordinator.Closing();
+            return;
         }
-        catch (Exception ex)
+
+        switch (_closeBehavior)
         {
-            _logger.LogError(ex, "Main window close handler failed");
+            case AppCloseBehavior.ExitApplication:
+                _closeCoordinator.Closing();
+                return;
+            case AppCloseBehavior.MinimizeToTray:
+                e.Cancel = true;
+                await HideToTrayAsync();
+                break;
+            case AppCloseBehavior.AskUser:
+                break;
+            default:
+                break;
         }
     }
 
     private void OnTrayOpenRequested()
         => _ = ShowAsync();
-
-    private async Task OnTrayExitRequestedAsync()
-    {
-        var handler = ExplicitExitRequested;
-        if (handler is null)
-            return;
-
-        await handler().ConfigureAwait(false);
-    }
-
     private void EnsureWindowCreated()
     {
         if (_window is null)
@@ -146,13 +137,12 @@ public sealed class MainWindowLifecycle : IMainWindowLifecycle, IDisposable
         if (_trayInitialized)
         {
             _trayService.OpenRequested -= OnTrayOpenRequested;
-            _trayService.ExitRequested -= OnTrayExitRequestedAsync;
+            _trayService.ExitRequested -= CloseForShutdownAsync;
             _trayInitialized = false;
         }
 
         _trayService.Dispose();
 
-        if (_window is not null)
-            _window.AppWindow.Closing -= OnMainWindowClosing;
+        _window?.AppWindow.Closing -= OnMainWindowClosing;
     }
 }

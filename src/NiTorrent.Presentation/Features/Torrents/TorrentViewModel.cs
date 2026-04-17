@@ -7,7 +7,7 @@ using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.DTo;
-using NiTorrent.Application.Torrents.Query;
+using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Presentation.Abstractions;
 using static NiTorrent.Application.Torrents.TorrentSource;

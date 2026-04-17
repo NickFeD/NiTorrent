@@ -18,9 +18,6 @@ public partial class TorrentDetailsViewModel : ObservableObject
     private static readonly TimeSpan LiveRefreshInterval = TimeSpan.FromSeconds(1);
     private const int MaxChartPoints = 180;
 
-    private readonly GetTorrentDetailsQuery _detailsQuery;
-    private readonly GetTorrentRuntimeDetailsQuery _runtimeQuery;
-    private readonly UpdatePerTorrentSettingsWorkflow _updateSettingsWorkflow;
     private readonly StartTorrentUseCase _startTorrentUseCase;
     private readonly PauseTorrentUseCase _pauseTorrentUseCase;
     private readonly DeleteTorrentUseCase _deleteTorrentUseCase;
@@ -37,9 +34,6 @@ public partial class TorrentDetailsViewModel : ObservableObject
     private long _knownTotalSize;
 
     public TorrentDetailsViewModel(
-        GetTorrentDetailsQuery detailsQuery,
-        GetTorrentRuntimeDetailsQuery runtimeQuery,
-        UpdatePerTorrentSettingsWorkflow updateSettingsWorkflow,
         StartTorrentUseCase startTorrentUseCase,
         PauseTorrentUseCase pauseTorrentUseCase,
         DeleteTorrentUseCase deleteTorrentUseCase,
@@ -47,9 +41,6 @@ public partial class TorrentDetailsViewModel : ObservableObject
         IDialogService dialogs,
         IUiDispatcher ui)
     {
-        _detailsQuery = detailsQuery;
-        _runtimeQuery = runtimeQuery;
-        _updateSettingsWorkflow = updateSettingsWorkflow;
         _startTorrentUseCase = startTorrentUseCase;
         _pauseTorrentUseCase = pauseTorrentUseCase;
         _deleteTorrentUseCase = deleteTorrentUseCase;
@@ -140,35 +131,29 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
     public async Task LoadAsync(TorrentId torrentId)
     {
-        var details = await _detailsQuery.ExecuteAsync(torrentId).ConfigureAwait(false);
-        if (details is null)
-        {
+
             await _ui.EnqueueAsync(ResetToEmptyState).ConfigureAwait(false);
-            return;
-        }
 
-        _currentTorrentId = torrentId;
-        _knownTotalSize = Math.Max(0, details.Size);
 
-        await _ui.EnqueueAsync(() =>
-        {
-            Title = details.Name;
-            SavePath = details.SavePath;
-            Hash = details.Key;
-            AddedAtText = details.AddedAtUtc.ToLocalTime().ToString("g");
-            HasMetadataText = details.HasMetadata ? "Yes" : "No";
-            StatusLabel = TorrentStatusTextMapper.ToUserFacingText(details.Status);
-            CurrentPhase = TorrentLifecycleState.Error;
-            ProgressPercent = details.Status.Progress;
-            SizeText = SizeFormatter.FormatBytes(_knownTotalSize);
-            DownloadPathOverride = details.Settings.DownloadPathOverride;
-            MaximumDownloadRateText = details.Settings.MaximumDownloadRateBytesPerSecond?.ToString();
-            MaximumUploadRateText = details.Settings.MaximumUploadRateBytesPerSecond?.ToString();
-            SequentialDownload = details.Settings.SequentialDownload;
-            UpdateCommandStates();
-            OnPropertyChanged(nameof(HasTorrent));
-            OnPropertyChanged(nameof(CanSave));
-        }).ConfigureAwait(false);
+        //await _ui.EnqueueAsync(() =>
+        //{
+        //    Title = .Name;
+        //    SavePath = .SavePath;
+        //    Hash = .Key;
+        //    AddedAtText = .AddedAtUtc.ToLocalTime().ToString("g");
+        //    HasMetadataText = details.HasMetadata ? "Yes" : "No";
+        //    StatusLabel = TorrentStatusTextMapper.ToUserFacingText(details.Status);
+        //    CurrentPhase = TorrentLifecycleState.Error;
+        //    ProgressPercent = details.Status.Progress;
+        //    SizeText = SizeFormatter.FormatBytes(_knownTotalSize);
+        //    DownloadPathOverride = details.Settings.DownloadPathOverride;
+        //    MaximumDownloadRateText = details.Settings.MaximumDownloadRateBytesPerSecond?.ToString();
+        //    MaximumUploadRateText = details.Settings.MaximumUploadRateBytesPerSecond?.ToString();
+        //    SequentialDownload = details.Settings.SequentialDownload;
+        //    UpdateCommandStates();
+        //    OnPropertyChanged(nameof(HasTorrent));
+        //    OnPropertyChanged(nameof(CanSave));
+        //}).ConfigureAwait(false);
 
         await RefreshRuntimeAsync(CancellationToken.None).ConfigureAwait(false);
     }
@@ -210,71 +195,71 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
     private async Task RefreshRuntimeAsync(CancellationToken ct)
     {
-        if (!HasTorrent)
-            return;
+        //if (!HasTorrent)
+        //    return;
 
-        TorrentRuntimeDetailsSnapshot? snapshot;
-        try
-        {
-            snapshot = await _runtimeQuery.ExecuteAsync(_currentTorrentId, ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-        catch
-        {
-            return;
-        }
+        //TorrentRuntimeDetailsSnapshot? snapshot;
+        //try
+        //{
+        //    snapshot = await _runtimeQuery.ExecuteAsync(_currentTorrentId, ct).ConfigureAwait(false);
+        //}
+        //catch (OperationCanceledException)
+        //{
+        //    return;
+        //}
+        //catch
+        //{
+        //    return;
+        //}
 
-        if (snapshot is null || snapshot.Id != _currentTorrentId)
-            return;
+        //if (snapshot is null || snapshot.Id != _currentTorrentId)
+        //    return;
 
-        _ui.TryEnqueue(() => ApplyRuntimeSnapshot(snapshot));
+        //_ui.TryEnqueue(() => ApplyRuntimeSnapshot(snapshot));
     }
 
-    private void ApplyRuntimeSnapshot(TorrentRuntimeDetailsSnapshot snapshot)
-    {
-        if (!string.IsNullOrWhiteSpace(snapshot.StableKey))
-            Hash = snapshot.StableKey;
+    //private void ApplyRuntimeSnapshot(TorrentRuntimeDetailsSnapshot snapshot)
+    //{
+    //    if (!string.IsNullOrWhiteSpace(snapshot.StableKey))
+    //        Hash = snapshot.StableKey;
 
-        CurrentPhase = TorrentLifecycleState.Error;
-        StatusLabel = TorrentStatusTextMapper.ToUserFacingText(snapshot.Status);
-        ProgressPercent = snapshot.Status.Progress;
-        DownloadSpeedText = SizeFormatter.FormatSpeed(snapshot.Status.DownloadRateBytesPerSecond);
-        UploadSpeedText = SizeFormatter.FormatSpeed(snapshot.Status.UploadRateBytesPerSecond);
-        DownloadGraphTotal = (ulong)Math.Max(0, snapshot.Status.DownloadRateBytesPerSecond);
-        UploadGraphTotal = (ulong)Math.Max(0, snapshot.Status.UploadRateBytesPerSecond);
-        EtaText = FormatEta(snapshot.Eta);
-        RatioText = $"{snapshot.Ratio:F2}";
+    //    CurrentPhase = TorrentLifecycleState.Error;
+    //    StatusLabel = TorrentStatusTextMapper.ToUserFacingText(snapshot.Status);
+    //    ProgressPercent = snapshot.Status.Progress;
+    //    DownloadSpeedText = SizeFormatter.FormatSpeed(snapshot.Status.DownloadRateBytesPerSecond);
+    //    UploadSpeedText = SizeFormatter.FormatSpeed(snapshot.Status.UploadRateBytesPerSecond);
+    //    DownloadGraphTotal = (ulong)Math.Max(0, snapshot.Status.DownloadRateBytesPerSecond);
+    //    UploadGraphTotal = (ulong)Math.Max(0, snapshot.Status.UploadRateBytesPerSecond);
+    //    EtaText = FormatEta(snapshot.Eta);
+    //    RatioText = $"{snapshot.Ratio:F2}";
 
-        var totalSize = snapshot.TotalSizeBytes.GetValueOrDefault(_knownTotalSize);
-        if (totalSize <= 0)
-            totalSize = _knownTotalSize;
+    //    var totalSize = snapshot.TotalSizeBytes.GetValueOrDefault(_knownTotalSize);
+    //    if (totalSize <= 0)
+    //        totalSize = _knownTotalSize;
 
-        SizeText = SizeFormatter.FormatBytes(totalSize);
-        DownloadedText = SizeFormatter.FormatBytes(snapshot.DownloadedBytes);
-        UploadedText = SizeFormatter.FormatBytes(snapshot.UploadedBytes);
-        RemainingText = SizeFormatter.FormatBytes(snapshot.RemainingBytes);
-        ProgressSummaryText = $"{DownloadedText} / {SizeText}";
+    //    SizeText = SizeFormatter.FormatBytes(totalSize);
+    //    DownloadedText = SizeFormatter.FormatBytes(snapshot.DownloadedBytes);
+    //    UploadedText = SizeFormatter.FormatBytes(snapshot.UploadedBytes);
+    //    RemainingText = SizeFormatter.FormatBytes(snapshot.RemainingBytes);
+    //    ProgressSummaryText = $"{DownloadedText} / {SizeText}";
 
-        PieceSizeText = snapshot.PieceSizeBytes.HasValue
-            ? SizeFormatter.FormatBytes(snapshot.PieceSizeBytes.Value)
-            : "—";
-        PieceCountText = snapshot.PieceCount?.ToString("N0") ?? "—";
-        HashFailsText = snapshot.HashFailCount?.ToString("N0") ?? "—";
-        UnhashedPiecesText = snapshot.UnhashedPieceCount?.ToString("N0") ?? "—";
-        ConnectionsText = snapshot.OpenConnections?.ToString("N0") ?? "—";
-        UploadingToText = snapshot.UploadingToConnections?.ToString("N0") ?? "—";
-        PeersCountText = snapshot.PeerCount?.ToString("N0") ?? "—";
-        SeedsCountText = snapshot.SeedCount?.ToString("N0") ?? "—";
-        TrackerCountText = snapshot.Trackers.Count.ToString("N0");
+    //    PieceSizeText = snapshot.PieceSizeBytes.HasValue
+    //        ? SizeFormatter.FormatBytes(snapshot.PieceSizeBytes.Value)
+    //        : "—";
+    //    PieceCountText = snapshot.PieceCount?.ToString("N0") ?? "—";
+    //    HashFailsText = snapshot.HashFailCount?.ToString("N0") ?? "—";
+    //    UnhashedPiecesText = snapshot.UnhashedPieceCount?.ToString("N0") ?? "—";
+    //    ConnectionsText = snapshot.OpenConnections?.ToString("N0") ?? "—";
+    //    UploadingToText = snapshot.UploadingToConnections?.ToString("N0") ?? "—";
+    //    PeersCountText = snapshot.PeerCount?.ToString("N0") ?? "—";
+    //    SeedsCountText = snapshot.SeedCount?.ToString("N0") ?? "—";
+    //    TrackerCountText = snapshot.Trackers.Count.ToString("N0");
 
-        AppendSpeedSample(snapshot.Status.DownloadRateBytesPerSecond, snapshot.Status.UploadRateBytesPerSecond);
-        ApplyPeers(snapshot.Peers);
-        ApplyTrackers(snapshot.Trackers);
-        UpdateCommandStates();
-    }
+    //    AppendSpeedSample(snapshot.Status.DownloadRateBytesPerSecond, snapshot.Status.UploadRateBytesPerSecond);
+    //    ApplyPeers(snapshot.Peers);
+    //    ApplyTrackers(snapshot.Trackers);
+    //    UpdateCommandStates();
+    //}
 
     private void AppendSpeedSample(long downloadRateBytesPerSecond, long uploadRateBytesPerSecond)
     {
@@ -288,55 +273,55 @@ public partial class TorrentDetailsViewModel : ObservableObject
         OnPropertyChanged(nameof(SpeedHistory));
     }
 
-    private void ApplyPeers(IReadOnlyList<TorrentPeerSnapshot> peers)
-    {
-        var actualKeys = peers.Select(x => x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var stale in _peersByKey.Keys.Where(key => !actualKeys.Contains(key)).ToList())
-        {
-            var staleVm = _peersByKey[stale];
-            _peersByKey.Remove(stale);
-            Peers.Remove(staleVm);
-        }
+    //private void ApplyPeers(IReadOnlyList<TorrentPeerSnapshot> peers)
+    //{
+    //    var actualKeys = peers.Select(x => x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    //    foreach (var stale in _peersByKey.Keys.Where(key => !actualKeys.Contains(key)).ToList())
+    //    {
+    //        var staleVm = _peersByKey[stale];
+    //        _peersByKey.Remove(stale);
+    //        Peers.Remove(staleVm);
+    //    }
 
-        foreach (var peer in peers)
-        {
-            if (_peersByKey.TryGetValue(peer.Key, out var existing))
-            {
-                existing.Update(peer);
-            }
-            else
-            {
-                var vm = new TorrentPeerItemViewModel(peer);
-                _peersByKey.Add(peer.Key, vm);
-                Peers.Add(vm);
-            }
-        }
-    }
+    //    foreach (var peer in peers)
+    //    {
+    //        if (_peersByKey.TryGetValue(peer.Key, out var existing))
+    //        {
+    //            existing.Update(peer);
+    //        }
+    //        else
+    //        {
+    //            var vm = new TorrentPeerItemViewModel(peer);
+    //            _peersByKey.Add(peer.Key, vm);
+    //            Peers.Add(vm);
+    //        }
+    //    }
+    //}
 
-    private void ApplyTrackers(IReadOnlyList<TorrentTrackerSnapshot> trackers)
-    {
-        var actualKeys = trackers.Select(x => x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var stale in _trackersByKey.Keys.Where(key => !actualKeys.Contains(key)).ToList())
-        {
-            var staleVm = _trackersByKey[stale];
-            _trackersByKey.Remove(stale);
-            Trackers.Remove(staleVm);
-        }
+    //private void ApplyTrackers(IReadOnlyList<TorrentTrackerSnapshot> trackers)
+    //{
+    //    var actualKeys = trackers.Select(x => x.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    //    foreach (var stale in _trackersByKey.Keys.Where(key => !actualKeys.Contains(key)).ToList())
+    //    {
+    //        var staleVm = _trackersByKey[stale];
+    //        _trackersByKey.Remove(stale);
+    //        Trackers.Remove(staleVm);
+    //    }
 
-        foreach (var tracker in trackers)
-        {
-            if (_trackersByKey.TryGetValue(tracker.Key, out var existing))
-            {
-                existing.Update(tracker);
-            }
-            else
-            {
-                var vm = new TorrentTrackerItemViewModel(tracker);
-                _trackersByKey.Add(tracker.Key, vm);
-                Trackers.Add(vm);
-            }
-        }
-    }
+    //    foreach (var tracker in trackers)
+    //    {
+    //        if (_trackersByKey.TryGetValue(tracker.Key, out var existing))
+    //        {
+    //            existing.Update(tracker);
+    //        }
+    //        else
+    //        {
+    //            var vm = new TorrentTrackerItemViewModel(tracker);
+    //            _trackersByKey.Add(tracker.Key, vm);
+    //            Trackers.Add(vm);
+    //        }
+    //    }
+    //}
 
     private static bool TryParseNullableInt(string? value, out int? parsed)
     {
@@ -452,7 +437,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
     {
         try
         {
-            await _updateSettingsWorkflow.ExecuteAsync(_currentTorrentId, settings).ConfigureAwait(false);
+            //await _updateSettingsWorkflow.ExecuteAsync(_currentTorrentId, settings).ConfigureAwait(false);
             await _dialogs.ShowTextAsync("Torrent settings", "Torrent settings were saved.").ConfigureAwait(false);
         }
         catch (Exception ex)

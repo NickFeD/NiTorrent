@@ -1,12 +1,12 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using MonoTorrent;
 using MonoTorrent.Client;
+using NiTorrent.Application;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Settings;
 using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Application.Torrents.Commands;
-using NiTorrent.Application.Torrents.Deferred;
-using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Infrastructure;
 using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Infrastructure.Torrents;
@@ -23,46 +23,17 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddNiTorrentInfrastructure(this IServiceCollection services)
     {
-        services.AddSingleton<ITorrentEntrySettingsRuntimeApplier, TorrentEntrySettingsRuntimeApplier>();
-        services.AddHostedService<TorrentMonitor>();
-        services.AddSingleton<TorrentRuntimeRegistry>();
-        services.AddSingleton<TorrentStableKeyAccessor>();
-        services.AddSingleton<TorrentEngineFactory>();
-        services.AddSingleton<TorrentEngineStateStore>();
-        services.AddSingleton<TorrentStartupRecovery>();
-        services.AddSingleton<TorrentAddExecutor>();
-        services.AddSingleton<TorrentSourceResolver>();
-        services.AddSingleton<ITorrentSourcePreparationService>(sp => sp.GetRequiredService<TorrentSourceResolver>());
-        services.AddSingleton<PeerEndpointConnectionCooldown>();
-        services.AddSingleton<TorrentEventOrchestrator>();
-        services.AddSingleton<BackgroundTaskRunner>();
-        services.AddSingleton<TorrentLifecycleExecutor>();
-        services.AddSingleton<TorrentStartupCoordinator>();
-        services.AddSingleton<TorrentRuntimeContext>();
-        services.AddSingleton<ClientEngine>(sp =>
-            sp.GetRequiredService<TorrentStartupCoordinator>().Engine
-            ?? throw new InvalidOperationException("Torrent engine is not initialized yet."));
-        services.AddSingleton<TorrentEngineCoordinator>();
+;
         services.AddSingleton<ITorrentRuntimeStatusProvider, TorrentRuntimeStatusProvider>();
-        services.AddSingleton<ITorrentSourceStore, TorrentSourceStore>();
         services.AddSingleton<ITorrentRepository, JsonTorrentRepository>();
         services.AddSingleton<ITorrentRuntimeStateSource, InMemoryTorrentRuntimeStateSource>();
         services.AddSingleton<ITorrentRuntimeGateway, TorrentRuntimeGateway>();
         services.AddSingleton<ITorrentDownloadFactory, TorrentDownloadFactory>();
         services.AddSingleton<ITorrentMetadataProvider, TorrentMetadataProvider>();
-        services.AddSingleton<ITorrentCollectionRepository, CatalogBackedTorrentCollectionRepository>();
-        services.AddSingleton<ITorrentReadModelFeed, EngineBackedTorrentReadModelFeed>();
-        services.AddSingleton<ITorrentDetailsRuntimeService, EngineBackedTorrentDetailsRuntimeService>();
-        services.AddSingleton<ITorrentRuntimeFactsProvider, RuntimeBackedTorrentRuntimeFactsProvider>();
-        services.AddSingleton<ITorrentEngineGateway, InfrastructureTorrentEngineGateway>();
-        services.AddSingleton<ITorrentEngineLifecycle, InfrastructureTorrentEngineLifecycle>();
-        services.AddSingleton<ITorrentEngineStateStore, InfrastructureTorrentEngineStateStore>();
-        services.AddSingleton<IApplyDeferredTorrentActionsWorkflow, ApplyDeferredTorrentActionsWorkflow>();
-        services.AddSingleton<ITorrentEngineStatusService, EngineBackedTorrentEngineStatusService>();
-        services.AddSingleton<ITorrentEngineMaintenanceService, EngineBackedTorrentEngineMaintenanceService>();
-        services.AddSingleton<TorrentCatalogStore>();
+        services.AddTransient<IAppStartupTask,TorrentEngineStartupTask>();
         services.AddSingleton<IEngineSettingsService, EngineSettingsService>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
+        services.AddSingleton<TorrentEngineCoordinator>();
         services.AddSingleton<AppJsonSettings>(sp =>
         {
             var storage = sp.GetRequiredService<IAppStorageService>();
@@ -72,7 +43,7 @@ public static class DependencyInjection
             return JsonSettings.Load<AppJsonSettings>(path);
         });
 
-
+        services.AddTransient<IAppStartupTask, TorrentEngineStartupTask>();
         return services;
     }
 }

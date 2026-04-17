@@ -14,13 +14,13 @@ public class SettingsRepository(AppJsonSettings appJsonSettings) : ISettingsRepo
     private AppJsonSettings _jsonSettings = appJsonSettings;
 
     private Task update = null;
-    public Task<AppSettings> GetAppSettings(CancellationToken ct)
+    public Task<AppSettings> GetAsync(CancellationToken ct)
     {
         EnsureLoaded();
         return Task.FromResult(Map(_jsonSettings));
     }
 
-    public async Task UpdateAsync(AppSettings newSettings, CancellationToken ct)
+    public async Task SaveAsync(AppSettings newSettings, CancellationToken ct)
     {
         _jsonSettings.EngineSettings = newSettings.EngineSettings;
         if (update is not null)

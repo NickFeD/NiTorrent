@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.Presentation.Features.Torrents;
@@ -57,37 +57,37 @@ public sealed class TorrentPeerItemViewModel : ObservableObject
         private set => SetProperty(ref _flags, value);
     }
 
-    public TorrentPeerItemViewModel(TorrentPeerSnapshot snapshot)
-    {
-        Key = snapshot.Key;
-        Update(snapshot);
-    }
+    //public TorrentPeerItemViewModel(TorrentPeerSnapshot snapshot)
+    //{
+    //    Key = snapshot.Key;
+    //    Update(snapshot);
+    //}
 
-    public void Update(TorrentPeerSnapshot snapshot)
-    {
-        Endpoint = string.IsNullOrWhiteSpace(snapshot.Endpoint) ? "<unknown>" : snapshot.Endpoint;
-        Client = string.IsNullOrWhiteSpace(snapshot.Client) ? "Unknown" : snapshot.Client;
-        Progress = snapshot.ProgressPercent.HasValue ? $"{snapshot.ProgressPercent.Value:F1}%" : "—";
-        DownloadSpeed = snapshot.DownloadRateBytesPerSecond.HasValue
-            ? SizeFormatter.FormatSpeed(snapshot.DownloadRateBytesPerSecond.Value)
-            : "—";
-        UploadSpeed = snapshot.UploadRateBytesPerSecond.HasValue
-            ? SizeFormatter.FormatSpeed(snapshot.UploadRateBytesPerSecond.Value)
-            : "—";
-        Ratio = snapshot.Ratio.HasValue ? $"{snapshot.Ratio.Value:F2}" : "—";
-        Flags = BuildFlags(snapshot);
-    }
+    //public void Update(TorrentPeerSnapshot snapshot)
+    //{
+    //    Endpoint = string.IsNullOrWhiteSpace(snapshot.Endpoint) ? "<unknown>" : snapshot.Endpoint;
+    //    Client = string.IsNullOrWhiteSpace(snapshot.Client) ? "Unknown" : snapshot.Client;
+    //    Progress = snapshot.ProgressPercent.HasValue ? $"{snapshot.ProgressPercent.Value:F1}%" : "—";
+    //    DownloadSpeed = snapshot.DownloadRateBytesPerSecond.HasValue
+    //        ? SizeFormatter.FormatSpeed(snapshot.DownloadRateBytesPerSecond.Value)
+    //        : "—";
+    //    UploadSpeed = snapshot.UploadRateBytesPerSecond.HasValue
+    //        ? SizeFormatter.FormatSpeed(snapshot.UploadRateBytesPerSecond.Value)
+    //        : "—";
+    //    Ratio = snapshot.Ratio.HasValue ? $"{snapshot.Ratio.Value:F2}" : "—";
+    //    Flags = BuildFlags(snapshot);
+    //}
 
-    private static string BuildFlags(TorrentPeerSnapshot snapshot)
-    {
-        var flags = new List<string>(3);
-        if (snapshot.IsSeeder == true)
-            flags.Add("Seeder");
-        if (snapshot.IsInterested == true)
-            flags.Add("Interested");
-        if (snapshot.IsChoking == true)
-            flags.Add("Choking");
+    //private static string BuildFlags(TorrentPeerSnapshot snapshot)
+    //{
+    //    var flags = new List<string>(3);
+    //    if (snapshot.IsSeeder == true)
+    //        flags.Add("Seeder");
+    //    if (snapshot.IsInterested == true)
+    //        flags.Add("Interested");
+    //    if (snapshot.IsChoking == true)
+    //        flags.Add("Choking");
 
-        return flags.Count == 0 ? "—" : string.Join(", ", flags);
-    }
+    //    return flags.Count == 0 ? "—" : string.Join(", ", flags);
+    //}
 }

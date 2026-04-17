@@ -6,6 +6,6 @@ namespace NiTorrent.Application.Settings;
 
 public interface ISettingsRepository
 {
-    Task<AppSettings> GetAppSettings(CancellationToken ct);
-    Task UpdateAsync(AppSettings newSettings, CancellationToken ct);
+    Task<AppSettings> GetAsync(CancellationToken ct);
+    Task SaveAsync(AppSettings newSettings, CancellationToken ct);
 }

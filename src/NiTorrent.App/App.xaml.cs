@@ -1,25 +1,21 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
-using Microsoft.UI.Xaml;
 using Microsoft.Windows.AppLifecycle;
 using NiTorrent.App.Services;
 using NiTorrent.App.Services.AppLifecycle;
+using NiTorrent.Application;
 using NiTorrent.Application.Abstractions;
 using NiTorrent.Application.Settings;
 using NiTorrent.Application.Shell;
 using NiTorrent.Application.Torrents;
-using NiTorrent.Application.Torrents.Deferred;
 using NiTorrent.Application.Torrents.Queries;
-using NiTorrent.Application.Torrents.Restore;
 using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Infrastructure.DI;
+using NiTorrent.Infrastructure.Settings;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using NiTorrent.Presentation.Features.Settings;
-using Nucs.JsonSettings;
-using WinUIEx;
 using WinUIApplication = Microsoft.UI.Xaml.Application;
 
 namespace NiTorrent.App;
@@ -28,7 +24,6 @@ public partial class App : WinUIApplication
 {
     private readonly IHost _host;
     private Task? _hostStartTask;
-    private Task? _engineInitTask;
 
     public new static App Current => (App)WinUIApplication.Current;
     public static Window MainWindow = Window.Current;
@@ -96,23 +91,13 @@ public partial class App : WinUIApplication
         services.AddSingleton<ITorrentPreviewService, TorrentPreviewDialogService>();
         services.AddSingleton<IAppStartupService, AppStartupService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
-        services.AddSingleton<IMainWindowLifecycle, MainWindowLifecycle>();
         services.AddSingleton<ThemeSettingsViewModel>();
-        services.AddSingleton<NiTorrent.Application.Torrents.Query.GetTorrentListQuery>();
+        services.AddSingleton<NiTorrent.Application.Torrents.Queries.GetTorrentListQuery>();
         services.AddSingleton<GetTorrentListQuery>();
-        services.AddSingleton<GetTorrentDetailsQuery>();
-        services.AddSingleton<GetTorrentRuntimeDetailsQuery>();
         services.AddSingleton<GetSettingsQuery>();
-        services.AddSingleton<GetShellStateQuery>();
         services.AddSingleton<HandleWindowCloseWorkflow>();
         services.AddSingleton<HandleTrayExitWorkflow>();
-        services.AddSingleton<SyncTorrentCollectionFromRuntimeWorkflow>();
-        services.AddSingleton<ISyncTorrentCollectionFromRuntimeWorkflow>(sp => sp.GetRequiredService<SyncTorrentCollectionFromRuntimeWorkflow>());
-        services.AddSingleton<ReplayDeferredTorrentActionsWorkflow>();
-        services.AddSingleton<IReplayDeferredTorrentActionsWorkflow>(sp => sp.GetRequiredService<ReplayDeferredTorrentActionsWorkflow>());
-        services.AddSingleton<UpdatePerTorrentSettingsWorkflow>();
-        services.AddSingleton<IAppCloseCoordinator, AppCloseCoordinator>();
-        services.AddSingleton<IAppShutdownCoordinator, AppShutdownCoordinator>();
+        services.AddSingleton<AppCloseCoordinator>();
         services.AddTransient<RestoreSessionUseCase>();
         services.AddTransient<CreateTorrentDownloadUseCase>();
         services.AddTransient<PreviewTorrentContentsUseCase>();
@@ -120,11 +105,15 @@ public partial class App : WinUIApplication
         services.AddTransient<PauseTorrentUseCase>();
         services.AddTransient<DeleteTorrentUseCase>();
         services.AddTransient<UpdateSettingsUseCase>();
+        services.AddTransient<AppStartupCoordinator>();
+        services.AddSingleton<AppSettingsService>();
+        services.AddTransient<IAppStartupTask>(t => t.GetRequiredService<AppSettingsService>());
+        services.AddSingleton<MainWindowLifecycle>();
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        var mainInstance = AppInstance.FindOrRegisterForKey("main");
+        var mainInstance = AppInstance.FindOrRegisterForKey("NiTorrent");
         if (!mainInstance.IsCurrent)
         {
             await mainInstance.RedirectActivationToAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
@@ -135,63 +124,29 @@ public partial class App : WinUIApplication
         mainInstance.Activated += (_, e) => _ = GetService<IAppActivationService>()
             .HandleAsync(e, ShowMainWindow, StartBackgroundInitialization);
 
+
         var holder = GetService<UiDispatcherHolder>();
         holder.Initialize(DispatcherQueue.GetForCurrentThread());
 
-        var mainWindowLifecycle = GetService<IMainWindowLifecycle>();
-        mainWindowLifecycle.CloseRequested += OnMainWindowCloseRequestedAsync;
-        mainWindowLifecycle.ExplicitExitRequested += OnExplicitExitRequestedAsync;
+        var appStartup = GetService<AppStartupCoordinator>();
 
-        MainWindow = mainWindowLifecycle.CreateAndInitialize();
-        mainWindowLifecycle.Activate();
+        //HACK : Start critical initialization before showing the main window to reduce time to interactive. This includes restoring the session which needs to be done before the main window is shown to avoid a visible delay after the main window is shown.
+        await appStartup.StartCriticalAsync(CancellationToken.None);
 
-        StartBackgroundInitialization();
-        _ = GetService<IAppActivationService>()
-            .HandleAsync(AppInstance.GetCurrent().GetActivatedEventArgs(), ShowMainWindow, StartBackgroundInitialization);
+        var window = GetService<MainWindowLifecycle>();
+        window.CreateAndInitialize();
+        window.Activate();
+
+        _ = appStartup.StartBackgroundAsync(CancellationToken.None);
+        _hostStartTask = _host.StartAsync();
     }
 
     private void StartBackgroundInitialization()
     {
         var startup = GetService<IAppStartupService>();
         _hostStartTask ??= startup.StartHostAndShellAsync(_host);
-        // HACK: use CancellationToken.None
-        _engineInitTask ??= startup.InitializeTorrentEngineAsync(CancellationToken.None);
     }
 
     private void ShowMainWindow()
-        => _ = GetService<IMainWindowLifecycle>().ShowAsync();
-
-    private Task OnMainWindowCloseRequestedAsync()
-        => GetService<IAppCloseCoordinator>().RequestCloseFromWindowAsync(ExitApplicationAsync);
-
-    private Task OnExplicitExitRequestedAsync()
-        => GetService<IAppCloseCoordinator>().RequestExplicitExitAsync(ExitApplicationAsync);
-
-    private Task ExitApplicationAsync()
-        => GetService<IAppShutdownCoordinator>().ShutdownAsync(StopHostAsync, Exit);
-
-    private async Task StopHostAsync()
-    {
-        if (_hostStartTask is not null)
-        {
-            var startupCompleted = await Task
-                .WhenAny(_hostStartTask, Task.Delay(TimeSpan.FromSeconds(3)))
-                .ConfigureAwait(false);
-
-            if (ReferenceEquals(startupCompleted, _hostStartTask))
-                await _hostStartTask.ConfigureAwait(false);
-        }
-
-        try
-        {
-            using var stopTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            await _host.StopAsync(stopTimeout.Token).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // Exit must continue even if host stop exceeded timeout.
-        }
-
-        _host.Dispose();
-    }
+        => _ = GetService<MainWindowLifecycle>().ShowAsync();
 }

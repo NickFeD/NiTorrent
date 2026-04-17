@@ -7,32 +7,36 @@ using NiTorrent.Infrastructure.Torrents;
 
 namespace NiTorrent.Infrastructure.Settings;
 
-public class EngineSettingsService(ISettingsRepository settings, TorrentEngineCoordinator torrentEngineCoordinator, IAppStorageService appStorageService) : IEngineSettingsService
+public class EngineSettingsService : IEngineSettingsService
 {
-    ISettingsRepository _settingsRepository = settings;
-    private TorrentEngineSettings _current;
-    private TorrentEngineCoordinator _torrentEngineCoordinator = torrentEngineCoordinator;
-    private IAppStorageService _storage = appStorageService;
+    private readonly AppSettingsService _settingsService;
+    private TorrentEngineCoordinator _torrentEngineCoordinator;
+    private IAppStorageService _storage;
     private string? _cacheDir;
+
+    public EngineSettingsService(AppSettingsService settings, TorrentEngineCoordinator torrentEngineCoordinator, IAppStorageService appStorageService)
+    {
+        _settingsService = settings;
+        _torrentEngineCoordinator = torrentEngineCoordinator;
+        _storage = appStorageService;
+        settings.Changed += OnUpdateSettings;
+    }
 
     public async Task InitializeAsync(CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
-        var appSettings = await _settingsRepository.GetAppSettings(ct);
+        var appSettings = _settingsService.Current;
         EngineSettingsBuilder engineSettingsBuilder = MapToBuilder(appSettings.EngineSettings);
 
         await _torrentEngineCoordinator.InitializeAsync(engineSettingsBuilder.ToSettings(), ct);
-        _current = appSettings.EngineSettings;
     }
 
-    public async Task ApplySettingsAsync(TorrentEngineSettings settings, CancellationToken ct)
+    public Task ApplySettingsAsync(TorrentEngineSettings settings, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         var monoSettings = MapToBuilder(settings).ToSettings();
 
-        await _torrentEngineCoordinator.ApplySettingsAsync(monoSettings, ct);
-        _current = settings;
-
+        return _torrentEngineCoordinator.ApplySettingsAsync(monoSettings, ct);
     }
 
     private EngineSettingsBuilder MapToBuilder(TorrentEngineSettings source)
@@ -74,5 +78,11 @@ public class EngineSettingsService(ISettingsRepository settings, TorrentEngineCo
             : null;
 
         return builder;
+    }
+
+    private void OnUpdateSettings(AppSettings appSettings)
+    {
+        // HACK: Fire and forget, we don't want to await this and block the UI thread, but we also don't want to ignore it.
+        var _ = ApplySettingsAsync(appSettings.EngineSettings, CancellationToken.None);
     }
 }

@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using NiTorrent.Application.Torrents;
 
 namespace NiTorrent.Presentation.Features.Torrents;
@@ -43,24 +43,24 @@ public sealed class TorrentTrackerItemViewModel : ObservableObject
         private set => SetProperty(ref _message, value);
     }
 
-    public TorrentTrackerItemViewModel(TorrentTrackerSnapshot snapshot)
-    {
-        Key = snapshot.Key;
-        Update(snapshot);
-    }
+    //public TorrentTrackerItemViewModel(TorrentTrackerSnapshot snapshot)
+    //{
+    //    Key = snapshot.Key;
+    //    Update(snapshot);
+    //}
 
-    public void Update(TorrentTrackerSnapshot snapshot)
-    {
-        Uri = snapshot.Uri;
-        Status = snapshot.Status;
-        LastAnnounce = FormatDuration(snapshot.LastAnnounceAgo);
-        NextAnnounce = FormatDuration(snapshot.NextAnnounceIn);
-        Message = !string.IsNullOrWhiteSpace(snapshot.Failure)
-            ? snapshot.Failure!
-            : !string.IsNullOrWhiteSpace(snapshot.Warning)
-                ? snapshot.Warning!
-                : "—";
-    }
+    //public void Update(TorrentTrackerSnapshot snapshot)
+    //{
+    //    Uri = snapshot.Uri;
+    //    Status = snapshot.Status;
+    //    LastAnnounce = FormatDuration(snapshot.LastAnnounceAgo);
+    //    NextAnnounce = FormatDuration(snapshot.NextAnnounceIn);
+    //    Message = !string.IsNullOrWhiteSpace(snapshot.Failure)
+    //        ? snapshot.Failure!
+    //        : !string.IsNullOrWhiteSpace(snapshot.Warning)
+    //            ? snapshot.Warning!
+    //            : "—";
+    //}
 
     private static string FormatDuration(TimeSpan? value)
     {
