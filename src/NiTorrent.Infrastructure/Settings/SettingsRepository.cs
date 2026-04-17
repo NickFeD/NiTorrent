@@ -19,6 +19,7 @@ public class SettingsRepository(AppJsonSettings appJsonSettings) : ISettingsRepo
     public async Task SaveAsync(AppSettings newSettings, CancellationToken ct)
     {
         _jsonSettings.EngineSettings = newSettings.EngineSettings;
+        _jsonSettings.CloseBehavior = newSettings.CloseBehavior;
         if (update is not null)
         {
             await update;
@@ -40,7 +41,8 @@ public class SettingsRepository(AppJsonSettings appJsonSettings) : ISettingsRepo
     {
         return new AppSettings
         {
-            EngineSettings = jsonSettings.EngineSettings
+            EngineSettings = jsonSettings.EngineSettings,
+            CloseBehavior = jsonSettings.CloseBehavior
         };
     }
 }

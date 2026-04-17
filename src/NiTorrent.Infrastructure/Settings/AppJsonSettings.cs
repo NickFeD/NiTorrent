@@ -1,4 +1,5 @@
-﻿using NiTorrent.Application.Settings;
+using NiTorrent.Application.Settings;
+using NiTorrent.Application.Settings.Enums;
 using Nucs.JsonSettings;
 
 namespace NiTorrent.Infrastructure.Settings;
@@ -11,9 +12,11 @@ public class AppJsonSettings : JsonSettings
         : base()
     {
     }
+
     public AppJsonSettings(string fileName) : base(fileName)
     {
     }
 
     public TorrentEngineSettings EngineSettings { get; set; } = new TorrentEngineSettings();
+    public AppCloseBehavior CloseBehavior { get; set; } = AppCloseBehavior.ExitApplication;
 }

@@ -113,7 +113,7 @@ public partial class TorrentSettingsViewModel : ObservableObject
             AutoSaveLoadFastResume = _settings.EngineSettings.AutoSaveLoadFastResume;
             AutoSaveLoadMagnetLinkMetadata = _settings.EngineSettings.AutoSaveLoadMagnetLinkMetadata;
             SelectedFastResumeMode = _settings.EngineSettings.FastResumeMode;
-            MinimizeToTrayOnClose = true; //settings.EngineSettings.CloseBehavior == AppCloseBehavior.MinimizeToTray;
+            MinimizeToTrayOnClose = _settings.CloseBehavior == AppCloseBehavior.MinimizeToTray;
             HasUnsavedChanges = false;
         }
         finally
@@ -135,6 +135,9 @@ public partial class TorrentSettingsViewModel : ObservableObject
     {
         var settings = new AppSettings()
         {
+            CloseBehavior = MinimizeToTrayOnClose
+                ? AppCloseBehavior.MinimizeToTray
+                : AppCloseBehavior.ExitApplication,
             EngineSettings = new TorrentEngineSettings()
             {
                 //DefaultDownloadPath = DefaultDownloadPath,
@@ -150,7 +153,6 @@ public partial class TorrentSettingsViewModel : ObservableObject
                 AutoSaveLoadFastResume = AutoSaveLoadFastResume,
                 AutoSaveLoadMagnetLinkMetadata = AutoSaveLoadMagnetLinkMetadata,
                 FastResumeMode = SelectedFastResumeMode,
-                //CloseBehavior = MinimizeToTrayOnClose ? AppCloseBehavior.MinimizeToTray : AppCloseBehavior.Exit
             }
         };
         await _updateSettingsUseCase.ExecuteAsync(new(settings), ct);
