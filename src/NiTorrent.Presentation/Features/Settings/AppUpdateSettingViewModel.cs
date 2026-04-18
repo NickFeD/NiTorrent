@@ -9,7 +9,6 @@ namespace NiTorrent.Presentation.Features.Settings;
 public partial class AppUpdateSettingViewModel : ObservableObject
 {
     private readonly IAppInfo _appInfo;
-    private readonly IAppPreferences _prefs;
     private readonly IUpdateService _updates;
     private readonly IUriLauncher _launcher;
     private readonly IDialogService _dialogs;
@@ -32,19 +31,17 @@ public partial class AppUpdateSettingViewModel : ObservableObject
 
     public AppUpdateSettingViewModel(
         IAppInfo appInfo,
-        IAppPreferences prefs,
         IUpdateService updates,
         IUriLauncher launcher,
         IDialogService dialogs)
     {
         _appInfo = appInfo;
-        _prefs = prefs;
         _updates = updates;
         _launcher = launcher;
         _dialogs = dialogs;
 
         CurrentVersion = $"Current Version {_appInfo.VersionWithPrefix}";
-        LastUpdateCheck = FormatLastCheck(_prefs.LastUpdateCheckUtc);
+        LastUpdateCheck = FormatLastCheck(DateTimeOffset.UtcNow/*_prefs.LastUpdateCheckUtc*/);
     }
 
     [RelayCommand]
@@ -57,8 +54,8 @@ public partial class AppUpdateSettingViewModel : ObservableObject
 
         try
         {
-            _prefs.LastUpdateCheckUtc = DateTimeOffset.UtcNow;
-            LastUpdateCheck = FormatLastCheck(_prefs.LastUpdateCheckUtc);
+            //_prefs.LastUpdateCheckUtc = DateTimeOffset.UtcNow;
+            LastUpdateCheck = FormatLastCheck(DateTimeOffset.UtcNow/*_prefs.LastUpdateCheckUtc*/);
 
             var result = await _updates.CheckAsync(_appInfo.Version, ct);
 
