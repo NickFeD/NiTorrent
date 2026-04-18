@@ -20,7 +20,7 @@ public sealed partial class MainWindow : WindowEx
         if (navService != null)
         {
             navService.Initialize(NavView, NavFrame, NavigationPageMappings.PageDictionary)
-                .ConfigureDefaultPage(typeof(HomeLandingPage))
+                .ConfigureDefaultPage(typeof(TorrentPage))
                 .ConfigureSettingsPage(typeof(SettingsPage))
                 .ConfigureJsonFile("Assets/NavViewMenu/AppData.json")
                 .ConfigureTitleBar(AppTitleBar)

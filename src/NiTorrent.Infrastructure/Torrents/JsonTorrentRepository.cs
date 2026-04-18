@@ -314,6 +314,11 @@ public sealed class JsonTorrentRepository : ITorrentRepository
         }).ToList();
         return result;
     }
+
+    public Task LoadingAsync(CancellationToken ct)
+    {
+        return EnsureLoadedAsync(ct);
+    }
 }
 
 internal sealed class TorrentRepositoryDocument

@@ -26,6 +26,7 @@ public static class DependencyInjection
         services.AddSingleton<ITorrentDownloadFactory, TorrentDownloadFactory>();
         services.AddSingleton<ITorrentMetadataProvider, TorrentMetadataProvider>();
         services.AddTransient<IAppStartupTask, TorrentEngineStartupTask>();
+        services.AddTransient<IAppStartupTask, TorrentRepositoryStartupTask>();
         services.AddSingleton<IEngineSettingsService, EngineSettingsService>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
         services.AddTransient<IAppShutdownTask, SettingsRepositoryFlushShutdownTask>();

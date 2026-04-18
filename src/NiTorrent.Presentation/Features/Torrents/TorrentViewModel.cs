@@ -37,8 +37,10 @@ public partial class TorrentViewModel(
     private readonly IDialogService _dialogs = dialogs;
     private readonly IUiDispatcher _dispatcher = dispatcher;
     private readonly ITorrentRuntimeStateSource _store = store;
+    private readonly SemaphoreSlim _startupGate = new(1, 1);
 
     private readonly Dictionary<Guid, TorrentItemViewModel> _torrents = new();
+    private bool _isStoreSubscribed;
     public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
     public bool IsEmpty => Torrents.Count < 1;
 
@@ -85,20 +87,54 @@ public partial class TorrentViewModel(
 
     public async Task TorrentLoading(CancellationToken ct)
     {
-        var torrents = await _getTorrentListQuery.ExecuteAsync(ct);
-
-        foreach (var torrent in torrents)
+        await _startupGate.WaitAsync(ct);
+        try
         {
-            var torrentViewModel = _itemViewModelFactory.Create(torrent, RemoveTorrentAsync);
-            Torrents.Add(torrentViewModel);
-            _torrents.Add(torrentViewModel.Id, torrentViewModel);
+            if (_torrents.Count > 0)
+                return;
+
+            var torrents = await _getTorrentListQuery.ExecuteAsync(ct);
+
+            foreach (var torrent in torrents)
+            {
+                var torrentViewModel = _itemViewModelFactory.Create(torrent, RemoveTorrentAsync);
+                Torrents.Add(torrentViewModel);
+                _torrents.Add(torrentViewModel.Id, torrentViewModel);
+            }
+
+            if (!_isStoreSubscribed)
+            {
+                _store.Subscribe(OnRuntimeStateChanged);
+                _isStoreSubscribed = true;
+            }
+
+            try
+            {
+                await _restoreSessionUseCase.ExecuteAsync(ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                StatusText = "Не удалось восстановить сессию";
+                await _dialogs.ShowTextAsync("Ошибка восстановления", UserErrorMapper.ToMessage(ex, "Не удалось восстановить сессию торрентов."));
+            }
         }
-        _ = _restoreSessionUseCase.ExecuteAsync(ct);
-        _store.Subscribe(OnRuntimeStateChanged);
+        finally
+        {
+            _startupGate.Release();
+        }
     }
     public void TorrentUnloaded()
     {
-        _store.UnsubscribeAsync(OnRuntimeStateChanged).GetAwaiter().GetResult();
+        if (_isStoreSubscribed)
+        {
+            _store.UnsubscribeAsync(OnRuntimeStateChanged).GetAwaiter().GetResult();
+            _isStoreSubscribed = false;
+        }
+
         Torrents.Clear();
         _torrents.Clear();
     }
