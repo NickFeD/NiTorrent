@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddTransient<IAppStartupTask, TorrentEngineStartupTask>();
         services.AddSingleton<IEngineSettingsService, EngineSettingsService>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
+        services.AddTransient<IAppShutdownTask, SettingsRepositoryFlushShutdownTask>();
         services.AddSingleton<TorrentEngineCoordinator>();
         services.AddSingleton<AppJsonSettings>(sp =>
         {

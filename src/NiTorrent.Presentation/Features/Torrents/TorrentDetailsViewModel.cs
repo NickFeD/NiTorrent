@@ -27,7 +27,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
 
     private CancellationTokenSource? _liveCts;
     private Guid _currentTorrentId;
-    private long _knownTotalSize;
+    //private long _knownTotalSize;
 
     public TorrentDetailsViewModel(
         StartTorrentUseCase startTorrentUseCase,
@@ -446,7 +446,7 @@ public partial class TorrentDetailsViewModel : ObservableObject
     {
         Deactivate();
         _currentTorrentId = Guid.Empty;
-        _knownTotalSize = 0;
+        //_knownTotalSize = 0;
         CurrentPhase = TorrentLifecycleState.Unknown;
         Title = string.Empty;
         SavePath = string.Empty;

@@ -1,4 +1,5 @@
-﻿using NiTorrent.Application.Settings;
+﻿using NiTorrent.Application;
+using NiTorrent.Application.Settings;
 using NiTorrent.Application.Settings.Enums;
 using NiTorrent.Presentation.Abstractions;
 using WinUIEx;
@@ -10,19 +11,21 @@ public sealed partial class MainWindowLifecycle(
     ITrayService trayService,
     IUiDispatcher dispatcher,
     AppSettingsService settingsService,
-     NiTorrent.Application.AppCloseCoordinator closeCoordinator) : IDisposable
+    AppCloseCoordinator closeCoordinator) : IDisposable, IAppShutdownTask
 {
     private readonly IThemeService _themeService = themeService;
     private readonly ITrayService _trayService = trayService;
     private readonly IUiDispatcher _dispatcher = dispatcher;
     private readonly AppSettingsService _settingsService = settingsService;
+    private readonly AppCloseCoordinator _closeCoordinator = closeCoordinator;
 
-    private readonly NiTorrent.Application.AppCloseCoordinator _closeCoordinator = closeCoordinator;
-
-    private MainWindow _window;
+    private MainWindow? _window;
     private AppCloseBehavior _closeBehavior;
-    private bool _allowClose = false;
+    private bool _allowClose;
     private bool _trayInitialized;
+    private bool _disposed;
+
+    public int Order => 900;
 
     public Window CreateAndInitialize()
     {
@@ -40,15 +43,11 @@ public sealed partial class MainWindowLifecycle(
         InitializeTray();
 
         _window = window;
-        App.MainWindow = window;
-
         return window;
     }
 
     private void OnSettingsChanged(AppSettings settings)
-    {
-        _closeBehavior = settings.CloseBehavior;
-    }
+        => _closeBehavior = settings.CloseBehavior;
 
     public void Activate()
         => _window?.Activate();
@@ -77,10 +76,7 @@ public sealed partial class MainWindowLifecycle(
         {
             EnsureWindowCreated();
             var window = _window!;
-
             _trayService.SetVisible(false);
-
-            // Explicit shutdown must bypass regular close-to-tray interception.
             _allowClose = true;
             window.Close();
         });
@@ -111,14 +107,14 @@ public sealed partial class MainWindowLifecycle(
     {
         if (_allowClose)
         {
-            _closeCoordinator.Closing();
+            await _closeCoordinator.ClosingAsync();
             return;
         }
 
         switch (_closeBehavior)
         {
             case AppCloseBehavior.ExitApplication:
-                _closeCoordinator.Closing();
+                await _closeCoordinator.ClosingAsync();
                 return;
             case AppCloseBehavior.MinimizeToTray:
                 e.Cancel = true;
@@ -126,21 +122,32 @@ public sealed partial class MainWindowLifecycle(
                 break;
             case AppCloseBehavior.AskUser:
                 break;
-            default:
-                break;
         }
     }
 
     private void OnTrayOpenRequested()
         => _ = ShowAsync();
+
     private void EnsureWindowCreated()
     {
         if (_window is null)
             throw new InvalidOperationException("Main window is not initialized");
     }
 
+    public Task ExecuteAsync(CancellationToken ct)
+    {
+        Dispose();
+        return Task.CompletedTask;
+    }
+
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _settingsService.Changed -= OnSettingsChanged;
+
         if (_trayInitialized)
         {
             _trayService.OpenRequested -= OnTrayOpenRequested;
@@ -149,7 +156,6 @@ public sealed partial class MainWindowLifecycle(
         }
 
         _trayService.Dispose();
-
         _window?.AppWindow.Closing -= OnMainWindowClosing;
     }
 }

@@ -23,7 +23,9 @@ public partial class App : WinUIApplication
     private Task? _hostStartTask;
 
     public new static App Current => (App)WinUIApplication.Current;
-    public static Window MainWindow = Window.Current;
+    public static IHost Host => Current._host;
+
+    public static Window MainWindow = new Window();
     public static IntPtr Hwnd => WinRT.Interop.WindowNative.GetWindowHandle(MainWindow);
     public IServiceProvider Services { get; }
     public IJsonNavigationService NavService => GetService<IJsonNavigationService>();
@@ -38,7 +40,7 @@ public partial class App : WinUIApplication
 
     public App()
     {
-        _host = Host.CreateDefaultBuilder()
+        _host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
             .UseContentRoot(AppContext.BaseDirectory)
             .ConfigureServices(ConfigureServices)
             .Build();
@@ -93,6 +95,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<GetTorrentListQuery>();
         services.AddSingleton<GetSettingsQuery>();
         services.AddSingleton<AppCloseCoordinator>();
+        services.AddSingleton<IAppShutdownTask, HostStopShutdownTask>();
         services.AddTransient<RestoreSessionUseCase>();
         services.AddTransient<CreateTorrentDownloadUseCase>();
         services.AddTransient<PreviewTorrentContentsUseCase>();
@@ -104,6 +107,7 @@ public partial class App : WinUIApplication
         services.AddSingleton<AppSettingsService>();
         services.AddTransient<IAppStartupTask>(t => t.GetRequiredService<AppSettingsService>());
         services.AddSingleton<MainWindowLifecycle>();
+        services.AddSingleton<IAppShutdownTask>(sp => sp.GetRequiredService<MainWindowLifecycle>());
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -129,7 +133,7 @@ public partial class App : WinUIApplication
         await appStartup.StartCriticalAsync(CancellationToken.None);
 
         var window = GetService<MainWindowLifecycle>();
-        window.CreateAndInitialize();
+        MainWindow = window.CreateAndInitialize();
         window.Activate();
 
         _ = appStartup.StartBackgroundAsync(CancellationToken.None);

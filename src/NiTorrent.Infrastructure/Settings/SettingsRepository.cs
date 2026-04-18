@@ -27,6 +27,15 @@ public class SettingsRepository(AppJsonSettings appJsonSettings) : ISettingsRepo
         update = Task.Run(_jsonSettings.Save);
     }
 
+    public async Task FlushAsync(CancellationToken ct)
+    {
+        var pending = update;
+        if (pending is null)
+            return;
+
+        await pending.WaitAsync(ct);
+    }
+
     private void EnsureLoaded()
     {
         if (_jsonSettings is null)
