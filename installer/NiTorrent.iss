@@ -32,8 +32,8 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 
 ; Иконка в списке установленных приложений Windows.
 UninstallDisplayIcon={app}\{#MyAppExeName}
