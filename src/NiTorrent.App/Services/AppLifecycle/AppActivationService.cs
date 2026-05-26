@@ -44,20 +44,75 @@ public sealed class AppActivationService : IAppActivationService
         }
     }
 
-    private async Task HandleCoreAsync(AppActivationArguments args, Action showMainWindow, Action startBackgroundInitialization)
+    private async Task HandleCoreAsync(
+    AppActivationArguments args,
+    Action showMainWindow,
+    Action startBackgroundInitialization)
     {
-        if (args.Kind != ExtendedActivationKind.File || args.Data is not FileActivatedEventArgs fileArgs)
+        var activationItems = await ExtractActivationItemsAsync(args);
+
+        if (activationItems.Count == 0)
             return;
 
         startBackgroundInitialization();
         showMainWindow();
 
-        foreach (var item in fileArgs.Files)
+        foreach (var item in activationItems)
         {
-            if (item is not StorageFile file || !file.FileType.Equals(".torrent", StringComparison.OrdinalIgnoreCase))
+            if (item.StartsWith("magnet:", StringComparison.OrdinalIgnoreCase))
+            {
+                // TODO: здесь вызвать use case добавления magnet-ссылки
+                await _mainWindowLifecycle.OpenMagnetLinkAsync(item).ConfigureAwait(false);
                 continue;
+            }
 
-            await _mainWindowLifecycle.OpenTorrentFileAsync(file.Path).ConfigureAwait(false);
+            if (Path.GetExtension(item).Equals(".torrent", StringComparison.OrdinalIgnoreCase))
+            {
+                await _mainWindowLifecycle.OpenTorrentFileAsync(item).ConfigureAwait(false);
+            }
         }
     }
+
+    private static async Task<List<string>> ExtractActivationItemsAsync(AppActivationArguments args)
+    {
+        var result = new List<string>();
+
+        if (args.Kind == ExtendedActivationKind.File &&
+            args.Data is FileActivatedEventArgs fileArgs)
+        {
+            foreach (var item in fileArgs.Files)
+            {
+                if (item is StorageFile file &&
+                    file.FileType.Equals(".torrent", StringComparison.OrdinalIgnoreCase))
+                {
+                    result.Add(file.Path);
+                }
+            }
+
+            return result;
+        }
+
+        // Для Inno/unpackaged-сценария:
+        // Windows запускает приложение как NiTorrent.App.exe "%1".
+        foreach (var arg in Environment.GetCommandLineArgs().Skip(1))
+        {
+            if (IsTorrentActivationArgument(arg))
+                result.Add(arg);
+        }
+
+        return result;
+    }
+
+    private static bool IsTorrentActivationArgument(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        if (value.StartsWith("magnet:", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return Path.GetExtension(value).Equals(".torrent", StringComparison.OrdinalIgnoreCase);
+    }
+
+    
 }

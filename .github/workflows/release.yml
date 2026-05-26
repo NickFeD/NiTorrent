@@ -1,0 +1,173 @@
+name: Build NiTorrent Release
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'src/**'
+      - 'installer/**'
+      - '.github/workflows/release.yml'
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  PROJECT_PATH: src/NiTorrent.App/NiTorrent.App.csproj
+  APP_NAME: NiTorrent
+  RUNTIME_IDENTIFIER: win-x64
+  PLATFORM: x64
+  PUBLISH_DIR: publish/win-x64
+  ZIP_OUTPUT_DIR: release-output
+  INSTALLER_OUTPUT_DIR: installer-output
+  INNO_SCRIPT_PATH: installer/NiTorrent.iss
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            10.x.x
+
+      - name: Read app version from csproj
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content "${{ env.PROJECT_PATH }}"
+
+          $version = $project.Project.PropertyGroup.Version |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -First 1
+
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Version was not found in ${{ env.PROJECT_PATH }}. Add <Version>1.0.0</Version> to the csproj."
+          }
+
+          $tag = "v$version"
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+
+          Write-Host "App version: $version"
+          Write-Host "Release tag: $tag"
+
+      - name: Check GitHub Release existence
+        id: release_check
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+
+          gh release view $tag 2>$null
+
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists. Skipping build and publish."
+            "exists=true" >> $env:GITHUB_OUTPUT
+          }
+          else {
+            Write-Host "Release $tag does not exist. Build will continue."
+            "exists=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Restore
+        if: steps.release_check.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          dotnet restore "${{ env.PROJECT_PATH }}"
+
+      - name: Publish unpackaged WinUI app
+        if: steps.release_check.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          dotnet publish "${{ env.PROJECT_PATH }}" `
+            -c Release `
+            -r "${{ env.RUNTIME_IDENTIFIER }}" `
+            --self-contained true `
+            -p:Platform="${{ env.PLATFORM }}" `
+            -p:WindowsPackageType=None `
+            -p:WindowsAppSDKSelfContained=true `
+            -p:PublishSingleFile=false `
+            -p:PublishTrimmed=false `
+            -p:PublishAot=false `
+            -o "${{ env.PUBLISH_DIR }}"
+
+      - name: Create zip archive
+        if: steps.release_check.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "${{ env.ZIP_OUTPUT_DIR }}"
+
+          $version = "${{ steps.version.outputs.version }}"
+          $zipPath = "${{ env.ZIP_OUTPUT_DIR }}\${{ env.APP_NAME }}-v$version-${{ env.RUNTIME_IDENTIFIER }}.zip"
+
+          if (Test-Path $zipPath) {
+            Remove-Item $zipPath -Force
+          }
+
+          Compress-Archive `
+            -Path "${{ env.PUBLISH_DIR }}\*" `
+            -DestinationPath $zipPath `
+            -Force
+
+          Write-Host "Created zip: $zipPath"
+
+      - name: Install Inno Setup
+        if: steps.release_check.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+
+      - name: Build Inno Setup installer
+        if: steps.release_check.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${{ env.INNO_SCRIPT_PATH }}")) {
+            throw "Inno Setup script was not found: ${{ env.INNO_SCRIPT_PATH }}"
+          }
+
+          New-Item -ItemType Directory -Force -Path "${{ env.INSTALLER_OUTPUT_DIR }}"
+
+          $env:APP_VERSION = "${{ steps.version.outputs.version }}"
+          $env:PUBLISH_DIR = "${{ github.workspace }}\${{ env.PUBLISH_DIR }}"
+          $env:INSTALLER_OUTPUT_DIR = "${{ github.workspace }}\${{ env.INSTALLER_OUTPUT_DIR }}"
+
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "${{ env.INNO_SCRIPT_PATH }}"
+
+      - name: Create GitHub Release
+        if: steps.release_check.outputs.exists == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ steps.version.outputs.tag }}"
+          $version = "${{ steps.version.outputs.version }}"
+
+          $zip = "${{ env.ZIP_OUTPUT_DIR }}\${{ env.APP_NAME }}-v$version-${{ env.RUNTIME_IDENTIFIER }}.zip"
+          $installer = "${{ env.INSTALLER_OUTPUT_DIR }}\${{ env.APP_NAME }}-Setup-v$version-x64.exe"
+
+          if (-not (Test-Path $zip)) {
+            throw "Zip artifact was not found: $zip"
+          }
+
+          if (-not (Test-Path $installer)) {
+            throw "Installer artifact was not found: $installer"
+          }
+
+          gh release create $tag `
+            $zip `
+            $installer `
+            --title $tag `
+            --notes "NiTorrent release $tag" `
+            --target "${{ github.sha }}"

@@ -43,6 +43,21 @@ public sealed partial class MainWindow : WindowEx
         AutoSuggestBoxHelper.OnITitleBarAutoSuggestBoxQuerySubmittedEvent(sender, args, NavFrame);
     }
 
+    public void OpenMagnetLinkFromActivation(string magnetLink)
+    {
+        if (string.IsNullOrWhiteSpace(magnetLink))
+            return;
+
+        if (NavFrame.Content is not TorrentPage)
+            NavFrame.Navigate(typeof(TorrentPage));
+
+        if (NavFrame.Content is TorrentPage torrentPage)
+        {
+            // Тут нужен твой метод во ViewModel/use case.
+            _ = torrentPage.ViewModel.AddMagnet(magnetLink, CancellationToken.None);
+        }
+    }
+
     public void OpenTorrentFileFromActivation(string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))

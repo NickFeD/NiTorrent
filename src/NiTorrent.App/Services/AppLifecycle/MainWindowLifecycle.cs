@@ -92,6 +92,21 @@ public sealed partial class MainWindowLifecycle(
             window.OpenTorrentFileFromActivation(filePath);
         });
 
+
+    public Task OpenMagnetLinkAsync(string magnetLink)
+        => _dispatcher.EnqueueAsync(() =>
+        {
+            EnsureWindowCreated();
+
+            var window = _window!;
+
+            _trayService.SetVisible(false);
+            window.Show();
+            window.Activate();
+
+            window.OpenMagnetLinkFromActivation(magnetLink);
+        });
+
     private void InitializeTray()
     {
         if (_trayInitialized)
