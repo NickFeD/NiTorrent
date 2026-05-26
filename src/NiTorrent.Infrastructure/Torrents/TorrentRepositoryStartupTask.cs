@@ -10,7 +10,7 @@ internal class TorrentRepositoryStartupTask(ITorrentRepository torrentRepository
 {
     public StartupStage Stage => StartupStage.Critical;
 
-    public int Order => 999;
+    public int Order => 1000;
 
     public bool CanRunInParallel => false;
 

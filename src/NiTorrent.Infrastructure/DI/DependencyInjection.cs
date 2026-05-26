@@ -39,8 +39,6 @@ public static class DependencyInjection
 
             return JsonSettings.Load<AppJsonSettings>(path);
         });
-
-        services.AddTransient<IAppStartupTask, TorrentEngineStartupTask>();
         return services;
     }
 }

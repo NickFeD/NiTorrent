@@ -36,7 +36,7 @@ public sealed partial class TorrentPage : Page
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
-        => _ = ViewModel.TorrentLoading(CancellationToken.None);
+        => ViewModel.TorrentLoading(CancellationToken.None);
     private void OnUnloaded(object sender, RoutedEventArgs e)
         => ViewModel.TorrentUnloaded();
 

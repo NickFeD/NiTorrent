@@ -47,7 +47,7 @@ public sealed class AppStartupService(
     {
         try
         {
-            await _engineSettingsService.InitializeAsync(ct);
+            //await _engineSettingsService.InitializeAsync(ct);
             //await _restoreWorkflow.ExecuteAsync().ConfigureAwait(false);
         }
         catch (Exception ex)
