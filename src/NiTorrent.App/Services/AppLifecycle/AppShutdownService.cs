@@ -1,12 +1,19 @@
-using Microsoft.Extensions.Hosting;
 using NiTorrent.Presentation.Abstractions;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
-public sealed class AppShutdownService(IHostApplicationLifetime applicationLifetime) : IAppShutdownService
+public sealed class AppShutdownService : IAppShutdownService
 {
-    private readonly IHostApplicationLifetime _applicationLifetime = applicationLifetime;
+    private Func<Task>? _shutdownAsync;
+
+    public void Initialize(Func<Task> shutdownAsync)
+        => _shutdownAsync = shutdownAsync ?? throw new ArgumentNullException(nameof(shutdownAsync));
 
     public void RequestShutdown()
-        => _applicationLifetime.StopApplication();
+    {
+        var shutdownAsync = _shutdownAsync
+            ?? throw new InvalidOperationException("Application shutdown pipeline is not initialized.");
+
+        _ = shutdownAsync();
+    }
 }

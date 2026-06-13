@@ -21,7 +21,9 @@ public static class DependencyInjection
         ;
         services.AddSingleton<ITorrentRuntimeStatusProvider, TorrentRuntimeStatusProvider>();
         services.AddSingleton<ITorrentRepository, JsonTorrentRepository>();
-        services.AddSingleton<ITorrentRuntimeStateSource, InMemoryTorrentRuntimeStateSource>();
+        services.AddSingleton<InMemoryTorrentRuntimeStateSource>();
+        services.AddSingleton<ITorrentRuntimeStateSource>(sp => sp.GetRequiredService<InMemoryTorrentRuntimeStateSource>());
+        services.AddSingleton<IAppShutdownTask>(sp => sp.GetRequiredService<InMemoryTorrentRuntimeStateSource>());
         services.AddSingleton<ITorrentRuntimeGateway, TorrentRuntimeGateway>();
         services.AddSingleton<ITorrentDownloadFactory, TorrentDownloadFactory>();
         services.AddSingleton<ITorrentMetadataProvider, TorrentMetadataProvider>();

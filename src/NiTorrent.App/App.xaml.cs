@@ -45,7 +45,7 @@ public partial class App : WinUIApplication
             .Build();
 
         Services = _host.Services;
-        RegisterHostShutdown();
+        GetService<AppShutdownService>().Initialize(ShutdownAsync);
         InitializeComponent();
     }
 
@@ -88,7 +88,8 @@ public partial class App : WinUIApplication
         services.AddSingleton<IJsonNavigationService, JsonNavigationService>();
         services.AddSingleton<ITorrentPreviewService, TorrentPreviewDialogService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
-        services.AddSingleton<IAppShutdownService, AppShutdownService>();
+        services.AddSingleton<AppShutdownService>();
+        services.AddSingleton<IAppShutdownService>(sp => sp.GetRequiredService<AppShutdownService>());
         services.AddSingleton<AppLifecycleCoordinator>();
         services.AddHostedService<AppHostLifecycleService>();
         services.AddTransient<IAppStartupTask, ContextMenuStartupTask>();
@@ -143,29 +144,25 @@ public partial class App : WinUIApplication
         await GetService<IAppActivationService>().HandleAsync(args);
     }
 
-    private void RegisterHostShutdown()
-    {
-        var lifetime = Services.GetRequiredService<IHostApplicationLifetime>();
-        lifetime.ApplicationStopping.Register(() => _ = StopHostAndExitAsync());
-    }
-
-    private async Task StopHostAndExitAsync()
+    private async Task ShutdownAsync()
     {
         if (Interlocked.Exchange(ref _shutdownStarted, 1) == 1)
             return;
 
-        var dispatcher = GetService<IUiDispatcher>();
         var logger = Services.GetService<ILogger<App>>();
-        var shellLifecycle = GetService<IAppShellLifecycle>();
 
         try
         {
-            await _host.StopAsync();
+            if (_startupTask is not null)
+                await _startupTask;
         }
         catch (Exception ex)
         {
-            logger?.LogError(ex, "Host shutdown failed");
+            logger?.LogError(ex, "Application startup failed before shutdown");
         }
+
+        var dispatcher = GetService<IUiDispatcher>();
+        var shellLifecycle = GetService<IAppShellLifecycle>();
 
         try
         {
@@ -174,6 +171,15 @@ public partial class App : WinUIApplication
         catch (Exception ex)
         {
             logger?.LogError(ex, "Shell shutdown failed");
+        }
+
+        try
+        {
+            await _host.StopAsync();
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Host shutdown failed");
         }
         finally
         {

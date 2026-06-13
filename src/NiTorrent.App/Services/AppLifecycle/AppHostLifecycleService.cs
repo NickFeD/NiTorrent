@@ -35,6 +35,7 @@ public sealed class AppHostLifecycleService(
     public async Task StoppingAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Stopping application services");
+        await WaitForBackgroundStartupAsync(cancellationToken).ConfigureAwait(false);
         await _lifecycleCoordinator.StopAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -57,5 +58,14 @@ public sealed class AppHostLifecycleService(
         {
             _logger.LogError(ex, "Background application startup failed");
         }
+    }
+
+    private async Task WaitForBackgroundStartupAsync(CancellationToken ct)
+    {
+        var backgroundStartup = _backgroundStartup;
+        if (backgroundStartup is null)
+            return;
+
+        await backgroundStartup.WaitAsync(ct).ConfigureAwait(false);
     }
 }

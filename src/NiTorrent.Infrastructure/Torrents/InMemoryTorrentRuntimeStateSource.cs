@@ -3,7 +3,7 @@ using NiTorrent.Application.Torrents.DTo;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvider runtimeStatusProvider) : ITorrentRuntimeStateSource, IDisposable
+public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvider runtimeStatusProvider) : ITorrentRuntimeStateSource, NiTorrent.Application.IAppShutdownTask, IDisposable
 {
     private readonly ITorrentRuntimeStatusProvider _provider = runtimeStatusProvider;
 
@@ -13,7 +13,11 @@ public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvi
     private event Func<TorrentRuntimeStateChangedEventArgs, Task>? _changed;
     private int _subscriberCount;
 
+    private readonly object _pollingGate = new();
     private CancellationTokenSource? _cts;
+    private Task? _monitorTask;
+
+    public int Order => 1000;
 
     public bool TryGet(Guid torrentId, out TorrentRuntimeStatus status)
         => _statuses.TryGetValue(torrentId, out status!);
@@ -90,22 +94,53 @@ public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvi
         }
     }
 
+    public Task ExecuteAsync(CancellationToken ct)
+        => StopPollingAsync();
+
     private void StartPolling()
     {
-        _cts = new CancellationTokenSource();
-        _ = MonitorAsync(_cts.Token);
+        lock (_pollingGate)
+        {
+            if (_cts is not null)
+                return;
+
+            _cts = new CancellationTokenSource();
+            _monitorTask = MonitorAsync(_cts.Token);
+        }
     }
 
     private async Task StopPollingAsync()
     {
-        if (_cts is null)
+        CancellationTokenSource? cts;
+        Task? monitorTask;
+
+        lock (_pollingGate)
+        {
+            cts = _cts;
+            monitorTask = _monitorTask;
+            _cts = null;
+            _monitorTask = null;
+        }
+
+        if (cts is null)
             return;
 
-        _cts.Cancel();
+        try
+        {
+            cts.Cancel();
 
-
-        _cts.Dispose();
-        _cts = null;
+            if (monitorTask is not null)
+            {
+                await monitorTask.ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            cts.Dispose();
+        }
     }
 
     private async Task MonitorAsync(CancellationToken ct)
@@ -166,8 +201,5 @@ public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvi
         }
     }
     public void Dispose()
-    {
-        _cts?.Cancel();
-        _cts?.Dispose();
-    }
+        => StopPollingAsync().GetAwaiter().GetResult();
 }
