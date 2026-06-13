@@ -4,10 +4,10 @@ using NiTorrent.Application;
 namespace NiTorrent.App.Services.AppLifecycle;
 
 public sealed class ContextMenuStartupTask(
-    ContextMenuService menuService,
+    IServiceProvider services,
     ILogger<ContextMenuStartupTask> logger) : IAppStartupTask
 {
-    private readonly ContextMenuService _menuService = menuService;
+    private readonly IServiceProvider _services = services;
     private readonly ILogger<ContextMenuStartupTask> _logger = logger;
 
     public StartupStage Stage => StartupStage.Background;
@@ -20,6 +20,8 @@ public sealed class ContextMenuStartupTask(
     {
         if (!RuntimeHelper.IsPackaged())
             return;
+
+        var menuService = _services.GetRequiredService<ContextMenuService>();
 
         var menu = new ContextMenuItem
         {
@@ -34,7 +36,7 @@ public sealed class ContextMenuStartupTask(
             Exe = "NiTorrent.App.exe"
         };
 
-        await _menuService.SaveAsync(menu);
+        await menuService.SaveAsync(menu);
         _logger.LogInformation("Context menu registration updated");
     }
 }

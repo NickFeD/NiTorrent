@@ -9,11 +9,11 @@ public sealed class AppStorageService : IAppStorageService
 
     public AppStorageService()
     {
-        // packaged friendly, но не падаем, если нет package identity
+        // Keep app-owned files under LocalFolder; fall back for unpackaged runs without package identity.
         try
         {
             _localRoot = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-            _cacheRoot = Windows.Storage.ApplicationData.Current.LocalCacheFolder.Path;
+            _cacheRoot = Path.Combine(_localRoot, "Cache");
         }
         catch
         {
@@ -22,7 +22,7 @@ public sealed class AppStorageService : IAppStorageService
                 "NiTorrent");
 
             _localRoot = Path.Combine(baseDir, "LocalState");
-            _cacheRoot = Path.Combine(baseDir, "LocalCache");
+            _cacheRoot = Path.Combine(_localRoot, "Cache");
         }
     }
 

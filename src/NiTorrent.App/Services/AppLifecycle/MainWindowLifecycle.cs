@@ -23,6 +23,7 @@ public sealed partial class MainWindowLifecycle(
     private AppCloseBehavior _closeBehavior;
     private bool _allowClose;
     private bool _trayInitialized;
+    private bool _windowClosingHandlerAttached;
     private bool _disposed;
 
     public Window? CurrentWindow => _window;
@@ -69,6 +70,7 @@ public sealed partial class MainWindowLifecycle(
 
             _trayService.SetVisible(false);
             _allowClose = true;
+            DetachWindowClosingHandler();
             window.Close();
         });
 
@@ -152,6 +154,7 @@ public sealed partial class MainWindowLifecycle(
         window.Title = window.AppWindow.Title = ProcessInfoHelper.ProductNameAndVersion;
         window.AppWindow.SetIcon("Assets/AppIcon.ico");
         window.AppWindow.Closing += OnMainWindowClosing;
+        _windowClosingHandlerAttached = true;
 
         _themeService.Initialize(window);
         InitializeTray();
@@ -164,6 +167,18 @@ public sealed partial class MainWindowLifecycle(
     {
         if (_window is null)
             throw new InvalidOperationException("Main window is not initialized");
+    }
+
+    private void DetachWindowClosingHandler()
+    {
+        if (!_windowClosingHandlerAttached)
+            return;
+
+        var appWindow = _window?.AppWindow;
+        if (appWindow is not null)
+            appWindow.Closing -= OnMainWindowClosing;
+
+        _windowClosingHandlerAttached = false;
     }
 
     public void Dispose()
@@ -181,7 +196,7 @@ public sealed partial class MainWindowLifecycle(
             _trayInitialized = false;
         }
 
+        DetachWindowClosingHandler();
         _trayService.Dispose();
-        _window?.AppWindow.Closing -= OnMainWindowClosing;
     }
 }

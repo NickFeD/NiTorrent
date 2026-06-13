@@ -13,6 +13,7 @@ using NiTorrent.Infrastructure.DI;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using NiTorrent.Presentation.Features.Settings;
+using Windows.Storage;
 using WinUIApplication = Microsoft.UI.Xaml.Application;
 
 namespace NiTorrent.App;
@@ -50,16 +51,15 @@ public partial class App : WinUIApplication
 
     private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
     {
+        var storage = new AppStorageService();
+
         services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<IThemeSettingsService, ThemeSettingsService>();
+        services.AddSingleton(_ => ApplicationData.Current.LocalFolder);
         services.AddSingleton<ContextMenuService>();
-        services.AddSingleton<IAppStorageService, AppStorageService>();
+        services.AddSingleton<IAppStorageService>(storage);
 
-        var logsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "NiTorrent",
-            "Logs",
-            $"app-{DateTime.Now:yyyyMMdd}.log");
+        var logsPath = storage.GetLocalPath(Path.Combine("Logs", $"app-{DateTime.Now:yyyyMMdd}.log"));
 
         services.AddNiTorrentInfrastructure();
         services.AddNiTorrentPresentation();
