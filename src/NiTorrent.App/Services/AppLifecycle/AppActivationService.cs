@@ -11,23 +11,23 @@ public sealed class AppActivationService : IAppActivationService
 {
     private readonly IDialogService _dialogService;
     private readonly ILogger<AppActivationService> _logger;
-    private readonly MainWindowLifecycle _mainWindowLifecycle;
+    private readonly IAppShellLifecycle _shellLifecycle;
 
     public AppActivationService(
         IDialogService dialogService,
         ILogger<AppActivationService> logger,
-        MainWindowLifecycle mainWindowLifecycle)
+        IAppShellLifecycle shellLifecycle)
     {
         _dialogService = dialogService;
         _logger = logger;
-        _mainWindowLifecycle = mainWindowLifecycle;
+        _shellLifecycle = shellLifecycle;
     }
 
-    public async Task HandleAsync(AppActivationArguments args, Action showMainWindow, Action startBackgroundInitialization)
+    public async Task HandleAsync(AppActivationArguments args)
     {
         try
         {
-            await HandleCoreAsync(args, showMainWindow, startBackgroundInitialization).ConfigureAwait(false);
+            await HandleCoreAsync(args).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -44,31 +44,27 @@ public sealed class AppActivationService : IAppActivationService
         }
     }
 
-    private async Task HandleCoreAsync(
-    AppActivationArguments args,
-    Action showMainWindow,
-    Action startBackgroundInitialization)
+    private async Task HandleCoreAsync(AppActivationArguments args)
     {
         var activationItems = await ExtractActivationItemsAsync(args);
 
         if (activationItems.Count == 0)
             return;
 
-        startBackgroundInitialization();
-        showMainWindow();
+        await _shellLifecycle.ShowAsync().ConfigureAwait(false);
 
         foreach (var item in activationItems)
         {
             if (item.StartsWith("magnet:", StringComparison.OrdinalIgnoreCase))
             {
                 // TODO: здесь вызвать use case добавления magnet-ссылки
-                await _mainWindowLifecycle.OpenMagnetLinkAsync(item).ConfigureAwait(false);
+                await _shellLifecycle.OpenMagnetLinkAsync(item).ConfigureAwait(false);
                 continue;
             }
 
             if (Path.GetExtension(item).Equals(".torrent", StringComparison.OrdinalIgnoreCase))
             {
-                await _mainWindowLifecycle.OpenTorrentFileAsync(item).ConfigureAwait(false);
+                await _shellLifecycle.OpenTorrentFileAsync(item).ConfigureAwait(false);
             }
         }
     }
@@ -113,6 +109,4 @@ public sealed class AppActivationService : IAppActivationService
 
         return Path.GetExtension(value).Equals(".torrent", StringComparison.OrdinalIgnoreCase);
     }
-
-    
 }

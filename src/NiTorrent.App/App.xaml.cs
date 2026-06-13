@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
@@ -20,13 +20,11 @@ namespace NiTorrent.App;
 public partial class App : WinUIApplication
 {
     private readonly IHost _host;
-    private Task? _hostStartTask;
+    private Task? _startupTask;
+    private int _shutdownStarted;
 
     public new static App Current => (App)WinUIApplication.Current;
-    public static IHost Host => Current._host;
 
-    public static Window MainWindow = new Window();
-    public static IntPtr Hwnd => WinRT.Interop.WindowNative.GetWindowHandle(MainWindow);
     public IServiceProvider Services { get; }
     public IJsonNavigationService NavService => GetService<IJsonNavigationService>();
 
@@ -46,6 +44,7 @@ public partial class App : WinUIApplication
             .Build();
 
         Services = _host.Services;
+        RegisterHostShutdown();
         InitializeComponent();
     }
 
@@ -88,14 +87,17 @@ public partial class App : WinUIApplication
         services.AddSingleton<IUpdateService, DevWinUiUpdateService>();
         services.AddSingleton<IJsonNavigationService, JsonNavigationService>();
         services.AddSingleton<ITorrentPreviewService, TorrentPreviewDialogService>();
-        services.AddSingleton<IAppStartupService, AppStartupService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
+        services.AddSingleton<IAppShutdownService, AppShutdownService>();
+        services.AddSingleton<AppLifecycleCoordinator>();
+        services.AddHostedService<AppHostLifecycleService>();
+        services.AddTransient<IAppStartupTask, ContextMenuStartupTask>();
+        services.AddSingleton<MainWindowLifecycle>();
+        services.AddSingleton<IAppShellLifecycle>(sp => sp.GetRequiredService<MainWindowLifecycle>());
         services.AddSingleton<ThemeSettingsViewModel>();
         services.AddSingleton<NiTorrent.Application.Torrents.Queries.GetTorrentListQuery>();
         services.AddSingleton<GetTorrentListQuery>();
         services.AddSingleton<GetSettingsQuery>();
-        services.AddSingleton<AppCloseCoordinator>();
-        services.AddSingleton<IAppShutdownTask, HostStopShutdownTask>();
         services.AddTransient<RestoreSessionUseCase>();
         services.AddTransient<CreateTorrentDownloadUseCase>();
         services.AddTransient<PreviewTorrentContentsUseCase>();
@@ -103,11 +105,8 @@ public partial class App : WinUIApplication
         services.AddTransient<PauseTorrentUseCase>();
         services.AddTransient<DeleteTorrentUseCase>();
         services.AddTransient<UpdateSettingsUseCase>();
-        services.AddTransient<AppStartupCoordinator>();
         services.AddSingleton<AppSettingsService>();
         services.AddTransient<IAppStartupTask>(t => t.GetRequiredService<AppSettingsService>());
-        services.AddSingleton<MainWindowLifecycle>();
-        services.AddSingleton<IAppShutdownTask>(sp => sp.GetRequiredService<MainWindowLifecycle>());
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -120,32 +119,66 @@ public partial class App : WinUIApplication
             return;
         }
 
-        mainInstance.Activated += (_, e) => _ = GetService<IAppActivationService>()
-            .HandleAsync(e, ShowMainWindow, StartBackgroundInitialization);
+        mainInstance.Activated += (_, e) => _ = HandleActivationAsync(e);
 
+        _startupTask = StartApplicationAsync();
+        await _startupTask;
+        await HandleActivationAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
+    }
 
+    private async Task StartApplicationAsync()
+    {
         var holder = GetService<UiDispatcherHolder>();
         holder.Initialize(DispatcherQueue.GetForCurrentThread());
 
-        var appStartup = GetService<AppStartupCoordinator>();
-
-        //HACK : Start critical initialization before showing the main window to reduce time to interactive. This includes restoring the session which needs to be done before the main window is shown to avoid a visible delay after the main window is shown.
-        await appStartup.StartCriticalAsync(CancellationToken.None);
-
-        var window = GetService<MainWindowLifecycle>();
-        MainWindow = window.CreateAndInitialize();
-        window.Activate();
-
-        _ = appStartup.StartBackgroundAsync(CancellationToken.None);
-        _hostStartTask = _host.StartAsync();
+        await _host.StartAsync();
+        await GetService<IAppShellLifecycle>().StartAsync();
     }
 
-    private void StartBackgroundInitialization()
+    private async Task HandleActivationAsync(AppActivationArguments args)
     {
-        var startup = GetService<IAppStartupService>();
-        _hostStartTask ??= startup.StartHostAndShellAsync(_host);
+        if (_startupTask is not null)
+            await _startupTask;
+
+        await GetService<IAppActivationService>().HandleAsync(args);
     }
 
-    private void ShowMainWindow()
-        => _ = GetService<MainWindowLifecycle>().ShowAsync();
+    private void RegisterHostShutdown()
+    {
+        var lifetime = Services.GetRequiredService<IHostApplicationLifetime>();
+        lifetime.ApplicationStopping.Register(() => _ = StopHostAndExitAsync());
+    }
+
+    private async Task StopHostAndExitAsync()
+    {
+        if (Interlocked.Exchange(ref _shutdownStarted, 1) == 1)
+            return;
+
+        var dispatcher = GetService<IUiDispatcher>();
+        var logger = Services.GetService<ILogger<App>>();
+        var shellLifecycle = GetService<IAppShellLifecycle>();
+
+        try
+        {
+            await _host.StopAsync();
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Host shutdown failed");
+        }
+
+        try
+        {
+            await shellLifecycle.CloseAsync();
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Shell shutdown failed");
+        }
+        finally
+        {
+            _host.Dispose();
+            await dispatcher.EnqueueAsync(Exit);
+        }
+    }
 }
