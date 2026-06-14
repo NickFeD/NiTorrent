@@ -5,40 +5,42 @@ namespace NiTorrent.App.Views.Torrents;
 
 public sealed partial class TorrentSummaryCard : UserControl
 {
+    private bool _isInitialized;
+
     public static readonly DependencyProperty TitleProperty =
         DependencyProperty.Register(
             nameof(Title),
             typeof(string),
             typeof(TorrentSummaryCard),
-            new PropertyMetadata(string.Empty));
+            new PropertyMetadata(string.Empty, OnVisualPropertyChanged));
 
     public static readonly DependencyProperty ValueProperty =
         DependencyProperty.Register(
             nameof(Value),
             typeof(string),
             typeof(TorrentSummaryCard),
-            new PropertyMetadata(string.Empty));
+            new PropertyMetadata(string.Empty, OnVisualPropertyChanged));
 
     public static readonly DependencyProperty SubtitleProperty =
         DependencyProperty.Register(
             nameof(Subtitle),
             typeof(string),
             typeof(TorrentSummaryCard),
-            new PropertyMetadata(string.Empty));
+            new PropertyMetadata(string.Empty, OnVisualPropertyChanged));
 
     public static readonly DependencyProperty IconGlyphProperty =
         DependencyProperty.Register(
             nameof(IconGlyph),
             typeof(string),
             typeof(TorrentSummaryCard),
-            new PropertyMetadata(string.Empty));
+            new PropertyMetadata(string.Empty, OnVisualPropertyChanged));
 
     public static readonly DependencyProperty AccentBrushProperty =
         DependencyProperty.Register(
             nameof(AccentBrush),
             typeof(Brush),
             typeof(TorrentSummaryCard),
-            new PropertyMetadata(new SolidColorBrush(Colors.DodgerBlue)));
+            new PropertyMetadata(new SolidColorBrush(Colors.DodgerBlue), OnVisualPropertyChanged));
 
     public string Title
     {
@@ -73,5 +75,14 @@ public sealed partial class TorrentSummaryCard : UserControl
     public TorrentSummaryCard()
     {
         InitializeComponent();
+        _isInitialized = true;
+    }
+
+    private static void OnVisualPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is TorrentSummaryCard { _isInitialized: true } card)
+        {
+            card.Bindings.Update();
+        }
     }
 }

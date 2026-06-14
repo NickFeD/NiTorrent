@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <SolidColorBrush x:Key="TorrentBackgroundBrush" Color="#0F1519"/>
+    <SolidColorBrush x:Key="TorrentSurfaceBrush" Color="#CC222D34"/>
+    <SolidColorBrush x:Key="TorrentSurfaceStrongBrush" Color="#E627343D"/>
+    <SolidColorBrush x:Key="TorrentSurfaceHoverBrush" Color="#EA2E3D46"/>
+    <SolidColorBrush x:Key="TorrentSurfaceInsetBrush" Color="#6B121A1F"/>
+    <SolidColorBrush x:Key="TorrentStrokeBrush" Color="#18FFFFFF"/>
+    <SolidColorBrush x:Key="TorrentStrokeSoftBrush" Color="#0EFFFFFF"/>
+    <SolidColorBrush x:Key="TorrentStrokeFocusBrush" Color="#D149A6FF"/>
+    <SolidColorBrush x:Key="TorrentTextPrimaryBrush" Color="#F5F8FB"/>
+    <SolidColorBrush x:Key="TorrentTextSecondaryBrush" Color="#C7D1D8"/>
+    <SolidColorBrush x:Key="TorrentTextTertiaryBrush" Color="#93A3AD"/>
+    <SolidColorBrush x:Key="TorrentAccentBrush" Color="#4AA2FF"/>
+    <SolidColorBrush x:Key="TorrentAccentPressedBrush" Color="#2784E8"/>
+    <SolidColorBrush x:Key="TorrentAccentSoftBrush" Color="#264AA2FF"/>
+    <SolidColorBrush x:Key="TorrentPurpleBrush" Color="#A98CFF"/>
+    <SolidColorBrush x:Key="TorrentPurpleSoftBrush" Color="#2BA98CFF"/>
+    <SolidColorBrush x:Key="TorrentGreenBrush" Color="#43D166"/>
+    <SolidColorBrush x:Key="TorrentGreenSoftBrush" Color="#2B43D166"/>
+    <SolidColorBrush x:Key="TorrentOrangeBrush" Color="#FFAD4D"/>
+    <SolidColorBrush x:Key="TorrentOrangeSoftBrush" Color="#2BFFAD4D"/>
+    <SolidColorBrush x:Key="TorrentRedBrush" Color="#FF7474"/>
+    <SolidColorBrush x:Key="TorrentRedSoftBrush" Color="#2BFF7474"/>
+    <SolidColorBrush x:Key="TorrentNeutralStatusBrush" Color="#7D8A93"/>
+    <SolidColorBrush x:Key="TorrentNeutralStatusSoftBrush" Color="#2B7D8A93"/>
+    <SolidColorBrush x:Key="TorrentProgressTrackBrush" Color="#4793A3AD"/>
+
+    <Style x:Key="TorrentSurfaceBorderStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource TorrentSurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentStrokeBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+    </Style>
+
+    <Style x:Key="TorrentCommandBarSurfaceStyle" TargetType="Border">
+        <Setter Property="MinHeight" Value="40"/>
+        <Setter Property="Padding" Value="3"/>
+        <Setter Property="Background" Value="{StaticResource TorrentSurfaceInsetBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentStrokeSoftBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+    </Style>
+
+    <Style x:Key="TorrentCommandButtonStyle" TargetType="Button">
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="Padding" Value="9,0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Foreground" Value="{StaticResource TorrentTextSecondaryBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+    </Style>
+
+    <Style x:Key="TorrentPrimaryCommandButtonStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource TorrentCommandButtonStyle}">
+        <Setter Property="MinWidth" Value="104"/>
+        <Setter Property="Background" Value="{StaticResource TorrentAccentBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentStrokeFocusBrush}"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <Style x:Key="TorrentDangerCommandButtonStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource TorrentCommandButtonStyle}">
+        <Setter Property="Foreground" Value="{StaticResource TorrentRedBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentStrokeSoftBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentIconCommandButtonStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource TorrentCommandButtonStyle}">
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="Padding" Value="0"/>
+    </Style>
+
+    <Style x:Key="TorrentMetricCardStyle" TargetType="Border">
+        <Setter Property="MinHeight" Value="86"/>
+        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="Background" Value="{StaticResource TorrentSurfaceStrongBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentStrokeBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="10"/>
+    </Style>
+
+    <Style x:Key="TorrentMutedTextBlockStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TorrentTextSecondaryBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentTertiaryTextBlockStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource TorrentTextTertiaryBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentRowContainerStyle" TargetType="Border">
+        <Setter Property="MinHeight" Value="64"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="Background" Value="#A828353D"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+    </Style>
+
+    <Style x:Key="TorrentRowSelectedContainerStyle"
+           TargetType="Border"
+           BasedOn="{StaticResource TorrentRowContainerStyle}">
+        <Setter Property="Background" Value="{StaticResource TorrentAccentSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentStrokeFocusBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentFileIconStyle" TargetType="Border">
+        <Setter Property="Width" Value="38"/>
+        <Setter Property="Height" Value="38"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Background" Value="{StaticResource TorrentAccentBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentBadgeBaseStyle" TargetType="Border">
+        <Setter Property="MinHeight" Value="22"/>
+        <Setter Property="Padding" Value="7,0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Background" Value="{StaticResource TorrentAccentSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentAccentSoftBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentBadgeDownloadingStyle"
+           TargetType="Border"
+           BasedOn="{StaticResource TorrentBadgeBaseStyle}">
+        <Setter Property="Background" Value="{StaticResource TorrentAccentSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentAccentSoftBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentBadgeCheckingStyle"
+           TargetType="Border"
+           BasedOn="{StaticResource TorrentBadgeBaseStyle}">
+        <Setter Property="Background" Value="{StaticResource TorrentPurpleSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentPurpleSoftBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentBadgePausedStyle"
+           TargetType="Border"
+           BasedOn="{StaticResource TorrentBadgeBaseStyle}">
+        <Setter Property="Background" Value="{StaticResource TorrentOrangeSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentOrangeSoftBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentBadgeCompletedStyle"
+           TargetType="Border"
+           BasedOn="{StaticResource TorrentBadgeBaseStyle}">
+        <Setter Property="Background" Value="{StaticResource TorrentGreenSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentGreenSoftBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentBadgeErrorStyle"
+           TargetType="Border"
+           BasedOn="{StaticResource TorrentBadgeBaseStyle}">
+        <Setter Property="Background" Value="{StaticResource TorrentRedSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentRedSoftBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentBadgeNeutralStyle"
+           TargetType="Border"
+           BasedOn="{StaticResource TorrentBadgeBaseStyle}">
+        <Setter Property="Background" Value="{StaticResource TorrentNeutralStatusSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource TorrentNeutralStatusSoftBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentProgressBarStyle" TargetType="ProgressBar">
+        <Setter Property="Height" Value="8"/>
+        <Setter Property="MinHeight" Value="8"/>
+        <Setter Property="Foreground" Value="{StaticResource TorrentAccentBrush}"/>
+        <Setter Property="Background" Value="{StaticResource TorrentProgressTrackBrush}"/>
+    </Style>
+
+    <Style x:Key="TorrentMenuButtonStyle"
+           TargetType="Button"
+           BasedOn="{StaticResource TorrentIconCommandButtonStyle}">
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Foreground" Value="{StaticResource TorrentTextSecondaryBrush}"/>
+        <Setter Property="FontSize" Value="16"/>
+    </Style>
+
+    <Style x:Key="TorrentDetailsPanelStyle"
+           TargetType="Border"
+           BasedOn="{StaticResource TorrentSurfaceBorderStyle}">
+        <Setter Property="Padding" Value="14"/>
+    </Style>
+
+    <Style x:Key="TorrentInfoLabelTextBlockStyle"
+           TargetType="TextBlock"
+           BasedOn="{StaticResource TorrentMutedTextBlockStyle}">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="MaxLines" Value="1"/>
+    </Style>
+
+    <Style x:Key="TorrentInfoValueTextBlockStyle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="#DCE6EC"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="TextAlignment" Value="Right"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="MaxLines" Value="1"/>
+    </Style>
+</ResourceDictionary>

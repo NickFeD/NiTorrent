@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="NiTorrent.App.Views.Torrents.TorrentItemView"
+    x:Name="Root"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:converters="using:NiTorrent.App.Converters"
+    SizeChanged="Root_SizeChanged">
+
+    <UserControl.Resources>
+        <converters:TorrentStateToBadgeStyleConverter x:Key="TorrentStateToBadgeStyleConverter"/>
+    </UserControl.Resources>
+
+    <Border Style="{StaticResource TorrentRowContainerStyle}">
+        <Border.ContextFlyout>
+            <MenuFlyout>
+                <MenuFlyoutItem Text="Старт"
+                                Icon="Play"
+                                Command="{x:Bind Torrent.StartCommand, Mode=OneWay}"/>
+                <MenuFlyoutItem Text="Пауза"
+                                Icon="Pause"
+                                Command="{x:Bind Torrent.PauseCommand, Mode=OneWay}"/>
+                <MenuFlyoutItem Text="Папка"
+                                Icon="Folder"
+                                Command="{x:Bind Torrent.OpenFolderCommand, Mode=OneWay}"/>
+                <MenuFlyoutItem Text="Подробнее"
+                                Icon="PreviewLink"
+                                Click="Details_Click"/>
+                <MenuFlyoutSubItem Text="Удалить"
+                                   Icon="Delete">
+                    <MenuFlyoutItem Text="Удалить"
+                                    Icon="Delete"
+                                    Command="{x:Bind Torrent.RemoveCommand, Mode=OneWay}"/>
+                    <MenuFlyoutItem Text="Удалить со скачанным"
+                                    Icon="Delete"
+                                    Command="{x:Bind Torrent.RemoveWithDataCommand, Mode=OneWay}"/>
+                </MenuFlyoutSubItem>
+            </MenuFlyout>
+        </Border.ContextFlyout>
+
+        <Grid ColumnSpacing="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition x:Name="SizeColumn" Width="80"/>
+                <ColumnDefinition x:Name="StateColumn" Width="102"/>
+                <ColumnDefinition x:Name="DownloadColumn" Width="96"/>
+                <ColumnDefinition x:Name="UploadColumn" Width="96"/>
+                <ColumnDefinition x:Name="ProgressColumn" Width="102"/>
+                <ColumnDefinition Width="32"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0"
+                  ColumnSpacing="8"
+                  MinWidth="0"
+                  VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="38"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Style="{StaticResource TorrentFileIconStyle}"
+                        Background="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}">
+                    <FontIcon Glyph="&#xE7C3;"
+                              FontFamily="Segoe Fluent Icons"
+                              FontSize="17"
+                              Foreground="White"/>
+                </Border>
+
+                <StackPanel Grid.Column="1"
+                            MinWidth="0"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind Torrent.Name, Mode=OneWay}"
+                               Foreground="{StaticResource TorrentTextPrimaryBrush}"
+                               FontSize="13"
+                               FontWeight="Bold"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"/>
+
+                    <Border Margin="0,5,0,0"
+                            HorizontalAlignment="Left"
+                            Style="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <FontIcon Glyph="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}"
+                                      FontFamily="Segoe Fluent Icons"
+                                      FontSize="12"
+                                      Foreground="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}"/>
+                            <TextBlock Text="{x:Bind Torrent.StateText, Mode=OneWay}"
+                                       Foreground="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxLines="1"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Grid.Column="1"
+                       Text="{x:Bind Torrent.Size, Mode=OneWay}"
+                       Style="{StaticResource TorrentMutedTextBlockStyle}"
+                       FontSize="13"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       MaxLines="1"/>
+
+            <TextBlock x:Name="StateTextBlock"
+                       Grid.Column="2"
+                       Text="{x:Bind Torrent.StateText, Mode=OneWay}"
+                       Style="{StaticResource TorrentMutedTextBlockStyle}"
+                       FontSize="13"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       MaxLines="1"/>
+
+            <TextBlock x:Name="DownloadTextBlock"
+                       Grid.Column="3"
+                       Text="{x:Bind Torrent.DownloadSpeed, Mode=OneWay}"
+                       Foreground="#D9E3E9"
+                       FontSize="13"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       MaxLines="1"/>
+
+            <TextBlock x:Name="UploadTextBlock"
+                       Grid.Column="4"
+                       Text="{x:Bind Torrent.UploadSpeed, Mode=OneWay}"
+                       Foreground="#D9E3E9"
+                       FontSize="13"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       MaxLines="1"/>
+
+            <Grid Grid.Column="5"
+                  RowSpacing="6"
+                  VerticalAlignment="Center">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="{x:Bind Torrent.ProgressText, Mode=OneWay}"
+                           Foreground="#D9E3E9"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           TextTrimming="CharacterEllipsis"
+                           MaxLines="1"/>
+                <ProgressBar Grid.Row="1"
+                             Style="{StaticResource TorrentProgressBarStyle}"
+                             Value="{x:Bind Torrent.Progress, Mode=OneWay}"
+                             Minimum="0"
+                             Maximum="100"
+                             Foreground="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}"/>
+            </Grid>
+
+            <Button Grid.Column="6"
+                    Style="{StaticResource TorrentMenuButtonStyle}">
+                <Button.Flyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="Старт"
+                                        Icon="Play"
+                                        Command="{x:Bind Torrent.StartCommand, Mode=OneWay}"/>
+                        <MenuFlyoutItem Text="Пауза"
+                                        Icon="Pause"
+                                        Command="{x:Bind Torrent.PauseCommand, Mode=OneWay}"/>
+                        <MenuFlyoutItem Text="Папка"
+                                        Icon="Folder"
+                                        Command="{x:Bind Torrent.OpenFolderCommand, Mode=OneWay}"/>
+                        <MenuFlyoutItem Text="Подробнее"
+                                        Icon="PreviewLink"
+                                        Click="Details_Click"/>
+                        <MenuFlyoutSubItem Text="Удалить"
+                                           Icon="Delete">
+                            <MenuFlyoutItem Text="Удалить"
+                                            Icon="Delete"
+                                            Command="{x:Bind Torrent.RemoveCommand, Mode=OneWay}"/>
+                            <MenuFlyoutItem Text="Удалить со скачанным"
+                                            Icon="Delete"
+                                            Command="{x:Bind Torrent.RemoveWithDataCommand, Mode=OneWay}"/>
+                        </MenuFlyoutSubItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+                <FontIcon Glyph="&#xE712;"
+                          FontFamily="Segoe Fluent Icons"
+                          FontSize="16"/>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

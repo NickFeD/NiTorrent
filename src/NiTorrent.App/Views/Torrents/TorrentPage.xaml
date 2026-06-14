@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="NiTorrent.App.Views.Torrents.TorrentPage"
     x:Name="Root"
@@ -12,62 +12,41 @@
 
     <Page.Resources>
         <ResourceDictionary>
-            <converters:TorrentStateToBadgeStyleConverter x:Key="TorrentStateToBadgeStyleConverter"/>
             <converters:BooleanToVisibilityConverter x:Key="ShowWhenTrueConverter"/>
 
-            <SolidColorBrush x:Key="TorrentPageBackgroundBrush" Color="#151C22"/>
-            <SolidColorBrush x:Key="TorrentSurfaceBrush" Color="#20272E"/>
-            <SolidColorBrush x:Key="TorrentSurfaceElevatedBrush" Color="#263039"/>
-            <SolidColorBrush x:Key="TorrentSurfaceSoftBrush" Color="#1B2229"/>
-            <SolidColorBrush x:Key="TorrentStrokeBrush" Color="#33414C"/>
-            <SolidColorBrush x:Key="TorrentStrokeSoftBrush" Color="#26333D"/>
-            <SolidColorBrush x:Key="TorrentMutedTextBrush" Color="#B4C0CB"/>
-            <SolidColorBrush x:Key="TorrentAccentBlueBrush" Color="#4C9AFF"/>
-            <SolidColorBrush x:Key="TorrentStatusGreenBrush" Color="#39D66D"/>
-            <SolidColorBrush x:Key="TorrentStatusOrangeBrush" Color="#F5A342"/>
-            <SolidColorBrush x:Key="TorrentStatusPurpleBrush" Color="#9B7CFF"/>
-            <SolidColorBrush x:Key="TorrentDangerBrush" Color="#FF5A5F"/>
-            <SolidColorBrush x:Key="TorrentDangerSoftBrush" Color="#24FF5A5F"/>
-
-            <Style x:Key="TorrentPanelBorderStyle" TargetType="Border">
-                <Setter Property="Background" Value="{StaticResource TorrentSurfaceBrush}"/>
-                <Setter Property="BorderBrush" Value="{StaticResource TorrentStrokeBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="12"/>
+            <Style x:Key="TorrentPageHeaderTextStyle" TargetType="TextBlock">
+                <Setter Property="Foreground" Value="{StaticResource TorrentTextPrimaryBrush}"/>
+                <Setter Property="FontSize" Value="20"/>
+                <Setter Property="FontWeight" Value="Bold"/>
             </Style>
 
-            <Style x:Key="TorrentMetricTileStyle" TargetType="Border">
-                <Setter Property="Background" Value="{StaticResource TorrentSurfaceSoftBrush}"/>
-                <Setter Property="BorderBrush" Value="{StaticResource TorrentStrokeSoftBrush}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="8"/>
-                <Setter Property="Padding" Value="12"/>
+            <Style x:Key="TorrentTableHeaderTextStyle"
+                   TargetType="TextBlock"
+                   BasedOn="{StaticResource TorrentMutedTextBlockStyle}">
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                <Setter Property="MaxLines" Value="1"/>
             </Style>
-
-            <Style x:Key="TorrentMutedTextStyle" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{StaticResource TorrentMutedTextBrush}"/>
-                <Setter Property="Opacity" Value="0.82"/>
-            </Style>
-
         </ResourceDictionary>
     </Page.Resources>
 
     <Grid x:Name="LayoutRoot"
-          Padding="24"
-          RowSpacing="14"
-          Background="{StaticResource TorrentPageBackgroundBrush}"
+          Padding="10"
+          RowSpacing="10"
+          Background="{StaticResource TorrentBackgroundBrush}"
           SizeChanged="LayoutRoot_SizeChanged">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition x:Name="TorrentSummaryRow"
-                           Height="134"
-                           MinHeight="118"
-                           MaxHeight="168"/>
-            <RowDefinition Height="10"/>
+                           Height="86"
+                           MinHeight="86"
+                           MaxHeight="112"/>
+            <RowDefinition Height="0"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- TeachingTip -->
         <TeachingTip x:Name="MagnetTip"
                      Title="Добавить Magnet ссылку"
                      IsLightDismissEnabled="True"
@@ -75,7 +54,7 @@
                      ShouldConstrainToRootBounds="True">
             <StackPanel Spacing="12" Width="320">
                 <TextBox x:Name="MagnetInput"
-                         PlaceholderText="Вставьте Magnet ссылку…"
+                         PlaceholderText="Вставьте Magnet ссылку..."
                          AcceptsReturn="False"/>
 
                 <StackPanel Orientation="Horizontal"
@@ -87,112 +66,154 @@
             </StackPanel>
         </TeachingTip>
 
-        <Grid x:Name="HeaderGrid"
-              Grid.Row="0"
-              ColumnSpacing="24">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <Border Grid.Row="0"
+                Style="{StaticResource TorrentSurfaceBorderStyle}"
+                MinHeight="66"
+                Padding="12,10">
+            <Grid x:Name="HeaderGrid"
+                  ColumnSpacing="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" Spacing="6">
-                <TextBlock Text="Торренты"
-                           FontSize="30"
-                           FontWeight="SemiBold"/>
-                <StackPanel Orientation="Horizontal"
-                            Spacing="8"
-                            Opacity="0.78">
-                    <TextBlock Text="Всего:"/>
-                    <TextBlock Text="{x:Bind ViewModel.Torrents.Count, Mode=OneWay}"/>
-                    <TextBlock Text="•"/>
-                    <TextBlock Text="{x:Bind ViewModel.TotalDownloadSpeedDisplay, Mode=OneWay}"/>
-                    <TextBlock Text="•"/>
-                    <TextBlock Text="{x:Bind ViewModel.TotalUploadSpeedDisplay, Mode=OneWay}"/>
+                <StackPanel Grid.Column="0"
+                            Spacing="3"
+                            VerticalAlignment="Center">
+                    <TextBlock Text="Торренты"
+                               Style="{StaticResource TorrentPageHeaderTextStyle}"/>
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="8">
+                        <TextBlock Text="Всего:"
+                                   Style="{StaticResource TorrentMutedTextBlockStyle}"
+                                   FontSize="13"/>
+                        <TextBlock Text="{x:Bind ViewModel.TotalTorrentCount, Mode=OneWay}"
+                                   Style="{StaticResource TorrentMutedTextBlockStyle}"
+                                   FontSize="13"/>
+                        <TextBlock Text="•"
+                                   Style="{StaticResource TorrentTertiaryTextBlockStyle}"
+                                   FontSize="13"/>
+                        <TextBlock Text="Активных:"
+                                   Style="{StaticResource TorrentMutedTextBlockStyle}"
+                                   FontSize="13"/>
+                        <TextBlock Text="{x:Bind ViewModel.ActiveTorrentCount, Mode=OneWay}"
+                                   Style="{StaticResource TorrentMutedTextBlockStyle}"
+                                   FontSize="13"/>
+                        <TextBlock Text="•"
+                                   Style="{StaticResource TorrentTertiaryTextBlockStyle}"
+                                   FontSize="13"/>
+                        <TextBlock Text="{x:Bind ViewModel.TotalDownloadSpeedDisplay, Mode=OneWay}"
+                                   Style="{StaticResource TorrentMutedTextBlockStyle}"
+                                   FontSize="13"/>
+                        <TextBlock Text="•"
+                                   Style="{StaticResource TorrentTertiaryTextBlockStyle}"
+                                   FontSize="13"/>
+                        <TextBlock Text="{x:Bind ViewModel.TotalUploadSpeedDisplay, Mode=OneWay}"
+                                   Style="{StaticResource TorrentMutedTextBlockStyle}"
+                                   FontSize="13"/>
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
 
-            <StackPanel x:Name="ToolbarPanel"
+                <Border x:Name="ToolbarSurface"
                         Grid.Column="1"
-                        Orientation="Horizontal"
-                        HorizontalAlignment="Right"
-                        Spacing="10"
+                        Style="{StaticResource TorrentCommandBarSurfaceStyle}"
                         VerticalAlignment="Center">
-                <Button MinWidth="132"
-                        Padding="16,8"
-                        Style="{StaticResource AccentButtonStyle}">
-                    <Button.Flyout>
-                        <MenuFlyout>
-                            <MenuFlyoutItem Text="Добавить .torrent файл"
-                                            Icon="OpenFile"
-                                            Command="{x:Bind ViewModel.PickTorrentCommand}"/>
-                            <MenuFlyoutItem Text="Добавить Magnet ссылку"
-                                            Icon="Link"
-                                            Click="AddMagnet_Click"/>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE710;" FontSize="16"/>
-                        <TextBlock Text="Добавить"/>
-                    </StackPanel>
-                </Button>
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                                  HorizontalScrollMode="Enabled"
+                                  VerticalScrollMode="Disabled"
+                                  VerticalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="ToolbarPanel"
+                                    Orientation="Horizontal"
+                                    Spacing="5">
+                            <Button Style="{StaticResource TorrentPrimaryCommandButtonStyle}">
+                                <Button.Flyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Добавить .torrent файл"
+                                                        Icon="OpenFile"
+                                                        Command="{x:Bind ViewModel.PickTorrentCommand}"/>
+                                        <MenuFlyoutItem Text="Добавить Magnet ссылку"
+                                                        Icon="Link"
+                                                        Click="AddMagnet_Click"/>
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            Spacing="6">
+                                    <FontIcon Glyph="&#xE710;"
+                                              FontFamily="Segoe Fluent Icons"
+                                              FontSize="14"/>
+                                    <TextBlock Text="Добавить"/>
+                                </StackPanel>
+                            </Button>
 
-                <Button MinWidth="108"
-                        Padding="14,8"
-                        Command="{x:Bind ViewModel.SelectedTorrent.StartCommand, Mode=OneWay}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE768;" FontSize="16"/>
-                        <TextBlock Text="Старт"/>
-                    </StackPanel>
-                </Button>
+                            <Button Style="{StaticResource TorrentCommandButtonStyle}"
+                                    Command="{x:Bind ViewModel.SelectedTorrent.StartCommand, Mode=OneWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE768;"
+                                              FontFamily="Segoe Fluent Icons"
+                                              FontSize="14"/>
+                                    <TextBlock Text="Старт"/>
+                                </StackPanel>
+                            </Button>
 
-                <Button MinWidth="108"
-                        Padding="14,8"
-                        Command="{x:Bind ViewModel.SelectedTorrent.PauseCommand, Mode=OneWay}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE769;" FontSize="16"/>
-                        <TextBlock Text="Пауза"/>
-                    </StackPanel>
-                </Button>
+                            <Button Style="{StaticResource TorrentCommandButtonStyle}"
+                                    Command="{x:Bind ViewModel.SelectedTorrent.PauseCommand, Mode=OneWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE769;"
+                                              FontFamily="Segoe Fluent Icons"
+                                              FontSize="14"/>
+                                    <TextBlock Text="Пауза"/>
+                                </StackPanel>
+                            </Button>
 
-                <Button MinWidth="108"
-                        Padding="14,8"
-                        Command="{x:Bind ViewModel.SelectedTorrent.OpenFolderCommand, Mode=OneWay}">
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE8B7;" FontSize="16"/>
-                        <TextBlock Text="Папка"/>
-                    </StackPanel>
-                </Button>
+                            <Button Style="{StaticResource TorrentCommandButtonStyle}"
+                                    Command="{x:Bind ViewModel.SelectedTorrent.OpenFolderCommand, Mode=OneWay}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE8B7;"
+                                              FontFamily="Segoe Fluent Icons"
+                                              FontSize="14"/>
+                                    <TextBlock Text="Папка"/>
+                                </StackPanel>
+                            </Button>
 
-                <Button MinWidth="112"
-                        Padding="14,8"
-                        Foreground="{StaticResource TorrentDangerBrush}"
-                        BorderBrush="{StaticResource TorrentDangerSoftBrush}"
-                        IsEnabled="{x:Bind ViewModel.CanRemove, Mode=OneWay}">
-                    <Button.Flyout>
-                        <MenuFlyout>
-                            <MenuFlyoutItem Text="Удалить"
-                                            Icon="Delete"
-                                            Command="{x:Bind ViewModel.SelectedTorrent.RemoveCommand, Mode=OneWay}"/>
-                            <MenuFlyoutItem Text="Удалить со скачанным"
-                                            Icon="Delete"
-                                            Command="{x:Bind ViewModel.SelectedTorrent.RemoveWithDataCommand, Mode=OneWay}"/>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE74D;" FontSize="16"/>
-                        <TextBlock Text="Удалить"/>
-                    </StackPanel>
-                </Button>
-            </StackPanel>
-        </Grid>
+                            <Button Style="{StaticResource TorrentDangerCommandButtonStyle}"
+                                    IsEnabled="{x:Bind ViewModel.CanRemove, Mode=OneWay}">
+                                <Button.Flyout>
+                                    <MenuFlyout>
+                                        <MenuFlyoutItem Text="Удалить"
+                                                        Icon="Delete"
+                                                        Command="{x:Bind ViewModel.SelectedTorrent.RemoveCommand, Mode=OneWay}"/>
+                                        <MenuFlyoutItem Text="Удалить со скачанным"
+                                                        Icon="Delete"
+                                                        Command="{x:Bind ViewModel.SelectedTorrent.RemoveWithDataCommand, Mode=OneWay}"/>
+                                    </MenuFlyout>
+                                </Button.Flyout>
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon Glyph="&#xE74D;"
+                                              FontFamily="Segoe Fluent Icons"
+                                              FontSize="14"/>
+                                    <TextBlock Text="Удалить"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Style="{StaticResource TorrentIconCommandButtonStyle}">
+                                <FontIcon Glyph="&#xE713;"
+                                          FontFamily="Segoe Fluent Icons"
+                                          FontSize="14"/>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </Border>
 
         <Grid x:Name="SummaryGrid"
               Grid.Row="1"
-              ColumnSpacing="18">
+              ColumnSpacing="8">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition x:Name="SummaryCardsSecondRow" Height="0"/>
@@ -207,23 +228,25 @@
             <views:TorrentSummaryCard x:Name="ActiveSummaryCard"
                                       Title="Активные"
                                       Value="{x:Bind ViewModel.ActiveTorrentCount, Mode=OneWay}"
-                                      Subtitle="{x:Bind ViewModel.TotalTorrentCountText, Mode=OneWay}"
+                                      Subtitle="{x:Bind ViewModel.TotalSpeedSubtitleDisplay, Mode=OneWay}"
                                       IconGlyph="&#xE9D9;"
-                                      AccentBrush="{StaticResource TorrentAccentBlueBrush}"/>
+                                      AccentBrush="{StaticResource TorrentAccentBrush}"/>
 
             <views:TorrentSummaryCard x:Name="PausedSummaryCard"
                                       Grid.Column="1"
                                       Title="На паузе"
                                       Value="{x:Bind ViewModel.PausedTorrentCount, Mode=OneWay}"
+                                      Subtitle="0 B/s"
                                       IconGlyph="&#xE769;"
-                                      AccentBrush="{StaticResource TorrentStatusOrangeBrush}"/>
+                                      AccentBrush="{StaticResource TorrentOrangeBrush}"/>
 
             <views:TorrentSummaryCard x:Name="CompletedSummaryCard"
                                       Grid.Column="2"
                                       Title="Завершено"
                                       Value="{x:Bind ViewModel.CompletedTorrentCount, Mode=OneWay}"
+                                      Subtitle="{x:Bind ViewModel.TotalTorrentCountText, Mode=OneWay}"
                                       IconGlyph="&#xE73E;"
-                                      AccentBrush="{StaticResource TorrentStatusGreenBrush}"/>
+                                      AccentBrush="{StaticResource TorrentGreenBrush}"/>
 
             <views:TorrentSummaryCard x:Name="SpeedSummaryCard"
                                       Grid.Column="3"
@@ -231,136 +254,139 @@
                                       Value="{x:Bind ViewModel.TotalSpeedDisplay, Mode=OneWay}"
                                       Subtitle="{x:Bind ViewModel.TotalSpeedSubtitleDisplay, Mode=OneWay}"
                                       IconGlyph="&#xE9D2;"
-                                      AccentBrush="{StaticResource TorrentStatusPurpleBrush}"/>
+                                      AccentBrush="{StaticResource TorrentPurpleBrush}"/>
         </Grid>
 
         <primitives:Thumb Grid.Row="2"
                           x:Name="TorrentSummarySplitter"
-                          Height="10"
-                          HorizontalAlignment="Stretch"
-                          VerticalAlignment="Stretch"
-                          DragDelta="TorrentSummarySplitter_DragDelta">
-            <primitives:Thumb.Template>
-                <ControlTemplate TargetType="primitives:Thumb">
-                    <Grid Background="Transparent">
-                        <Border Height="2"
-                                VerticalAlignment="Center"
-                                Margin="12,0"
-                                CornerRadius="1"
-                                Background="{StaticResource TorrentStrokeBrush}"
-                                Opacity="0.45"/>
-                    </Grid>
-                </ControlTemplate>
-            </primitives:Thumb.Template>
-        </primitives:Thumb>
+                          Height="0"
+                          Visibility="Collapsed"
+                          DragDelta="TorrentSummarySplitter_DragDelta"/>
 
         <Grid x:Name="TorrentContentGrid"
               Grid.Row="3"
-              ColumnSpacing="0">
+              ColumnSpacing="10"
+              RowSpacing="10">
+            <Grid.RowDefinitions>
+                <RowDefinition x:Name="TorrentListRow" Height="*"/>
+                <RowDefinition x:Name="TorrentDetailsRow" Height="Auto"/>
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="TorrentListColumn"
                                   Width="*"
                                   MinWidth="560"/>
                 <ColumnDefinition x:Name="TorrentDetailsSplitterColumn" Width="12"/>
                 <ColumnDefinition x:Name="TorrentDetailsColumn"
-                                  Width="420"
+                                  Width="380"
                                   MinWidth="320"/>
             </Grid.ColumnDefinitions>
 
             <Border x:Name="TorrentListPanel"
+                    Grid.Row="0"
                     Grid.Column="0"
-                    Style="{StaticResource TorrentPanelBorderStyle}"
-                    Margin="0,0,8,0"
-                    Padding="0">
-                <Grid RowSpacing="0">
+                    Style="{StaticResource TorrentSurfaceBorderStyle}">
+                <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="48"/>
+                        <RowDefinition x:Name="TorrentListHeaderRow" Height="38"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="44"/>
+                        <RowDefinition Height="38"/>
                     </Grid.RowDefinitions>
 
-                    <Border Grid.Row="0"
-                            BorderBrush="{StaticResource TorrentStrokeSoftBrush}"
+                    <Border x:Name="TorrentListHeader"
+                            Grid.Row="0"
+                            Background="{StaticResource TorrentSurfaceInsetBrush}"
+                            BorderBrush="{StaticResource TorrentStrokeBrush}"
                             BorderThickness="0,0,0,1">
-                        <Grid Padding="16,0">
+                        <Grid Padding="7,0"
+                              ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="90"/>
-                                <ColumnDefinition Width="120"/>
-                                <ColumnDefinition Width="110"/>
-                                <ColumnDefinition Width="110"/>
-                                <ColumnDefinition Width="150"/>
+                                <ColumnDefinition x:Name="HeaderSizeColumn" Width="80"/>
+                                <ColumnDefinition x:Name="HeaderStateColumn" Width="102"/>
+                                <ColumnDefinition x:Name="HeaderDownloadColumn" Width="96"/>
+                                <ColumnDefinition x:Name="HeaderUploadColumn" Width="96"/>
+                                <ColumnDefinition x:Name="HeaderProgressColumn" Width="102"/>
                                 <ColumnDefinition Width="32"/>
                             </Grid.ColumnDefinitions>
 
-                            <Grid Grid.Column="0">
+                            <Grid ColumnSpacing="8">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="40"/>
-                                    <ColumnDefinition Width="12"/>
+                                    <ColumnDefinition Width="38"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-
-                                <TextBlock Grid.Column="2"
+                                <TextBlock Grid.Column="1"
                                            Text="Имя"
-                                           VerticalAlignment="Center"
-                                           Style="{StaticResource TorrentMutedTextStyle}"/>
+                                           Style="{StaticResource TorrentTableHeaderTextStyle}"/>
                             </Grid>
-                            <TextBlock Grid.Column="1"
+                            <TextBlock x:Name="HeaderSizeText"
+                                       Grid.Column="1"
                                        Text="Размер"
-                                       VerticalAlignment="Center"
-                                       Style="{StaticResource TorrentMutedTextStyle}"/>
-                            <TextBlock Grid.Column="2"
+                                       Style="{StaticResource TorrentTableHeaderTextStyle}"/>
+                            <TextBlock x:Name="HeaderStateText"
+                                       Grid.Column="2"
                                        Text="Состояние"
-                                       VerticalAlignment="Center"
-                                       Style="{StaticResource TorrentMutedTextStyle}"/>
-                            <StackPanel Grid.Column="3"
+                                       Style="{StaticResource TorrentTableHeaderTextStyle}"/>
+                            <StackPanel x:Name="HeaderDownloadPanel"
+                                        Grid.Column="3"
                                         Orientation="Horizontal"
                                         Spacing="6"
-                                        VerticalAlignment="Center"
-                                        Opacity="0.76">
-                                <FontIcon Glyph="&#xE74B;" FontSize="12"/>
+                                        VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE74B;"
+                                          FontFamily="Segoe Fluent Icons"
+                                          FontSize="12"
+                                          Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
                                 <TextBlock Text="Скорость"
-                                           Foreground="{StaticResource TorrentMutedTextBrush}"/>
+                                           Style="{StaticResource TorrentTableHeaderTextStyle}"/>
                             </StackPanel>
-                            <StackPanel Grid.Column="4"
+                            <StackPanel x:Name="HeaderUploadPanel"
+                                        Grid.Column="4"
                                         Orientation="Horizontal"
                                         Spacing="6"
-                                        VerticalAlignment="Center"
-                                        Opacity="0.76">
-                                <FontIcon Glyph="&#xE74A;" FontSize="12"/>
+                                        VerticalAlignment="Center">
+                                <FontIcon Glyph="&#xE74A;"
+                                          FontFamily="Segoe Fluent Icons"
+                                          FontSize="12"
+                                          Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
                                 <TextBlock Text="Скорость"
-                                           Foreground="{StaticResource TorrentMutedTextBrush}"/>
+                                           Style="{StaticResource TorrentTableHeaderTextStyle}"/>
                             </StackPanel>
-                            <TextBlock Grid.Column="5"
+                            <TextBlock x:Name="HeaderProgressText"
+                                       Grid.Column="5"
                                        Text="Прогресс"
-                                       VerticalAlignment="Center"
-                                       Style="{StaticResource TorrentMutedTextStyle}"/>
+                                       Style="{StaticResource TorrentTableHeaderTextStyle}"/>
                         </Grid>
                     </Border>
 
                     <Grid Grid.Row="1">
-                        <ListView ItemsSource="{x:Bind ViewModel.Torrents, Mode=OneWay}"
+                        <ListView x:Name="TorrentListView"
+                                  ItemsSource="{x:Bind ViewModel.Torrents, Mode=OneWay}"
                                   SelectedItem="{x:Bind ViewModel.SelectedTorrent, Mode=TwoWay}"
                                   SelectionMode="Single"
                                   Background="Transparent"
                                   BorderThickness="0"
+                                  Padding="5"
                                   HorizontalContentAlignment="Stretch"
                                   SelectionChanged="ListView_SelectionChanged"
                                   DoubleTapped="TorrentList_DoubleTapped">
-
+                            <ListView.Resources>
+                                <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#382E3D46"/>
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#264AA2FF"/>
+                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#334AA2FF"/>
+                                <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#F5F8FB"/>
+                            </ListView.Resources>
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                     <Setter Property="Padding" Value="0"/>
-                                    <Setter Property="Margin" Value="0,0,0,8"/>
+                                    <Setter Property="Margin" Value="0,0,0,5"/>
                                     <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
                                 </Style>
                             </ListView.ItemContainerStyle>
 
                             <ListView.ItemTemplate>
                                 <DataTemplate x:DataType="vm:TorrentItemViewModel">
-                                    <views:TorrentCardView Torrent="{Binding}"
-                                                           DetailsRequested="TorrentCard_DetailsRequested"/>
+                                    <views:TorrentItemView DetailsRequested="TorrentCard_DetailsRequested"/>
                                 </DataTemplate>
                             </ListView.ItemTemplate>
                         </ListView>
@@ -370,25 +396,43 @@
                               IsHitTestVisible="False"
                               Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource ShowWhenTrueConverter}}">
                             <StackPanel Spacing="10" HorizontalAlignment="Center">
-                                <FontIcon Glyph="&#xE8B7;" FontSize="28" Opacity="0.70"/>
+                                <FontIcon Glyph="&#xE8B7;"
+                                          FontFamily="Segoe Fluent Icons"
+                                          FontSize="28"
+                                          Foreground="{StaticResource TorrentTextTertiaryBrush}"/>
                                 <TextBlock Text="Пока нет торрентов"
+                                           Foreground="{StaticResource TorrentTextPrimaryBrush}"
                                            FontSize="16"
                                            FontWeight="SemiBold"
                                            HorizontalAlignment="Center"/>
                                 <TextBlock Text="Добавьте .torrent файл или magnet-ссылку."
-                                           Opacity="0.75"
+                                           Style="{StaticResource TorrentMutedTextBlockStyle}"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Grid>
                     </Grid>
 
                     <Border Grid.Row="2"
+                            Background="{StaticResource TorrentSurfaceInsetBrush}"
                             BorderBrush="{StaticResource TorrentStrokeSoftBrush}"
                             BorderThickness="0,1,0,0">
-                        <Grid Padding="16,0">
-                            <TextBlock Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                        <Grid Padding="12,0"
+                              ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="{x:Bind ViewModel.TotalTorrentCountText, Mode=OneWay}"
+                                       Style="{StaticResource TorrentMutedTextBlockStyle}"
+                                       FontSize="13"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{x:Bind ViewModel.StatusText, Mode=OneWay}"
+                                       Style="{StaticResource TorrentTertiaryTextBlockStyle}"
+                                       FontSize="13"
                                        VerticalAlignment="Center"
-                                       Opacity="0.72"
+                                       TextAlignment="Right"
                                        TextTrimming="CharacterEllipsis"
                                        MaxLines="1"/>
                         </Grid>
@@ -396,7 +440,8 @@
                 </Grid>
             </Border>
 
-            <primitives:Thumb Grid.Column="1"
+            <primitives:Thumb Grid.Row="0"
+                              Grid.Column="1"
                               x:Name="TorrentDetailsSplitter"
                               Width="12"
                               HorizontalAlignment="Stretch"
@@ -417,8 +462,10 @@
             </primitives:Thumb>
 
             <views:TorrentDetailsPanel x:Name="TorrentDetailsPanel"
+                                       Grid.Row="0"
                                        Grid.Column="2"
-                                       Margin="8,0,0,0"
+                                       HorizontalAlignment="Stretch"
+                                       VerticalAlignment="Stretch"
                                        Torrent="{x:Bind ViewModel.SelectedTorrent, Mode=OneWay}"/>
         </Grid>
     </Grid>

@@ -27,6 +27,7 @@ public sealed partial class TorrentDetailsPanel : UserControl
     {
         if (d is TorrentDetailsPanel panel)
         {
+            panel.Bindings.Update();
             panel.UpdateState();
         }
     }
@@ -35,6 +36,6 @@ public sealed partial class TorrentDetailsPanel : UserControl
     {
         var hasTorrent = Torrent is not null;
         EmptyState.Visibility = hasTorrent ? Visibility.Collapsed : Visibility.Visible;
-        DetailsHost.Visibility = hasTorrent ? Visibility.Visible : Visibility.Collapsed;
+        DetailsContent.Visibility = hasTorrent ? Visibility.Visible : Visibility.Collapsed;
     }
 }
