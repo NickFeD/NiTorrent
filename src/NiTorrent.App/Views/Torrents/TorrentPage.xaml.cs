@@ -1,3 +1,4 @@
+using Microsoft.UI.Input;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using NiTorrent.Presentation.Features.Torrents;
@@ -178,9 +179,9 @@ public sealed partial class TorrentPage : Page
             case TorrentPageLayoutMode.Medium:
                 MainContentColumn.MinWidth = MediumListMinWidth;
                 MainContentColumn.Width = new GridLength(1, GridUnitType.Star);
-                TorrentDetailsOuterRow.Height = new GridLength(420);
+                TorrentDetailsOuterRow.Height = new GridLength(0);
                 TorrentContentGrid.ColumnSpacing = 0;
-                TorrentContentGrid.RowSpacing = 10;
+                TorrentContentGrid.RowSpacing = 0;
                 TorrentListRow.Height = new GridLength(1, GridUnitType.Star);
                 TorrentListColumn.MinWidth = MediumListMinWidth;
                 TorrentListColumn.Width = new GridLength(1, GridUnitType.Star);
@@ -199,7 +200,7 @@ public sealed partial class TorrentPage : Page
                 Grid.SetColumnSpan(TorrentDetailsPanel, 1);
                 TorrentDetailsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
                 TorrentDetailsSplitter.Visibility = Visibility.Collapsed;
-                TorrentDetailsPanel.Visibility = Visibility.Visible;
+                TorrentDetailsPanel.Visibility = Visibility.Collapsed;
                 TorrentListPanel.Margin = new Thickness(0);
                 break;
 
@@ -245,7 +246,7 @@ public sealed partial class TorrentPage : Page
             TorrentSummaryRow.MinHeight = 180;
             TorrentSummaryRow.MaxHeight = 220;
             TorrentSummaryRow.Height = new GridLength(Math.Clamp(TorrentSummaryRow.ActualHeight, 180, 220));
-            SummaryGrid.RowSpacing = 8;
+            SummaryGrid.RowSpacing = 10;
             SummaryCardsSecondRow.Height = new GridLength(1, GridUnitType.Star);
 
             SummaryColumn0.Width = new GridLength(1, GridUnitType.Star);
@@ -337,6 +338,26 @@ public sealed partial class TorrentPage : Page
         HeaderProgressColumn.Width = isCompact ? new GridLength(82) : new GridLength(102);
         TorrentListHeaderRow.Height = hideHeader ? new GridLength(0) : new GridLength(38);
         TorrentListHeader.Visibility = hideHeader ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void TorrentDetailsSplitter_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeWestEast);
+    }
+
+    private void TorrentDetailsSplitter_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        ProtectedCursor = null;
+    }
+
+    private void TorrentSummarySplitter_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth);
+    }
+
+    private void TorrentSummarySplitter_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        ProtectedCursor = null;
     }
 
     private enum TorrentPageLayoutMode

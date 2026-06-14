@@ -34,7 +34,7 @@
 
     <Grid x:Name="LayoutRoot"
           Padding="10"
-          RowSpacing="10"
+          RowSpacing="0"
           ColumnSpacing="0"
           Background="{StaticResource TorrentBackgroundBrush}"
           SizeChanged="LayoutRoot_SizeChanged">
@@ -51,7 +51,7 @@
                            Height="86"
                            MinHeight="86"
                            MaxHeight="112"/>
-            <RowDefinition Height="0"/>
+            <RowDefinition Height="10"/>
             <RowDefinition Height="*"/>
             <RowDefinition x:Name="TorrentDetailsOuterRow" Height="0"/>
         </Grid.RowDefinitions>
@@ -78,6 +78,7 @@
         <Border Grid.Row="0"
                 Style="{StaticResource TorrentSurfaceBorderStyle}"
                 MinHeight="66"
+                Margin="0,0,0,10"
                 Padding="12,10">
             <Grid x:Name="HeaderGrid"
                   ColumnSpacing="10">
@@ -222,7 +223,7 @@
 
         <Grid x:Name="SummaryGrid"
               Grid.Row="1"
-              ColumnSpacing="8">
+              ColumnSpacing="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition x:Name="SummaryCardsSecondRow" Height="0"/>
@@ -268,9 +269,25 @@
 
         <primitives:Thumb Grid.Row="2"
                           x:Name="TorrentSummarySplitter"
-                          Height="0"
-                          Visibility="Collapsed"
-                          DragDelta="TorrentSummarySplitter_DragDelta"/>
+                          Height="10"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          PointerEntered="TorrentSummarySplitter_PointerEntered"
+                          PointerExited="TorrentSummarySplitter_PointerExited"
+                          DragDelta="TorrentSummarySplitter_DragDelta">
+            <primitives:Thumb.Template>
+                <ControlTemplate TargetType="primitives:Thumb">
+                    <Grid Background="Transparent">
+                        <Border Height="2"
+                                VerticalAlignment="Center"
+                                Margin="12,0"
+                                CornerRadius="1"
+                                Background="{StaticResource TorrentStrokeBrush}"
+                                Opacity="0"/>
+                    </Grid>
+                </ControlTemplate>
+            </primitives:Thumb.Template>
+        </primitives:Thumb>
 
         <Grid x:Name="TorrentContentGrid"
               Grid.Row="3"
@@ -454,6 +471,8 @@
                           Width="10"
                           HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch"
+                          PointerEntered="TorrentDetailsSplitter_PointerEntered"
+                          PointerExited="TorrentDetailsSplitter_PointerExited"
                           DragDelta="TorrentDetailsSplitter_DragDelta">
             <primitives:Thumb.Template>
                 <ControlTemplate TargetType="primitives:Thumb">
