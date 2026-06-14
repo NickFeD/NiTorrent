@@ -56,10 +56,15 @@ public partial class TorrentViewModel(
     public partial string StatusText { get; set; } = "Загрузка кэша торрентов...";
 
     [ObservableProperty]
-    public partial string TotalDownloadSpeed { get; set; } = "v 0 KB/s";
+    public partial string TotalDownloadSpeedDisplay { get; set; } = "v 0 B/s";
 
     [ObservableProperty]
-    public partial string TotalUploadSpeed { get; set; } = "^ 0 KB/s";
+    public partial string TotalUploadSpeedDisplay { get; set; } = "^ 0 B/s";
+
+    [ObservableProperty]
+    public partial string TotalSpeedDisplay { get; set; } = "v 0 B/s";
+
+    public string TotalSpeedSubtitleDisplay => $"{TotalDownloadSpeedDisplay} • {TotalUploadSpeedDisplay}";
 
     public bool CanRemove => SelectedTorrent != null;
     public bool HasSelectedTorrent => SelectedTorrent != null;
@@ -271,9 +276,13 @@ public partial class TorrentViewModel(
     {
         var totalDownloadSpeed = Torrents.Sum(x => x.State.DownloadSpeed);
         var totalUploadSpeed = Torrents.Sum(x => x.State.UploadSpeed);
+        var totalSpeed = totalDownloadSpeed + totalUploadSpeed;
 
-        TotalDownloadSpeed = $"v {SizeFormatter.FormatSpeed(totalDownloadSpeed)}";
-        TotalUploadSpeed = $"^ {SizeFormatter.FormatSpeed(totalUploadSpeed)}";
+        TotalDownloadSpeedDisplay = $"v {SizeFormatter.FormatSpeed(totalDownloadSpeed)}";
+        TotalUploadSpeedDisplay = $"^ {SizeFormatter.FormatSpeed(totalUploadSpeed)}";
+        TotalSpeedDisplay = $"v {SizeFormatter.FormatSpeed(totalSpeed)}";
+
+        OnPropertyChanged(nameof(TotalSpeedSubtitleDisplay));
     }
 
     private void NotifyTorrentSummaryChanged()
