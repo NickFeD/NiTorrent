@@ -1,6 +1,6 @@
 ﻿using NiTorrent.Presentation.Features.Torrents;
 
-namespace NiTorrent.App.Views;
+namespace NiTorrent.App.Views.Torrents;
 
 public sealed partial class TorrentDetailsPage : Page
 {

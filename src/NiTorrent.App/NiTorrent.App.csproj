@@ -50,8 +50,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Remove="Views\TorrentPage.xaml" />
-    <AdditionalFiles Remove="Views\TorrentPreviewWindow.xaml" />
+    <AdditionalFiles Remove="Views\Torrents\TorrentPage.xaml" />
+    <AdditionalFiles Remove="Views\Torrents\TorrentPreviewWindow.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -113,10 +113,10 @@
     </AdditionalFiles>
   </ItemGroup>
   <ItemGroup>
-    <None Update="Views\TorrentPage.xaml">
+    <None Update="Views\Torrents\TorrentPage.xaml">
       <Generator>MSBuild:Compile</Generator>
     </None>
-    <None Update="Views\TorrentPreviewWindow.xaml">
+    <None Update="Views\Torrents\TorrentPreviewWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
     </None>
   </ItemGroup>

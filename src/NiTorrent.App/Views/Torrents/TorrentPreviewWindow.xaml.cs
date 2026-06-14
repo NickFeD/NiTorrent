@@ -5,7 +5,7 @@ using NiTorrent.Presentation.Features.Torrents;
 using NiTorrent.Presentation.Features.Torrents.Tree;
 using WinUIEx;
 
-namespace NiTorrent.App.Views;
+namespace NiTorrent.App.Views.Torrents;
 
 public sealed partial class TorrentPreviewWindow : WindowEx
 {

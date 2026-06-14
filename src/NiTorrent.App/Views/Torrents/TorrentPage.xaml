@@ -1,12 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Page
-    x:Class="NiTorrent.App.Views.TorrentPage"
+    x:Class="NiTorrent.App.Views.Torrents.TorrentPage"
     x:Name="Root"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:converters="using:NiTorrent.App.Converters"
     xmlns:dev="using:DevWinUI"
-    xmlns:views="using:NiTorrent.App.Views"
+    xmlns:views="using:NiTorrent.App.Views.Torrents"
     xmlns:vm="using:NiTorrent.Presentation.Features.Torrents"
     NavigationCacheMode="Required">
 
@@ -200,8 +200,8 @@
                         <!-- ТВОИ КАРТОЧКИ -->
                         <ListView.ItemTemplate>
                             <DataTemplate x:DataType="vm:TorrentItemViewModel">
-                                <views:TorrentItemView Torrent="{Binding}"
-                                                       DetailsRequested="TorrentItem_DetailsRequested"/>
+                                <views:TorrentCardView Torrent="{Binding}"
+                                                       DetailsRequested="TorrentCard_DetailsRequested"/>
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>

@@ -1,4 +1,4 @@
-﻿namespace NiTorrent.App.Views;
+﻿namespace NiTorrent.App.Views.Settings;
 
 public sealed partial class SettingsPage : Page
 {

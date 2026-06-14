@@ -1,15 +1,15 @@
 using Microsoft.UI.Xaml.Input;
 using NiTorrent.Presentation.Features.Torrents;
 
-namespace NiTorrent.App.Views;
+namespace NiTorrent.App.Views.Torrents;
 
-public sealed partial class TorrentItemView : UserControl
+public sealed partial class TorrentCardView : UserControl
 {
     public static readonly DependencyProperty TorrentProperty =
         DependencyProperty.Register(
             nameof(Torrent),
             typeof(TorrentItemViewModel),
-            typeof(TorrentItemView),
+            typeof(TorrentCardView),
             new PropertyMetadata(null));
 
     public event EventHandler<TorrentItemViewModel>? DetailsRequested;
@@ -20,7 +20,7 @@ public sealed partial class TorrentItemView : UserControl
         set => SetValue(TorrentProperty, value);
     }
 
-    public TorrentItemView()
+    public TorrentCardView()
     {
         InitializeComponent();
     }

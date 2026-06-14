@@ -4,7 +4,7 @@ using NiTorrent.Presentation.Features.Torrents;
 // To learn more about WinUI, the WinUI project structure,
 // and more about our project templates, see: http://aka.ms/winui-project-info.
 
-namespace NiTorrent.App.Views;
+namespace NiTorrent.App.Views.Torrents;
 
 /// <summary>
 /// An empty window that can be used on its own or navigated to within a Frame.
@@ -74,7 +74,7 @@ public sealed partial class TorrentPage : Page
         Frame?.Navigate(typeof(TorrentDetailsPage), ViewModel.SelectedTorrent.Id.ToString());
     }
 
-    private void TorrentItem_DetailsRequested(object? sender, TorrentItemViewModel torrent)
+    private void TorrentCard_DetailsRequested(object? sender, TorrentItemViewModel torrent)
     {
         Frame?.Navigate(typeof(TorrentDetailsPage), torrent.Id.ToString());
     }

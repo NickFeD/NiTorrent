@@ -10,14 +10,14 @@
       "IsExpanded": false,
       "Items": [
         {
-          "UniqueId": "NiTorrent.App.Views.TorrentPage",
+          "UniqueId": "NiTorrent.App.Views.Torrents.TorrentPage",
           "Title": "Torrent",
           "Subtitle": "Torrent",
           "ImagePath": "ms-appx:///Assets/AppIcon.png",
           "HideItem": true
         },
         {
-          "UniqueId": "NiTorrent.App.Views.TorrentDetailsPage",
+          "UniqueId": "NiTorrent.App.Views.Torrents.TorrentDetailsPage",
           "Title": "Torrent Details",
           "Subtitle": "Torrent Details",
           "ImagePath": "ms-appx:///Assets/AppIcon.png",
