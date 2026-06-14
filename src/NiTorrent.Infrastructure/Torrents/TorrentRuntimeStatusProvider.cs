@@ -13,7 +13,13 @@ public class TorrentRuntimeStatusProvider(TorrentEngineCoordinator coordinator) 
         var statuses = keyValues.Keys.ToList().Select(k =>
         {
             var engine = keyValues[k];
-            var status = new TorrentRuntimeStatus(k, engine.State.Map(), engine.Error?.ToString(), engine.Monitor.DownloadRate, engine.PartialProgress);
+            var status = new TorrentRuntimeStatus(
+                k,
+                engine.State.Map(),
+                engine.Error?.ToString(),
+                engine.Monitor.DownloadRate,
+                engine.Monitor.UploadRate,
+                engine.PartialProgress);
 
             return status;
         }).ToList();

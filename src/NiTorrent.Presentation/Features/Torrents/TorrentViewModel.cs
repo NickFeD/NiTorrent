@@ -8,6 +8,7 @@ using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.DTo;
 using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.UseCase;
+using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
 using static NiTorrent.Application.Torrents.TorrentSource;
 
@@ -82,6 +83,8 @@ public partial class TorrentViewModel(
                     item.UpdateRuntime(status);
                 }
             }
+
+            UpdateTotalSpeeds();
         });
     }
 
@@ -101,6 +104,8 @@ public partial class TorrentViewModel(
                 Torrents.Add(torrentViewModel);
                 _torrents.Add(torrentViewModel.Id, torrentViewModel);
             }
+
+            UpdateTotalSpeeds();
 
             if (!_isStoreSubscribed)
             {
@@ -137,6 +142,7 @@ public partial class TorrentViewModel(
 
         Torrents.Clear();
         _torrents.Clear();
+        UpdateTotalSpeeds();
     }
 
     partial void OnSelectedTorrentChanged(TorrentItemViewModel? value)
@@ -181,6 +187,7 @@ public partial class TorrentViewModel(
 
         _torrents.Add(torrent.Id, torrent);
         Torrents.Add(torrent);
+        UpdateTotalSpeeds();
     }
 
     public async Task AddTorrentFileAsync(string path, CancellationToken ct)
@@ -224,6 +231,7 @@ public partial class TorrentViewModel(
             toRemove.Dispose();
             Torrents.Remove(toRemove);
             OnPropertyChanged(nameof(IsEmpty));
+            UpdateTotalSpeeds();
 
             if (ReferenceEquals(SelectedTorrent, toRemove))
                 SelectedTorrent = null;
@@ -233,5 +241,14 @@ public partial class TorrentViewModel(
             StatusText = "Не удалось удалить торрент";
             await _dialogs.ShowTextAsync("Ошибка удаления", UserErrorMapper.ToMessage(ex, "Не удалось удалить торрент."));
         }
+    }
+
+    private void UpdateTotalSpeeds()
+    {
+        var totalDownloadSpeed = Torrents.Sum(x => x.State.DownloadSpeed);
+        var totalUploadSpeed = Torrents.Sum(x => x.State.UploadSpeed);
+
+        TotalDownloadSpeed = $"v {SizeFormatter.FormatSpeed(totalDownloadSpeed)}";
+        TotalUploadSpeed = $"^ {SizeFormatter.FormatSpeed(totalUploadSpeed)}";
     }
 }

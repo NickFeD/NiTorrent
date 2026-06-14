@@ -61,7 +61,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         _folderLauncher = folderLauncher;
         _dialogs = dialogs;
         _item = item;
-        State = new TorrentRuntimeStatus(Id, Application.Torrents.Enum.TorrentLifecycleState.Unknown, null, 0, 0);
+        State = new TorrentRuntimeStatus(Id, Application.Torrents.Enum.TorrentLifecycleState.Unknown, null, 0, 0, 0);
     }
 
     private static string BuildStateText(TorrentRuntimeStatus status)
@@ -165,6 +165,10 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         var formattedDownloadSpeed = SizeFormatter.FormatSpeed(status.DownloadSpeed);
         if (!string.Equals(DownloadSpeed, formattedDownloadSpeed, StringComparison.Ordinal))
             DownloadSpeed = formattedDownloadSpeed;
+
+        var formattedUploadSpeed = SizeFormatter.FormatSpeed(status.UploadSpeed);
+        if (!string.Equals(UploadSpeed, formattedUploadSpeed, StringComparison.Ordinal))
+            UploadSpeed = formattedUploadSpeed;
 
         var stateText = BuildStateText(status);
         if (!string.Equals(StateText, stateText, StringComparison.Ordinal))
