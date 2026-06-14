@@ -6,6 +6,7 @@ using NiTorrent.Application.Torrents;
 using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Application.Torrents.Commands;
 using NiTorrent.Application.Torrents.DTo;
+using NiTorrent.Application.Torrents.Enum;
 using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Presentation;
@@ -47,6 +48,8 @@ public partial class TorrentViewModel(
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanRemove))]
+    [NotifyPropertyChangedFor(nameof(HasSelectedTorrent))]
+    [NotifyPropertyChangedFor(nameof(IsDetailsEmpty))]
     public partial TorrentItemViewModel? SelectedTorrent { get; set; }
 
     [ObservableProperty]
@@ -59,6 +62,20 @@ public partial class TorrentViewModel(
     public partial string TotalUploadSpeed { get; set; } = "^ 0 KB/s";
 
     public bool CanRemove => SelectedTorrent != null;
+    public bool HasSelectedTorrent => SelectedTorrent != null;
+    public bool IsDetailsEmpty => SelectedTorrent == null;
+    public int TotalTorrentCount => Torrents.Count;
+    public int ActiveTorrentCount => Torrents.Count(x => x.State.State is
+        TorrentLifecycleState.Checking or
+        TorrentLifecycleState.Moving or
+        TorrentLifecycleState.FetchingMetadata or
+        TorrentLifecycleState.Stalled or
+        TorrentLifecycleState.Downloading or
+        TorrentLifecycleState.Seeding);
+    public int PausedTorrentCount => Torrents.Count(x => x.State.State is TorrentLifecycleState.Paused or TorrentLifecycleState.Stopped);
+    public int CompletedTorrentCount => Torrents.Count(x => x.IsCompleted || x.State.State == TorrentLifecycleState.Seeding);
+    public string TotalTorrentCountText => $"{TotalTorrentCount} всего";
+
     private async Task OnRuntimeStateChanged(TorrentRuntimeStateChangedEventArgs e)
     {
         await _dispatcher.EnqueueAsync(() =>
@@ -85,6 +102,7 @@ public partial class TorrentViewModel(
             }
 
             UpdateTotalSpeeds();
+            NotifyTorrentSummaryChanged();
         });
     }
 
@@ -94,7 +112,10 @@ public partial class TorrentViewModel(
         try
         {
             if (_torrents.Count > 0)
+            {
+                NotifyTorrentSummaryChanged();
                 return;
+            }
 
             var torrents = await _getTorrentListQuery.ExecuteAsync(ct);
 
@@ -106,6 +127,7 @@ public partial class TorrentViewModel(
             }
 
             UpdateTotalSpeeds();
+            NotifyTorrentSummaryChanged();
 
             if (!_isStoreSubscribed)
             {
@@ -143,6 +165,7 @@ public partial class TorrentViewModel(
         Torrents.Clear();
         _torrents.Clear();
         UpdateTotalSpeeds();
+        NotifyTorrentSummaryChanged();
     }
 
     partial void OnSelectedTorrentChanged(TorrentItemViewModel? value)
@@ -188,6 +211,7 @@ public partial class TorrentViewModel(
         _torrents.Add(torrent.Id, torrent);
         Torrents.Add(torrent);
         UpdateTotalSpeeds();
+        NotifyTorrentSummaryChanged();
     }
 
     public async Task AddTorrentFileAsync(string path, CancellationToken ct)
@@ -230,8 +254,8 @@ public partial class TorrentViewModel(
             _torrents.Remove(toRemove.Id);
             toRemove.Dispose();
             Torrents.Remove(toRemove);
-            OnPropertyChanged(nameof(IsEmpty));
             UpdateTotalSpeeds();
+            NotifyTorrentSummaryChanged();
 
             if (ReferenceEquals(SelectedTorrent, toRemove))
                 SelectedTorrent = null;
@@ -250,5 +274,15 @@ public partial class TorrentViewModel(
 
         TotalDownloadSpeed = $"v {SizeFormatter.FormatSpeed(totalDownloadSpeed)}";
         TotalUploadSpeed = $"^ {SizeFormatter.FormatSpeed(totalUploadSpeed)}";
+    }
+
+    private void NotifyTorrentSummaryChanged()
+    {
+        OnPropertyChanged(nameof(IsEmpty));
+        OnPropertyChanged(nameof(TotalTorrentCount));
+        OnPropertyChanged(nameof(ActiveTorrentCount));
+        OnPropertyChanged(nameof(PausedTorrentCount));
+        OnPropertyChanged(nameof(CompletedTorrentCount));
+        OnPropertyChanged(nameof(TotalTorrentCountText));
     }
 }

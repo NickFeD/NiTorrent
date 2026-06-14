@@ -3,14 +3,40 @@
     x:Class="NiTorrent.App.Views.Torrents.TorrentCardView"
     x:Name="Root"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:dev="using:DevWinUI">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <Border CornerRadius="12"
-            Padding="12"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-            BorderThickness="1"
+    <UserControl.Resources>
+        <SolidColorBrush x:Key="TorrentRowSurfaceBrush" Color="#242D35"/>
+        <SolidColorBrush x:Key="TorrentRowStrokeBrush" Color="#33414C"/>
+        <SolidColorBrush x:Key="TorrentRowMutedTextBrush" Color="#B4C0CB"/>
+        <SolidColorBrush x:Key="TorrentRowAccentBrush" Color="#4C9AFF"/>
+
+        <Style x:Key="TorrentRowBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource TorrentRowSurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource TorrentRowStrokeBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="14,12"/>
+        </Style>
+
+        <Style x:Key="TorrentRowMutedTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TorrentRowMutedTextBrush}"/>
+            <Setter Property="Opacity" Value="0.86"/>
+        </Style>
+
+        <Style x:Key="TorrentRowActionButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="32"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="CornerRadius" Value="8"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Border Style="{StaticResource TorrentRowBorderStyle}"
             RightTapped="TorrentItem_RightTapped">
         <Border.ContextFlyout>
             <MenuFlyout>
@@ -38,80 +64,138 @@
             </MenuFlyout>
         </Border.ContextFlyout>
 
-        <Grid RowSpacing="10">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <Grid ColumnSpacing="14" MinHeight="56">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="90"/>
+                <ColumnDefinition Width="120"/>
+                <ColumnDefinition Width="110"/>
+                <ColumnDefinition Width="110"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="32"/>
+            </Grid.ColumnDefinitions>
 
-            <Grid Grid.Row="0" ColumnSpacing="12">
+            <Grid Grid.Column="0" ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="40"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0"
-                           Text="{x:Bind Torrent.Name, Mode=OneWay}"
-                           FontWeight="SemiBold"
-                           FontSize="14"
-                           TextTrimming="CharacterEllipsis"
-                           MaxLines="1"/>
-
-                <TextBlock Grid.Column="1"
-                           Text="{x:Bind Torrent.Size, Mode=OneWay}"
-                           FontSize="12"
-                           Opacity="0.75"
-                           VerticalAlignment="Center"/>
-            </Grid>
-
-            <Grid Grid.Row="1" ColumnSpacing="12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <TextBlock Grid.Column="0"
-                           Text="{x:Bind Torrent.StateText, Mode=OneWay}"
-                           FontSize="12"
-                           Opacity="0.85"
-                           TextTrimming="CharacterEllipsis"
-                           MaxLines="1"/>
+                <Border Width="40"
+                        Height="40"
+                        CornerRadius="8"
+                        Background="{StaticResource TorrentRowAccentBrush}"
+                        VerticalAlignment="Center">
+                    <FontIcon Glyph="&#xE8A5;"
+                              FontSize="18"
+                              Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"/>
+                </Border>
 
                 <StackPanel Grid.Column="1"
-                            Orientation="Horizontal"
-                            Spacing="6"
+                            Spacing="4"
                             VerticalAlignment="Center">
-                    <FontIcon Glyph="&#xE74B;" FontSize="12" Opacity="0.85"/>
-                    <TextBlock Text="{x:Bind Torrent.DownloadSpeed, Mode=OneWay}"
+                    <TextBlock Text="{x:Bind Torrent.Name, Mode=OneWay}"
+                               FontWeight="SemiBold"
+                               FontSize="14"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"/>
+                    <TextBlock Text="{x:Bind Torrent.StateText, Mode=OneWay}"
                                FontSize="12"
-                               Opacity="0.90"/>
+                               Style="{StaticResource TorrentRowMutedTextStyle}"
+                               TextTrimming="CharacterEllipsis"
+                               MaxLines="1"/>
                 </StackPanel>
-
-                <StackPanel Grid.Column="2"
-                            Orientation="Horizontal"
-                            Spacing="6"
-                            VerticalAlignment="Center">
-                    <FontIcon Glyph="&#xE74A;" FontSize="12" Opacity="0.85"/>
-                    <TextBlock Text="{x:Bind Torrent.UploadSpeed, Mode=OneWay}"
-                               FontSize="12"
-                               Opacity="0.90"/>
-                </StackPanel>
-
-                <TextBlock Grid.Column="3"
-                           Text="{x:Bind Torrent.ProgressText, Mode=OneWay}"
-                           FontSize="12"
-                           FontWeight="SemiBold"
-                           Opacity="0.95"
-                           VerticalAlignment="Center"/>
             </Grid>
 
-            <dev:StorageBar Grid.Row="2"
-                            Value="{x:Bind Torrent.Progress, Mode=OneWay}"
-                            Minimum="0"
-                            Maximum="100"/>
+            <TextBlock Grid.Column="1"
+                       Text="{x:Bind Torrent.Size, Mode=OneWay}"
+                       FontSize="13"
+                       Style="{StaticResource TorrentRowMutedTextStyle}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       MaxLines="1"/>
+
+            <TextBlock Grid.Column="2"
+                       Text="{x:Bind Torrent.StateText, Mode=OneWay}"
+                       FontSize="13"
+                       Style="{StaticResource TorrentRowMutedTextStyle}"
+                       VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       MaxLines="1"/>
+
+            <StackPanel Grid.Column="3"
+                        Orientation="Horizontal"
+                        Spacing="6"
+                        VerticalAlignment="Center">
+                <FontIcon Glyph="&#xE74B;" FontSize="12" Opacity="0.72"/>
+                <TextBlock Text="{x:Bind Torrent.DownloadSpeed, Mode=OneWay}"
+                           FontSize="13"
+                           Style="{StaticResource TorrentRowMutedTextStyle}"
+                           TextTrimming="CharacterEllipsis"
+                           MaxLines="1"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="4"
+                        Orientation="Horizontal"
+                        Spacing="6"
+                        VerticalAlignment="Center">
+                <FontIcon Glyph="&#xE74A;" FontSize="12" Opacity="0.72"/>
+                <TextBlock Text="{x:Bind Torrent.UploadSpeed, Mode=OneWay}"
+                           FontSize="13"
+                           Style="{StaticResource TorrentRowMutedTextStyle}"
+                           TextTrimming="CharacterEllipsis"
+                           MaxLines="1"/>
+            </StackPanel>
+
+            <Grid Grid.Column="5"
+                  RowSpacing="6"
+                  VerticalAlignment="Center">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="{x:Bind Torrent.ProgressText, Mode=OneWay}"
+                           FontSize="13"
+                           FontWeight="SemiBold"
+                           Opacity="0.95"/>
+
+                <ProgressBar Grid.Row="1"
+                             Height="4"
+                             Value="{x:Bind Torrent.Progress, Mode=OneWay}"
+                             Minimum="0"
+                             Maximum="100"/>
+            </Grid>
+
+            <Button Grid.Column="6"
+                    Style="{StaticResource TorrentRowActionButtonStyle}">
+                <Button.Flyout>
+                    <MenuFlyout>
+                        <MenuFlyoutItem Text="&#x0421;&#x0442;&#x0430;&#x0440;&#x0442;"
+                                        Icon="Play"
+                                        Command="{x:Bind Torrent.StartCommand, Mode=OneWay}"/>
+                        <MenuFlyoutItem Text="&#x041F;&#x0430;&#x0443;&#x0437;&#x0430;"
+                                        Icon="Pause"
+                                        Command="{x:Bind Torrent.PauseCommand, Mode=OneWay}"/>
+                        <MenuFlyoutItem Text="&#x041F;&#x0430;&#x043F;&#x043A;&#x0430;"
+                                        Icon="Folder"
+                                        Command="{x:Bind Torrent.OpenFolderCommand, Mode=OneWay}"/>
+                        <MenuFlyoutItem Text="&#x041F;&#x043E;&#x0434;&#x0440;&#x043E;&#x0431;&#x043D;&#x0435;&#x0435;"
+                                        Icon="PreviewLink"
+                                        Click="TorrentDetails_Click"/>
+                        <MenuFlyoutSubItem Text="&#x0423;&#x0434;&#x0430;&#x043B;&#x0438;&#x0442;&#x044C;"
+                                           Icon="Delete">
+                            <MenuFlyoutItem Text="&#x0423;&#x0434;&#x0430;&#x043B;&#x0438;&#x0442;&#x044C;"
+                                            Icon="Delete"
+                                            Command="{x:Bind Torrent.RemoveCommand, Mode=OneWay}"/>
+                            <MenuFlyoutItem Text="&#x0423;&#x0434;&#x0430;&#x043B;&#x0438;&#x0442;&#x044C; &#x0441;&#x043E; &#x0441;&#x043A;&#x0430;&#x0447;&#x0430;&#x043D;&#x043D;&#x044B;&#x043C;"
+                                            Icon="Delete"
+                                            Command="{x:Bind Torrent.RemoveWithDataCommand, Mode=OneWay}"/>
+                        </MenuFlyoutSubItem>
+                    </MenuFlyout>
+                </Button.Flyout>
+                <FontIcon Glyph="&#xE712;" FontSize="16"/>
+            </Button>
         </Grid>
     </Border>
 </UserControl>

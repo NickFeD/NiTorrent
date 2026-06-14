@@ -14,9 +14,9 @@ public sealed partial class TorrentCardView : UserControl
 
     public event EventHandler<TorrentItemViewModel>? DetailsRequested;
 
-    public TorrentItemViewModel Torrent
+    public TorrentItemViewModel? Torrent
     {
-        get => (TorrentItemViewModel)GetValue(TorrentProperty);
+        get => (TorrentItemViewModel?)GetValue(TorrentProperty);
         set => SetValue(TorrentProperty, value);
     }
 
