@@ -57,7 +57,7 @@
                             MinWidth="0"
                             VerticalAlignment="Center">
                     <TextBlock Text="{x:Bind Torrent.Name, Mode=OneWay}"
-                               Foreground="{StaticResource TorrentTextPrimaryBrush}"
+                               Foreground="{ThemeResource TorrentTextPrimaryBrush}"
                                FontSize="13"
                                FontWeight="Bold"
                                TextTrimming="CharacterEllipsis"
@@ -103,7 +103,7 @@
             <TextBlock x:Name="DownloadTextBlock"
                        Grid.Column="3"
                        Text="{x:Bind Torrent.DownloadSpeed, Mode=OneWay}"
-                       Foreground="#D9E3E9"
+                       Foreground="{ThemeResource TorrentTextValueBrush}"
                        FontSize="13"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"
@@ -112,7 +112,7 @@
             <TextBlock x:Name="UploadTextBlock"
                        Grid.Column="4"
                        Text="{x:Bind Torrent.UploadSpeed, Mode=OneWay}"
-                       Foreground="#D9E3E9"
+                       Foreground="{ThemeResource TorrentTextValueBrush}"
                        FontSize="13"
                        VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis"
@@ -127,7 +127,7 @@
                 </Grid.RowDefinitions>
 
                 <TextBlock Text="{x:Bind Torrent.ProgressText, Mode=OneWay}"
-                           Foreground="#D9E3E9"
+                           Foreground="{ThemeResource TorrentTextValueBrush}"
                            FontSize="13"
                            FontWeight="SemiBold"
                            TextTrimming="CharacterEllipsis"

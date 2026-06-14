@@ -27,7 +27,7 @@ public partial class ThemeSettingsViewModel : ObservableObject
     public partial string SelectedTheme { get; set; } = "Default";
 
     [ObservableProperty]
-    public partial string SelectedBackdrop { get; set; } = "Mica";
+    public partial string SelectedBackdrop { get; set; } = "Acrylic";
 
     [ObservableProperty]
     public partial bool HasUnsavedChanges { get; set; }
@@ -71,7 +71,7 @@ public partial class ThemeSettingsViewModel : ObservableObject
         try
         {
             SelectedTheme = Normalize(settings.ElementTheme, AllowedThemes, "Default");
-            SelectedBackdrop = Normalize(settings.BackdropType, AllowedBackdrops, "Mica");
+            SelectedBackdrop = Normalize(settings.BackdropType, AllowedBackdrops, "Acrylic");
             HasUnsavedChanges = false;
         }
         finally
@@ -85,7 +85,7 @@ public partial class ThemeSettingsViewModel : ObservableObject
     {
         var draft = new ThemeSettingsDraft(
             Normalize(SelectedTheme, AllowedThemes, "Default"),
-            Normalize(SelectedBackdrop, AllowedBackdrops, "Mica"));
+            Normalize(SelectedBackdrop, AllowedBackdrops, "Acrylic"));
 
         await _themeSettingsService.SaveAndApplyAsync(draft).ConfigureAwait(false);
         HasUnsavedChanges = false;

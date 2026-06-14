@@ -6,10 +6,12 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Border Style="{StaticResource TorrentMetricCardStyle}">
-        <Grid>
+        <Grid RowSpacing="5"
+              VerticalAlignment="Center"
+              MinHeight="66">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
@@ -20,7 +22,7 @@
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Text="{x:Bind Title, Mode=OneWay}"
-                           Foreground="{x:Bind AccentBrush, Mode=OneWay}"
+                           Foreground="{ThemeResource TorrentTextSecondaryBrush}"
                            FontSize="13"
                            FontWeight="Bold"
                            TextTrimming="CharacterEllipsis"
@@ -35,16 +37,14 @@
             </Grid>
 
             <TextBlock Grid.Row="1"
-                       Margin="0,6,0,0"
                        Text="{x:Bind Value, Mode=OneWay}"
-                       Foreground="{StaticResource TorrentTextPrimaryBrush}"
+                       Foreground="{ThemeResource TorrentTextPrimaryBrush}"
                        FontSize="22"
                        FontWeight="Bold"
                        TextTrimming="CharacterEllipsis"
                        MaxLines="1"/>
 
             <TextBlock Grid.Row="2"
-                       Margin="0,7,0,0"
                        Text="{x:Bind Subtitle, Mode=OneWay}"
                        Style="{StaticResource TorrentMutedTextBlockStyle}"
                        FontSize="12"

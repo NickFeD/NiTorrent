@@ -15,7 +15,7 @@
             <converters:BooleanToVisibilityConverter x:Key="ShowWhenTrueConverter"/>
 
             <Style x:Key="TorrentPageHeaderTextStyle" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="{StaticResource TorrentTextPrimaryBrush}"/>
+                <Setter Property="Foreground" Value="{ThemeResource TorrentTextPrimaryBrush}"/>
                 <Setter Property="FontSize" Value="20"/>
                 <Setter Property="FontWeight" Value="Bold"/>
             </Style>
@@ -36,7 +36,7 @@
           Padding="10"
           RowSpacing="0"
           ColumnSpacing="0"
-          Background="{StaticResource TorrentBackgroundBrush}"
+          Background="{ThemeResource TorrentBackgroundBrush}"
           SizeChanged="LayoutRoot_SizeChanged">
         <Grid.ColumnDefinitions>
             <ColumnDefinition x:Name="MainContentColumn" Width="*"/>
@@ -48,9 +48,9 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition x:Name="TorrentSummaryRow"
-                           Height="86"
-                           MinHeight="86"
-                           MaxHeight="112"/>
+                           Height="92"
+                           MinHeight="92"
+                           MaxHeight="124"/>
             <RowDefinition Height="10"/>
             <RowDefinition Height="*"/>
             <RowDefinition x:Name="TorrentDetailsOuterRow" Height="0"/>
@@ -132,10 +132,76 @@
                         Grid.Column="1"
                         Style="{StaticResource TorrentCommandBarSurfaceStyle}"
                         VerticalAlignment="Center">
+                    <Grid>
+                    <CommandBar DefaultLabelPosition="Right"
+                                ClosedDisplayMode="Compact"
+                                IsDynamicOverflowEnabled="True"
+                                Background="Transparent"
+                                BorderBrush="Transparent"
+                                Padding="0"
+                                MinHeight="40">
+                        <AppBarButton Label="Добавить">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="&#xE710;" FontFamily="Segoe Fluent Icons"/>
+                            </AppBarButton.Icon>
+                            <AppBarButton.Flyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Добавить .torrent файл"
+                                                    Icon="OpenFile"
+                                                    Command="{x:Bind ViewModel.PickTorrentCommand}"/>
+                                    <MenuFlyoutItem Text="Добавить Magnet ссылку"
+                                                    Icon="Link"
+                                                    Click="AddMagnet_Click"/>
+                                </MenuFlyout>
+                            </AppBarButton.Flyout>
+                        </AppBarButton>
+
+                        <AppBarSeparator/>
+
+                        <AppBarButton Label="Старт"
+                                      Command="{x:Bind ViewModel.SelectedTorrent.StartCommand, Mode=OneWay}">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="&#xE768;" FontFamily="Segoe Fluent Icons"/>
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+
+                        <AppBarButton Label="Пауза"
+                                      Command="{x:Bind ViewModel.SelectedTorrent.PauseCommand, Mode=OneWay}">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="&#xE769;" FontFamily="Segoe Fluent Icons"/>
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+
+                        <AppBarButton Label="Папка"
+                                      Command="{x:Bind ViewModel.SelectedTorrent.OpenFolderCommand, Mode=OneWay}">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="&#xE8B7;" FontFamily="Segoe Fluent Icons"/>
+                            </AppBarButton.Icon>
+                        </AppBarButton>
+
+                        <AppBarButton Label="Удалить"
+                                      IsEnabled="{x:Bind ViewModel.CanRemove, Mode=OneWay}">
+                            <AppBarButton.Icon>
+                                <FontIcon Glyph="&#xE74D;" FontFamily="Segoe Fluent Icons"/>
+                            </AppBarButton.Icon>
+                            <AppBarButton.Flyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="Удалить"
+                                                    Icon="Delete"
+                                                    Command="{x:Bind ViewModel.SelectedTorrent.RemoveCommand, Mode=OneWay}"/>
+                                    <MenuFlyoutItem Text="Удалить со скачанным"
+                                                    Icon="Delete"
+                                                    Command="{x:Bind ViewModel.SelectedTorrent.RemoveWithDataCommand, Mode=OneWay}"/>
+                                </MenuFlyout>
+                            </AppBarButton.Flyout>
+                        </AppBarButton>
+                    </CommandBar>
+
                     <ScrollViewer HorizontalScrollBarVisibility="Auto"
                                   HorizontalScrollMode="Enabled"
                                   VerticalScrollMode="Disabled"
-                                  VerticalScrollBarVisibility="Disabled">
+                                  VerticalScrollBarVisibility="Disabled"
+                                  Visibility="Collapsed">
                         <StackPanel x:Name="ToolbarPanel"
                                     Orientation="Horizontal"
                                     Spacing="5">
@@ -217,6 +283,7 @@
                             </Button>
                         </StackPanel>
                     </ScrollViewer>
+                    </Grid>
                 </Border>
             </Grid>
         </Border>
@@ -227,6 +294,8 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition x:Name="SummaryCardsSecondRow" Height="0"/>
+                <RowDefinition x:Name="SummaryCardsThirdRow" Height="0"/>
+                <RowDefinition x:Name="SummaryCardsFourthRow" Height="0"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="SummaryColumn0" Width="*"/>
@@ -240,7 +309,7 @@
                                       Value="{x:Bind ViewModel.ActiveTorrentCount, Mode=OneWay}"
                                       Subtitle="{x:Bind ViewModel.TotalSpeedSubtitleDisplay, Mode=OneWay}"
                                       IconGlyph="&#xE9D9;"
-                                      AccentBrush="{StaticResource TorrentAccentBrush}"/>
+                                      AccentBrush="{ThemeResource TorrentAccentBrush}"/>
 
             <views:TorrentSummaryCard x:Name="PausedSummaryCard"
                                       Grid.Column="1"
@@ -248,7 +317,7 @@
                                       Value="{x:Bind ViewModel.PausedTorrentCount, Mode=OneWay}"
                                       Subtitle="0 B/s"
                                       IconGlyph="&#xE769;"
-                                      AccentBrush="{StaticResource TorrentOrangeBrush}"/>
+                                      AccentBrush="{ThemeResource TorrentOrangeBrush}"/>
 
             <views:TorrentSummaryCard x:Name="CompletedSummaryCard"
                                       Grid.Column="2"
@@ -256,7 +325,7 @@
                                       Value="{x:Bind ViewModel.CompletedTorrentCount, Mode=OneWay}"
                                       Subtitle="{x:Bind ViewModel.TotalTorrentCountText, Mode=OneWay}"
                                       IconGlyph="&#xE73E;"
-                                      AccentBrush="{StaticResource TorrentGreenBrush}"/>
+                                      AccentBrush="{ThemeResource TorrentGreenBrush}"/>
 
             <views:TorrentSummaryCard x:Name="SpeedSummaryCard"
                                       Grid.Column="3"
@@ -264,7 +333,7 @@
                                       Value="{x:Bind ViewModel.TotalSpeedDisplay, Mode=OneWay}"
                                       Subtitle="{x:Bind ViewModel.TotalSpeedSubtitleDisplay, Mode=OneWay}"
                                       IconGlyph="&#xE9D2;"
-                                      AccentBrush="{StaticResource TorrentPurpleBrush}"/>
+                                      AccentBrush="{ThemeResource TorrentPurpleBrush}"/>
         </Grid>
 
         <primitives:Thumb Grid.Row="2"
@@ -282,7 +351,7 @@
                                 VerticalAlignment="Center"
                                 Margin="12,0"
                                 CornerRadius="1"
-                                Background="{StaticResource TorrentStrokeBrush}"
+                                Background="{ThemeResource TorrentStrokeBrush}"
                                 Opacity="0"/>
                     </Grid>
                 </ControlTemplate>
@@ -306,7 +375,8 @@
             <Border x:Name="TorrentListPanel"
                     Grid.Row="0"
                     Grid.Column="0"
-                    Style="{StaticResource TorrentSurfaceBorderStyle}">
+                    Style="{StaticResource TorrentSurfaceBorderStyle}"
+                    Background="{ThemeResource TorrentSurfaceBrush}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition x:Name="TorrentListHeaderRow" Height="38"/>
@@ -316,8 +386,8 @@
 
                     <Border x:Name="TorrentListHeader"
                             Grid.Row="0"
-                            Background="{StaticResource TorrentSurfaceInsetBrush}"
-                            BorderBrush="{StaticResource TorrentStrokeBrush}"
+                            Background="{ThemeResource TorrentSurfaceInsetBrush}"
+                            BorderBrush="{ThemeResource TorrentStrokeBrush}"
                             BorderThickness="0,0,0,1">
                         <Grid Padding="7,0"
                               ColumnSpacing="10">
@@ -356,7 +426,7 @@
                                 <FontIcon Glyph="&#xE74B;"
                                           FontFamily="Segoe Fluent Icons"
                                           FontSize="12"
-                                          Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                          Foreground="{ThemeResource TorrentTextSecondaryBrush}"/>
                                 <TextBlock Text="Скорость"
                                            Style="{StaticResource TorrentTableHeaderTextStyle}"/>
                             </StackPanel>
@@ -368,7 +438,7 @@
                                 <FontIcon Glyph="&#xE74A;"
                                           FontFamily="Segoe Fluent Icons"
                                           FontSize="12"
-                                          Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                          Foreground="{ThemeResource TorrentTextSecondaryBrush}"/>
                                 <TextBlock Text="Скорость"
                                            Style="{StaticResource TorrentTableHeaderTextStyle}"/>
                             </StackPanel>
@@ -390,12 +460,6 @@
                                   HorizontalContentAlignment="Stretch"
                                   SelectionChanged="ListView_SelectionChanged"
                                   DoubleTapped="TorrentList_DoubleTapped">
-                            <ListView.Resources>
-                                <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="#382E3D46"/>
-                                <SolidColorBrush x:Key="ListViewItemBackgroundSelected" Color="#264AA2FF"/>
-                                <SolidColorBrush x:Key="ListViewItemBackgroundSelectedPointerOver" Color="#334AA2FF"/>
-                                <SolidColorBrush x:Key="ListViewItemForegroundSelected" Color="#F5F8FB"/>
-                            </ListView.Resources>
                             <ListView.ItemContainerStyle>
                                 <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -421,9 +485,9 @@
                                 <FontIcon Glyph="&#xE8B7;"
                                           FontFamily="Segoe Fluent Icons"
                                           FontSize="28"
-                                          Foreground="{StaticResource TorrentTextTertiaryBrush}"/>
+                                          Foreground="{ThemeResource TorrentTextTertiaryBrush}"/>
                                 <TextBlock Text="Пока нет торрентов"
-                                           Foreground="{StaticResource TorrentTextPrimaryBrush}"
+                                           Foreground="{ThemeResource TorrentTextPrimaryBrush}"
                                            FontSize="16"
                                            FontWeight="SemiBold"
                                            HorizontalAlignment="Center"/>
@@ -435,8 +499,8 @@
                     </Grid>
 
                     <Border Grid.Row="2"
-                            Background="{StaticResource TorrentSurfaceInsetBrush}"
-                            BorderBrush="{StaticResource TorrentStrokeSoftBrush}"
+                            Background="{ThemeResource TorrentSurfaceInsetBrush}"
+                            BorderBrush="{ThemeResource TorrentStrokeSoftBrush}"
                             BorderThickness="0,1,0,0">
                         <Grid Padding="12,0"
                               ColumnSpacing="8">
@@ -481,7 +545,7 @@
                                 HorizontalAlignment="Center"
                                 Margin="0,12"
                                 CornerRadius="1"
-                                Background="{StaticResource TorrentStrokeBrush}"
+                                Background="{ThemeResource TorrentStrokeBrush}"
                                 Opacity="0"/>
                     </Grid>
                 </ControlTemplate>

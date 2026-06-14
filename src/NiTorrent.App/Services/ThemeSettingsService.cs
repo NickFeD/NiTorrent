@@ -11,7 +11,7 @@ public sealed class ThemeSettingsService(IThemeService themeService) : IThemeSet
         ct.ThrowIfCancellationRequested();
 
         var theme = ReadStringProperty("ElementTheme", "Default");
-        var backdrop = ReadStringProperty("BackdropType", "Mica");
+        var backdrop = ReadStringProperty("BackdropType", "Acrylic");
 
         return Task.FromResult(new ThemeSettingsDraft(theme, backdrop));
     }
