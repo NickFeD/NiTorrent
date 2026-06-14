@@ -35,8 +35,16 @@
     <Grid x:Name="LayoutRoot"
           Padding="10"
           RowSpacing="10"
+          ColumnSpacing="0"
           Background="{StaticResource TorrentBackgroundBrush}"
           SizeChanged="LayoutRoot_SizeChanged">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="MainContentColumn" Width="*"/>
+            <ColumnDefinition x:Name="TorrentDetailsSplitterColumn" Width="10"/>
+            <ColumnDefinition x:Name="TorrentDetailsColumn"
+                              Width="380"
+                              MinWidth="320"/>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition x:Name="TorrentSummaryRow"
@@ -45,6 +53,7 @@
                            MaxHeight="112"/>
             <RowDefinition Height="0"/>
             <RowDefinition Height="*"/>
+            <RowDefinition x:Name="TorrentDetailsOuterRow" Height="0"/>
         </Grid.RowDefinitions>
 
         <TeachingTip x:Name="MagnetTip"
@@ -201,7 +210,7 @@
                             </Button>
 
                             <Button Style="{StaticResource TorrentIconCommandButtonStyle}">
-                                <FontIcon Glyph="&#xE713;"
+                                <FontIcon Glyph="&#xE734;"
                                           FontFamily="Segoe Fluent Icons"
                                           FontSize="14"/>
                             </Button>
@@ -265,20 +274,16 @@
 
         <Grid x:Name="TorrentContentGrid"
               Grid.Row="3"
-              ColumnSpacing="10"
+              Grid.Column="0"
+              ColumnSpacing="0"
               RowSpacing="10">
             <Grid.RowDefinitions>
                 <RowDefinition x:Name="TorrentListRow" Height="*"/>
-                <RowDefinition x:Name="TorrentDetailsRow" Height="Auto"/>
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="TorrentListColumn"
                                   Width="*"
                                   MinWidth="560"/>
-                <ColumnDefinition x:Name="TorrentDetailsSplitterColumn" Width="12"/>
-                <ColumnDefinition x:Name="TorrentDetailsColumn"
-                                  Width="380"
-                                  MinWidth="320"/>
             </Grid.ColumnDefinitions>
 
             <Border x:Name="TorrentListPanel"
@@ -440,33 +445,36 @@
                 </Grid>
             </Border>
 
-            <primitives:Thumb Grid.Row="0"
-                              Grid.Column="1"
-                              x:Name="TorrentDetailsSplitter"
-                              Width="12"
-                              HorizontalAlignment="Stretch"
-                              VerticalAlignment="Stretch"
-                              DragDelta="TorrentDetailsSplitter_DragDelta">
-                <primitives:Thumb.Template>
-                    <ControlTemplate TargetType="primitives:Thumb">
-                        <Grid Background="Transparent">
-                            <Border Width="2"
-                                    HorizontalAlignment="Center"
-                                    Margin="0,12"
-                                    CornerRadius="1"
-                                    Background="{StaticResource TorrentStrokeBrush}"
-                                    Opacity="0.75"/>
-                        </Grid>
-                    </ControlTemplate>
-                </primitives:Thumb.Template>
-            </primitives:Thumb>
-
-            <views:TorrentDetailsPanel x:Name="TorrentDetailsPanel"
-                                       Grid.Row="0"
-                                       Grid.Column="2"
-                                       HorizontalAlignment="Stretch"
-                                       VerticalAlignment="Stretch"
-                                       Torrent="{x:Bind ViewModel.SelectedTorrent, Mode=OneWay}"/>
         </Grid>
+
+        <primitives:Thumb Grid.Row="0"
+                          Grid.RowSpan="4"
+                          Grid.Column="1"
+                          x:Name="TorrentDetailsSplitter"
+                          Width="10"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          DragDelta="TorrentDetailsSplitter_DragDelta">
+            <primitives:Thumb.Template>
+                <ControlTemplate TargetType="primitives:Thumb">
+                    <Grid Background="Transparent">
+                        <Border Width="2"
+                                HorizontalAlignment="Center"
+                                Margin="0,12"
+                                CornerRadius="1"
+                                Background="{StaticResource TorrentStrokeBrush}"
+                                Opacity="0"/>
+                    </Grid>
+                </ControlTemplate>
+            </primitives:Thumb.Template>
+        </primitives:Thumb>
+
+        <views:TorrentDetailsPanel x:Name="TorrentDetailsPanel"
+                                   Grid.Row="0"
+                                   Grid.RowSpan="4"
+                                   Grid.Column="2"
+                                   HorizontalAlignment="Stretch"
+                                   VerticalAlignment="Stretch"
+                                   Torrent="{x:Bind ViewModel.SelectedTorrent, Mode=OneWay}"/>
     </Grid>
 </Page>

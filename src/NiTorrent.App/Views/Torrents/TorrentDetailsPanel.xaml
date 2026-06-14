@@ -88,7 +88,8 @@
                     </StackPanel>
 
                     <Button Grid.Column="2"
-                            Style="{StaticResource TorrentMenuButtonStyle}">
+                            Style="{StaticResource TorrentMenuButtonStyle}"
+                            Command="{x:Bind Torrent.ToggleFavoriteCommand, Mode=OneWay}">
                         <FontIcon Glyph="&#xE735;"
                                   FontFamily="Segoe Fluent Icons"
                                   FontSize="14"/>
@@ -107,7 +108,7 @@
                                    FontSize="20"
                                    FontWeight="Bold"/>
                         <TextBlock Grid.Column="1"
-                                   Text="{x:Bind Torrent.Size, Mode=OneWay}"
+                                   Text="{x:Bind Torrent.ProgressSummaryText, Mode=OneWay}"
                                    Style="{StaticResource TorrentMutedTextBlockStyle}"
                                    FontSize="13"
                                    TextAlignment="Right"
@@ -123,141 +124,138 @@
                                  Foreground="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}"/>
                 </StackPanel>
 
-                <Grid Grid.Row="2"
-                      Height="42"
-                      BorderBrush="{StaticResource TorrentStrokeBrush}"
-                      BorderThickness="0,0,0,1">
-                    <StackPanel Orientation="Horizontal"
-                                Spacing="16"
-                                VerticalAlignment="Stretch">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*"/>
-                                <RowDefinition Height="2"/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Text="Обзор"
-                                       Foreground="{StaticResource TorrentTextPrimaryBrush}"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       VerticalAlignment="Center"/>
-                            <Border Grid.Row="1"
-                                    Height="2"
-                                    CornerRadius="1"
-                                    Background="{StaticResource TorrentAccentBrush}"/>
+                <SelectorBar Grid.Row="2">
+                    <SelectorBarItem Text="Обзор"/>
+                    <SelectorBarItem Text="Файлы"/>
+                    <SelectorBarItem Text="Пиры"/>
+                    <SelectorBarItem Text="Трекеры"/>
+                </SelectorBar>
+
+                <ScrollViewer Grid.Row="3"
+                              VerticalScrollBarVisibility="Auto"
+                              VerticalScrollMode="Auto">
+                    <StackPanel Spacing="8">
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Путь" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.SavePath, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE7C3;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Размер" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.SizeDetailsText, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE74B;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Получено" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.DownloadedText, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE74B;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Загрузка" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.DownloadSpeed, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE74A;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Отдача" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.UploadSpeed, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE716;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Пиры" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.PeersText, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE71B;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Трекеры" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.TrackersText, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE930;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Состояние" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.StateText, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE916;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Осталось" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.EtaText, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
+                        </Grid>
+
+                        <Grid ColumnSpacing="16" MinHeight="26">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="132"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon Glyph="&#xE8A5;" FontFamily="Segoe Fluent Icons" FontSize="14" Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
+                                <TextBlock Text="Hash" Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{x:Bind Torrent.HashText, Mode=OneWay}" Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
                         </Grid>
                     </StackPanel>
-                </Grid>
-
-                <StackPanel Grid.Row="3"
-                            Spacing="8">
-                    <Grid ColumnSpacing="16" MinHeight="26">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="132"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <FontIcon Glyph="&#xE8B7;"
-                                      FontFamily="Segoe Fluent Icons"
-                                      FontSize="14"
-                                      Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
-                            <TextBlock Text="Путь"
-                                       Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
-                        </StackPanel>
-                        <TextBlock Grid.Column="1"
-                                   Text="{x:Bind Torrent.SavePath, Mode=OneWay}"
-                                   Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
-                    </Grid>
-
-                    <Grid ColumnSpacing="16" MinHeight="26">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="132"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <FontIcon Glyph="&#xE7C3;"
-                                      FontFamily="Segoe Fluent Icons"
-                                      FontSize="14"
-                                      Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
-                            <TextBlock Text="Размер"
-                                       Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
-                        </StackPanel>
-                        <TextBlock Grid.Column="1"
-                                   Text="{x:Bind Torrent.Size, Mode=OneWay}"
-                                   Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
-                    </Grid>
-
-                    <Grid ColumnSpacing="16" MinHeight="26">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="132"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <FontIcon Glyph="&#xE9D9;"
-                                      FontFamily="Segoe Fluent Icons"
-                                      FontSize="14"
-                                      Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
-                            <TextBlock Text="Прогресс"
-                                       Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
-                        </StackPanel>
-                        <TextBlock Grid.Column="1"
-                                   Text="{x:Bind Torrent.ProgressText, Mode=OneWay}"
-                                   Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
-                    </Grid>
-
-                    <Grid ColumnSpacing="16" MinHeight="26">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="132"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <FontIcon Glyph="&#xE74B;"
-                                      FontFamily="Segoe Fluent Icons"
-                                      FontSize="14"
-                                      Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
-                            <TextBlock Text="Загрузка"
-                                       Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
-                        </StackPanel>
-                        <TextBlock Grid.Column="1"
-                                   Text="{x:Bind Torrent.DownloadSpeed, Mode=OneWay}"
-                                   Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
-                    </Grid>
-
-                    <Grid ColumnSpacing="16" MinHeight="26">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="132"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <FontIcon Glyph="&#xE74A;"
-                                      FontFamily="Segoe Fluent Icons"
-                                      FontSize="14"
-                                      Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
-                            <TextBlock Text="Отдача"
-                                       Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
-                        </StackPanel>
-                        <TextBlock Grid.Column="1"
-                                   Text="{x:Bind Torrent.UploadSpeed, Mode=OneWay}"
-                                   Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
-                    </Grid>
-
-                    <Grid ColumnSpacing="16" MinHeight="26">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="132"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Orientation="Horizontal" Spacing="10">
-                            <FontIcon Glyph="&#xE930;"
-                                      FontFamily="Segoe Fluent Icons"
-                                      FontSize="14"
-                                      Foreground="{StaticResource TorrentTextSecondaryBrush}"/>
-                            <TextBlock Text="Состояние"
-                                       Style="{StaticResource TorrentInfoLabelTextBlockStyle}"/>
-                        </StackPanel>
-                        <TextBlock Grid.Column="1"
-                                   Text="{x:Bind Torrent.StateText, Mode=OneWay}"
-                                   Style="{StaticResource TorrentInfoValueTextBlockStyle}"/>
-                    </Grid>
-                </StackPanel>
+                </ScrollViewer>
 
                 <Border Grid.Row="4"
                         Padding="0,12,0,0"
@@ -279,9 +277,7 @@
                             <Button Style="{StaticResource TorrentCommandButtonStyle}"
                                     Command="{x:Bind Torrent.StartCommand, Mode=OneWay}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE768;"
-                                              FontFamily="Segoe Fluent Icons"
-                                              FontSize="14"/>
+                                    <FontIcon Glyph="&#xE768;" FontFamily="Segoe Fluent Icons" FontSize="14"/>
                                     <TextBlock Text="Старт"/>
                                 </StackPanel>
                             </Button>
@@ -290,9 +286,7 @@
                                     Style="{StaticResource TorrentCommandButtonStyle}"
                                     Command="{x:Bind Torrent.PauseCommand, Mode=OneWay}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE769;"
-                                              FontFamily="Segoe Fluent Icons"
-                                              FontSize="14"/>
+                                    <FontIcon Glyph="&#xE769;" FontFamily="Segoe Fluent Icons" FontSize="14"/>
                                     <TextBlock Text="Пауза"/>
                                 </StackPanel>
                             </Button>
@@ -301,9 +295,7 @@
                                     Style="{StaticResource TorrentDangerCommandButtonStyle}"
                                     Command="{x:Bind Torrent.RemoveCommand, Mode=OneWay}">
                                 <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE74D;"
-                                              FontFamily="Segoe Fluent Icons"
-                                              FontSize="14"/>
+                                    <FontIcon Glyph="&#xE74D;" FontFamily="Segoe Fluent Icons" FontSize="14"/>
                                     <TextBlock Text="Удалить"/>
                                 </StackPanel>
                             </Button>

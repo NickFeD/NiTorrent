@@ -102,13 +102,13 @@ public sealed partial class TorrentPage : Page
         if (TorrentDetailsPanel.Visibility != Visibility.Visible)
             return;
 
-        var totalResizableWidth = TorrentListColumn.ActualWidth + TorrentDetailsColumn.ActualWidth;
-        var maxDetailsWidth = Math.Max(TorrentDetailsColumn.MinWidth, totalResizableWidth - TorrentListColumn.MinWidth);
+        var totalResizableWidth = MainContentColumn.ActualWidth + TorrentDetailsColumn.ActualWidth;
+        var maxDetailsWidth = Math.Max(TorrentDetailsColumn.MinWidth, totalResizableWidth - MainContentColumn.MinWidth);
         var requestedDetailsWidth = TorrentDetailsColumn.ActualWidth - e.HorizontalChange;
         var detailsWidth = Math.Clamp(requestedDetailsWidth, TorrentDetailsColumn.MinWidth, maxDetailsWidth);
 
         TorrentDetailsColumn.Width = new GridLength(detailsWidth);
-        TorrentListColumn.Width = new GridLength(1, GridUnitType.Star);
+        MainContentColumn.Width = new GridLength(1, GridUnitType.Star);
     }
 
     private void TorrentSummarySplitter_DragDelta(object sender, DragDeltaEventArgs e)
@@ -148,10 +148,12 @@ public sealed partial class TorrentPage : Page
         switch (mode)
         {
             case TorrentPageLayoutMode.Narrow:
+                MainContentColumn.MinWidth = NarrowListMinWidth;
+                MainContentColumn.Width = new GridLength(1, GridUnitType.Star);
+                TorrentDetailsOuterRow.Height = new GridLength(0);
                 TorrentContentGrid.ColumnSpacing = 0;
                 TorrentContentGrid.RowSpacing = 0;
                 TorrentListRow.Height = new GridLength(1, GridUnitType.Star);
-                TorrentDetailsRow.Height = new GridLength(0);
                 TorrentListColumn.MinWidth = NarrowListMinWidth;
                 TorrentListColumn.Width = new GridLength(1, GridUnitType.Star);
                 TorrentDetailsSplitterColumn.Width = new GridLength(0);
@@ -159,10 +161,14 @@ public sealed partial class TorrentPage : Page
                 TorrentDetailsColumn.Width = new GridLength(0);
                 Grid.SetRow(TorrentListPanel, 0);
                 Grid.SetColumn(TorrentListPanel, 0);
-                Grid.SetColumnSpan(TorrentListPanel, 3);
-                Grid.SetRow(TorrentDetailsPanel, 1);
+                Grid.SetColumnSpan(TorrentListPanel, 1);
+                Grid.SetRow(TorrentDetailsSplitter, 4);
+                Grid.SetRowSpan(TorrentDetailsSplitter, 1);
+                Grid.SetColumn(TorrentDetailsSplitter, 0);
+                Grid.SetRow(TorrentDetailsPanel, 4);
+                Grid.SetRowSpan(TorrentDetailsPanel, 1);
                 Grid.SetColumn(TorrentDetailsPanel, 0);
-                Grid.SetColumnSpan(TorrentDetailsPanel, 3);
+                Grid.SetColumnSpan(TorrentDetailsPanel, 1);
                 TorrentDetailsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
                 TorrentDetailsSplitter.Visibility = Visibility.Collapsed;
                 TorrentDetailsPanel.Visibility = Visibility.Collapsed;
@@ -170,10 +176,12 @@ public sealed partial class TorrentPage : Page
                 break;
 
             case TorrentPageLayoutMode.Medium:
+                MainContentColumn.MinWidth = MediumListMinWidth;
+                MainContentColumn.Width = new GridLength(1, GridUnitType.Star);
+                TorrentDetailsOuterRow.Height = new GridLength(420);
                 TorrentContentGrid.ColumnSpacing = 0;
                 TorrentContentGrid.RowSpacing = 10;
                 TorrentListRow.Height = new GridLength(1, GridUnitType.Star);
-                TorrentDetailsRow.Height = new GridLength(420);
                 TorrentListColumn.MinWidth = MediumListMinWidth;
                 TorrentListColumn.Width = new GridLength(1, GridUnitType.Star);
                 TorrentDetailsSplitterColumn.Width = new GridLength(0);
@@ -181,10 +189,14 @@ public sealed partial class TorrentPage : Page
                 TorrentDetailsColumn.Width = new GridLength(0);
                 Grid.SetRow(TorrentListPanel, 0);
                 Grid.SetColumn(TorrentListPanel, 0);
-                Grid.SetColumnSpan(TorrentListPanel, 3);
-                Grid.SetRow(TorrentDetailsPanel, 1);
+                Grid.SetColumnSpan(TorrentListPanel, 1);
+                Grid.SetRow(TorrentDetailsSplitter, 4);
+                Grid.SetRowSpan(TorrentDetailsSplitter, 1);
+                Grid.SetColumn(TorrentDetailsSplitter, 0);
+                Grid.SetRow(TorrentDetailsPanel, 4);
+                Grid.SetRowSpan(TorrentDetailsPanel, 1);
                 Grid.SetColumn(TorrentDetailsPanel, 0);
-                Grid.SetColumnSpan(TorrentDetailsPanel, 3);
+                Grid.SetColumnSpan(TorrentDetailsPanel, 1);
                 TorrentDetailsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
                 TorrentDetailsSplitter.Visibility = Visibility.Collapsed;
                 TorrentDetailsPanel.Visibility = Visibility.Visible;
@@ -192,19 +204,25 @@ public sealed partial class TorrentPage : Page
                 break;
 
             case TorrentPageLayoutMode.Wide:
-                TorrentContentGrid.ColumnSpacing = 10;
+                MainContentColumn.MinWidth = WideListMinWidth;
+                MainContentColumn.Width = new GridLength(1, GridUnitType.Star);
+                TorrentDetailsOuterRow.Height = new GridLength(0);
+                TorrentContentGrid.ColumnSpacing = 0;
                 TorrentContentGrid.RowSpacing = 0;
                 TorrentListRow.Height = new GridLength(1, GridUnitType.Star);
-                TorrentDetailsRow.Height = new GridLength(0);
                 TorrentListColumn.MinWidth = WideListMinWidth;
                 TorrentListColumn.Width = new GridLength(1, GridUnitType.Star);
-                TorrentDetailsSplitterColumn.Width = new GridLength(12);
+                TorrentDetailsSplitterColumn.Width = new GridLength(10);
                 TorrentDetailsColumn.MinWidth = DetailsMinWidth;
                 TorrentDetailsColumn.Width = new GridLength(WideDetailsWidth);
                 Grid.SetRow(TorrentListPanel, 0);
                 Grid.SetColumn(TorrentListPanel, 0);
                 Grid.SetColumnSpan(TorrentListPanel, 1);
+                Grid.SetRow(TorrentDetailsSplitter, 0);
+                Grid.SetRowSpan(TorrentDetailsSplitter, 4);
+                Grid.SetColumn(TorrentDetailsSplitter, 1);
                 Grid.SetRow(TorrentDetailsPanel, 0);
+                Grid.SetRowSpan(TorrentDetailsPanel, 4);
                 Grid.SetColumn(TorrentDetailsPanel, 2);
                 Grid.SetColumnSpan(TorrentDetailsPanel, 1);
                 TorrentDetailsPanel.HorizontalAlignment = HorizontalAlignment.Stretch;

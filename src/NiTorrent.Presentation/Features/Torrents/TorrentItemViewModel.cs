@@ -23,11 +23,25 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     public Guid Id => _item.Id;
 
     public string Size => SizeFormatter.FormatBytes(_item.Size);
+    public string SizeDetailsText => $"{Size} ({_item.Size:N0} байт)";
     public string Name => _item.Name;
     public string SavePath => _item.SavePath;
+    public string HashText => string.IsNullOrWhiteSpace(_item.InfoHash) ? "—" : _item.InfoHash;
+    public string AddedAtText => "—";
+
+    public long DownloadedBytes => Math.Clamp((long)Math.Round(_item.Size * Progress / 100d), 0, _item.Size);
+    public long RemainingBytes => Math.Max(0, _item.Size - DownloadedBytes);
+    public string DownloadedText => $"{SizeFormatter.FormatBytes(DownloadedBytes)} ({DownloadedBytes:N0} байт)";
+    public string RemainingText => RemainingBytes <= 0 ? "—" : SizeFormatter.FormatBytes(RemainingBytes);
+    public string ProgressSummaryText => $"{SizeFormatter.FormatBytes(DownloadedBytes)} из {Size}";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ProgressText))]
+    [NotifyPropertyChangedFor(nameof(DownloadedBytes))]
+    [NotifyPropertyChangedFor(nameof(RemainingBytes))]
+    [NotifyPropertyChangedFor(nameof(DownloadedText))]
+    [NotifyPropertyChangedFor(nameof(RemainingText))]
+    [NotifyPropertyChangedFor(nameof(ProgressSummaryText))]
     public partial double Progress { get; set; }
 
     public string ProgressText => $"{Progress:F1}%";
@@ -46,6 +60,18 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     public partial string UploadSpeed { get; set; } = "0 B";
+
+    [ObservableProperty]
+    public partial string PeersText { get; set; } = "—";
+
+    [ObservableProperty]
+    public partial string TrackersText { get; set; } = "—";
+
+    [ObservableProperty]
+    public partial string EtaText { get; set; } = "—";
+
+    [ObservableProperty]
+    public partial bool IsFavorite { get; set; }
 
     public TorrentItemViewModel(
         TorrentDownload item,
@@ -137,6 +163,21 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanRemove))]
     private Task RemoveWithDataAsync()
         => _removeAsync(this, true);
+
+    [RelayCommand]
+    private void ToggleFavorite()
+    {
+        IsFavorite = !IsFavorite;
+    }
+
+    [RelayCommand]
+    private Task OpenSettingsAsync()
+        => _dialogs.ShowTextAsync("Настройки торрента", "Настройки для выбранного торрента пока недоступны.");
+
+    [RelayCommand]
+    private Task ShowDetailsStubAsync()
+        => _dialogs.ShowTextAsync("Подробности торрента", "Расширенная статистика будет подключена позже.");
+
     public void Dispose()
     {
         if (_isDisposed) return;
