@@ -253,10 +253,12 @@ public sealed partial class TorrentPage : Page
             TorrentSummaryRow.MinHeight = 398;
             TorrentSummaryRow.MaxHeight = 500;
             TorrentSummaryRow.Height = new GridLength(Math.Clamp(TorrentSummaryRow.ActualHeight, 398, 500));
+            SummaryGrid.ColumnSpacing = 0;
             SummaryGrid.RowSpacing = 10;
             SummaryCardsSecondRow.Height = new GridLength(1, GridUnitType.Star);
             SummaryCardsThirdRow.Height = new GridLength(1, GridUnitType.Star);
             SummaryCardsFourthRow.Height = new GridLength(1, GridUnitType.Star);
+            SetSummaryCardMargins(TorrentSummaryLayoutMode.SingleColumn);
 
             SummaryColumn0.Width = new GridLength(1, GridUnitType.Star);
             SummaryColumn1.Width = new GridLength(0);
@@ -277,10 +279,12 @@ public sealed partial class TorrentPage : Page
             TorrentSummaryRow.MinHeight = 194;
             TorrentSummaryRow.MaxHeight = 252;
             TorrentSummaryRow.Height = new GridLength(Math.Clamp(TorrentSummaryRow.ActualHeight, 194, 252));
+            SummaryGrid.ColumnSpacing = 0;
             SummaryGrid.RowSpacing = 10;
             SummaryCardsSecondRow.Height = new GridLength(1, GridUnitType.Star);
             SummaryCardsThirdRow.Height = new GridLength(0);
             SummaryCardsFourthRow.Height = new GridLength(0);
+            SetSummaryCardMargins(TorrentSummaryLayoutMode.TwoColumns);
 
             SummaryColumn0.Width = new GridLength(1, GridUnitType.Star);
             SummaryColumn1.Width = new GridLength(1, GridUnitType.Star);
@@ -301,10 +305,12 @@ public sealed partial class TorrentPage : Page
             TorrentSummaryRow.MinHeight = 92;
             TorrentSummaryRow.MaxHeight = 124;
             TorrentSummaryRow.Height = new GridLength(Math.Clamp(TorrentSummaryRow.ActualHeight, 92, 124));
+            SummaryGrid.ColumnSpacing = 0;
             SummaryGrid.RowSpacing = 0;
             SummaryCardsSecondRow.Height = new GridLength(0);
             SummaryCardsThirdRow.Height = new GridLength(0);
             SummaryCardsFourthRow.Height = new GridLength(0);
+            SetSummaryCardMargins(TorrentSummaryLayoutMode.FourColumns);
 
             SummaryColumn0.Width = new GridLength(1, GridUnitType.Star);
             SummaryColumn1.Width = new GridLength(1, GridUnitType.Star);
@@ -319,6 +325,35 @@ public sealed partial class TorrentPage : Page
             Grid.SetColumn(CompletedSummaryCard, 2);
             Grid.SetRow(SpeedSummaryCard, 0);
             Grid.SetColumn(SpeedSummaryCard, 3);
+        }
+    }
+
+    private void SetSummaryCardMargins(TorrentSummaryLayoutMode mode)
+    {
+        var halfGap = 5;
+
+        switch (mode)
+        {
+            case TorrentSummaryLayoutMode.FourColumns:
+                ActiveSummaryCard.Margin = new Thickness(0, 0, halfGap, 0);
+                PausedSummaryCard.Margin = new Thickness(halfGap, 0, halfGap, 0);
+                CompletedSummaryCard.Margin = new Thickness(halfGap, 0, halfGap, 0);
+                SpeedSummaryCard.Margin = new Thickness(halfGap, 0, 0, 0);
+                break;
+
+            case TorrentSummaryLayoutMode.TwoColumns:
+                ActiveSummaryCard.Margin = new Thickness(0, 0, halfGap, 0);
+                PausedSummaryCard.Margin = new Thickness(halfGap, 0, 0, 0);
+                CompletedSummaryCard.Margin = new Thickness(0, 0, halfGap, 0);
+                SpeedSummaryCard.Margin = new Thickness(halfGap, 0, 0, 0);
+                break;
+
+            case TorrentSummaryLayoutMode.SingleColumn:
+                ActiveSummaryCard.Margin = new Thickness(0);
+                PausedSummaryCard.Margin = new Thickness(0);
+                CompletedSummaryCard.Margin = new Thickness(0);
+                SpeedSummaryCard.Margin = new Thickness(0);
+                break;
         }
     }
 
