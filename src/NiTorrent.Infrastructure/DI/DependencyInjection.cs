@@ -18,20 +18,21 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddNiTorrentInfrastructure(this IServiceCollection services)
     {
-        ;
         services.AddSingleton<ITorrentRuntimeStatusProvider, TorrentRuntimeStatusProvider>();
         services.AddSingleton<ITorrentRepository, JsonTorrentRepository>();
+        services.AddSingleton<TorrentRuntimeWorkGate>();
         services.AddSingleton<InMemoryTorrentRuntimeStateSource>();
         services.AddSingleton<ITorrentRuntimeStateSource>(sp => sp.GetRequiredService<InMemoryTorrentRuntimeStateSource>());
-        services.AddSingleton<IAppShutdownTask>(sp => sp.GetRequiredService<InMemoryTorrentRuntimeStateSource>());
+        services.AddSingleton<IAppLifecycleTask>(sp => sp.GetRequiredService<InMemoryTorrentRuntimeStateSource>());
         services.AddSingleton<ITorrentRuntimeGateway, TorrentRuntimeGateway>();
+        services.AddSingleton<ITorrentEngineLifecycle, TorrentEngineLifecycle>();
         services.AddSingleton<ITorrentDownloadFactory, TorrentDownloadFactory>();
         services.AddSingleton<ITorrentMetadataProvider, TorrentMetadataProvider>();
-        services.AddTransient<IAppStartupTask, TorrentEngineStartupTask>();
-        services.AddTransient<IAppStartupTask, TorrentRepositoryStartupTask>();
+        services.AddTransient<IAppLifecycleTask, TorrentEngineStartupTask>();
+        services.AddTransient<IAppLifecycleTask, TorrentRepositoryStartupTask>();
         services.AddSingleton<IEngineSettingsService, EngineSettingsService>();
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
-        services.AddTransient<IAppShutdownTask, SettingsRepositoryFlushShutdownTask>();
+        services.AddTransient<IAppLifecycleTask, SettingsRepositoryFlushShutdownTask>();
         services.AddSingleton<TorrentEngineCoordinator>();
         services.AddSingleton<AppJsonSettings>(sp =>
         {

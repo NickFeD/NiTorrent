@@ -5,14 +5,18 @@ using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public class TorrentRuntimeGateway(TorrentEngineCoordinator coordinator) : ITorrentRuntimeGateway
+internal class TorrentRuntimeGateway(
+    TorrentEngineCoordinator coordinator,
+    TorrentRuntimeWorkGate workGate) : ITorrentRuntimeGateway
 {
     private static readonly TimeSpan TorrentStopTimeout = TimeSpan.FromSeconds(3);
     private readonly TorrentEngineCoordinator _coordinator = coordinator;
+    private readonly TorrentRuntimeWorkGate _workGate = workGate;
 
 
     public async Task AddAsync(Guid id, TorrentSource source, string savePath, CancellationToken ct)
     {
+        _workGate.ThrowIfNotAcceptingWork();
         ct.ThrowIfCancellationRequested();
 
         var torrentManager = await (source switch
@@ -28,6 +32,7 @@ public class TorrentRuntimeGateway(TorrentEngineCoordinator coordinator) : ITorr
 
     public async Task UpdateFileSelectionAsync(Guid id, List<TorrentFileEntry> torrentFiles, CancellationToken ct)
     {
+        _workGate.ThrowIfNotAcceptingWork();
         var manager = _coordinator.GetTorrent(id);
 
         var selectedFiles = torrentFiles.ToDictionary(x => x.FullPath, x => x.IsSelected);
@@ -50,18 +55,21 @@ public class TorrentRuntimeGateway(TorrentEngineCoordinator coordinator) : ITorr
 
     public Task StartAsync(Guid id, CancellationToken ct)
     {
+        _workGate.ThrowIfNotAcceptingWork();
         ct.ThrowIfCancellationRequested();
         return _coordinator.GetTorrent(id).StartAsync();
     }
 
     public Task PauseAsync(Guid torrentId, CancellationToken ct)
     {
+        _workGate.ThrowIfNotAcceptingWork();
         ct.ThrowIfCancellationRequested();
         return _coordinator.GetTorrent(torrentId).PauseAsync();
     }
 
     public async Task RemoveAsync(Guid torrentId, bool deleteFiles, CancellationToken ct)
     {
+        _workGate.ThrowIfNotAcceptingWork();
         ct.ThrowIfCancellationRequested();
         var manager = _coordinator.GetTorrent(torrentId);
         _coordinator.RemoveTorrent(torrentId);

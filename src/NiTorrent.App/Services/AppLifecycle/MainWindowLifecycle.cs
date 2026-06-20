@@ -11,13 +11,15 @@ public sealed partial class MainWindowLifecycle(
     ITrayService trayService,
     IUiDispatcher dispatcher,
     AppSettingsService settingsService,
-    IAppShutdownService shutdownService) : IDisposable, IAppShellLifecycle
+    IAppShutdownService shutdownService,
+    Microsoft.Extensions.Logging.ILogger<MainWindowLifecycle> logger) : IDisposable, IAppShellLifecycle
 {
     private readonly IThemeService _themeService = themeService;
     private readonly ITrayService _trayService = trayService;
     private readonly IUiDispatcher _dispatcher = dispatcher;
     private readonly AppSettingsService _settingsService = settingsService;
     private readonly IAppShutdownService _shutdownService = shutdownService;
+    private readonly Microsoft.Extensions.Logging.ILogger<MainWindowLifecycle> _logger = logger;
 
     private MainWindow? _window;
     private AppCloseBehavior _closeBehavior;
@@ -34,6 +36,7 @@ public sealed partial class MainWindowLifecycle(
             ct.ThrowIfCancellationRequested();
             CreateAndInitialize();
             Activate();
+            Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[Lifecycle] Shell shown");
         });
 
     private void OnSettingsChanged(AppSettings settings)
@@ -57,22 +60,28 @@ public sealed partial class MainWindowLifecycle(
         {
             EnsureWindowCreated();
             var window = _window!;
+            EnsureTrayInitialized();
             window.Hide();
             _trayService.SetVisible(true);
         });
 
     public Task CloseAsync()
-        => _dispatcher.EnqueueAsync(() =>
+    {
+        if (_window is null)
+            return Task.CompletedTask;
+
+        return _dispatcher.EnqueueAsync(() =>
         {
             var window = _window;
             if (window is null)
                 return;
 
-            _trayService.SetVisible(false);
+            StopTray();
             _allowClose = true;
             DetachWindowClosingHandler();
-            window.Close();
+            window.Hide();
         });
+    }
 
     public Task OpenTorrentFileAsync(string filePath)
         => _dispatcher.EnqueueAsync(() =>
@@ -100,7 +109,28 @@ public sealed partial class MainWindowLifecycle(
             window.OpenMagnetLinkFromActivation(magnetLink);
         });
 
-    private void InitializeTray()
+    public Task StartTrayAsync(CancellationToken ct = default)
+        => _dispatcher.EnqueueAsync(() =>
+        {
+            ct.ThrowIfCancellationRequested();
+            EnsureTrayInitialized();
+        }, ct);
+
+    public Task StopTrayAsync(CancellationToken ct = default)
+    {
+        if (!_trayInitialized)
+            return Task.CompletedTask;
+
+        return StopTrayOnDispatcherAsync(ct);
+    }
+
+    private Task StopTrayOnDispatcherAsync(CancellationToken ct = default)
+        => _dispatcher.EnqueueAsync(() =>
+        {
+            StopTray();
+        }, ct);
+
+    private void EnsureTrayInitialized()
     {
         if (_trayInitialized)
             return;
@@ -157,9 +187,9 @@ public sealed partial class MainWindowLifecycle(
         _windowClosingHandlerAttached = true;
 
         _themeService.Initialize(window);
-        InitializeTray();
 
         _window = window;
+        Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[Lifecycle] Shell created");
         return window;
     }
 
@@ -189,14 +219,20 @@ public sealed partial class MainWindowLifecycle(
         _disposed = true;
         _settingsService.Changed -= OnSettingsChanged;
 
-        if (_trayInitialized)
-        {
-            _trayService.OpenRequested -= OnTrayOpenRequested;
-            _trayService.ExitRequested -= OnTrayExitRequested;
-            _trayInitialized = false;
-        }
+        StopTray();
 
         DetachWindowClosingHandler();
+    }
+
+    private void StopTray()
+    {
+        if (!_trayInitialized)
+            return;
+
+        _trayService.OpenRequested -= OnTrayOpenRequested;
+        _trayService.ExitRequested -= OnTrayExitRequested;
+        _trayInitialized = false;
+
         _trayService.Dispose();
     }
 }

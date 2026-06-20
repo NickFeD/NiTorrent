@@ -319,6 +319,21 @@ public sealed class JsonTorrentRepository : ITorrentRepository
     {
         return EnsureLoadedAsync(ct);
     }
+
+    public async Task FlushAsync(CancellationToken ct)
+    {
+        await EnsureLoadedAsync(ct);
+
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await SaveUnsafeAsync(ct);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
 }
 
 internal sealed class TorrentRepositoryDocument

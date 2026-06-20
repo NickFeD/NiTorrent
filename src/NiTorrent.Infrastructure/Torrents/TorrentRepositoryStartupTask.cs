@@ -1,21 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using NiTorrent.Application;
 using NiTorrent.Application.Torrents.Abstract;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-internal class TorrentRepositoryStartupTask(ITorrentRepository torrentRepository) : IAppStartupTask
+internal class TorrentRepositoryStartupTask(ITorrentRepository torrentRepository) : IAppLifecycleTask
 {
-    public StartupStage Stage => StartupStage.Critical;
+    public string Name => "Load torrent repository";
 
-    public int Order => 1000;
+    public AppStartupStage Stage => AppStartupStage.Core;
 
-    public bool CanRunInParallel => false;
+    public int Order => 100;
 
-    public Task ExecuteAsync(CancellationToken ct)
-    {
-        return torrentRepository.LoadingAsync(ct);
-    }
+    public Task StartAsync(AppLifecycleContext context, CancellationToken cancellationToken)
+        => torrentRepository.LoadingAsync(cancellationToken);
+
+    public Task StopAsync(AppLifecycleContext context, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 }

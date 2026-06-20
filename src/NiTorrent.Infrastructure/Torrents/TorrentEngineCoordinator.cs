@@ -61,4 +61,14 @@ public class TorrentEngineCoordinator
     {
         return _torrentManagers.TryGetValue(id, out manager);
     }
+
+    public void DisposeRuntime()
+    {
+        _torrentManagers.Clear();
+
+        if (_engine is IDisposable disposable)
+            disposable.Dispose();
+
+        _engine = null;
+    }
 }

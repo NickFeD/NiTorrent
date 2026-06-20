@@ -1,16 +1,29 @@
 namespace NiTorrent.Application;
 
-public enum StartupStage
+public enum AppStartupStage
 {
-    Critical,
-    Background
+    Bootstrap = 0,
+    Core = 100,
+    Shell = 200,
+    Restore = 300,
+    Background = 400,
+    Ready = 500
 }
 
-public interface IAppStartupTask
+public interface IAppLifecycleTask
 {
-    StartupStage Stage { get; }
-    int Order { get; }
-    bool CanRunInParallel { get; }
+    string Name { get; }
 
-    Task ExecuteAsync(CancellationToken ct);
+    AppStartupStage Stage { get; }
+
+    int Order { get; }
+
+    Task StartAsync(AppLifecycleContext context, CancellationToken cancellationToken);
+
+    Task StopAsync(AppLifecycleContext context, CancellationToken cancellationToken);
+}
+
+public interface IAppLifecycleShutdownStep
+{
+    int ShutdownOrder { get; }
 }

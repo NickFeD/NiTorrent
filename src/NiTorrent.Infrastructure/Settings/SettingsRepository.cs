@@ -9,7 +9,7 @@ public class SettingsRepository(AppJsonSettings appJsonSettings) : ISettingsRepo
 {
     private AppJsonSettings _jsonSettings = appJsonSettings;
 
-    private Task update = null;
+    private Task? _update;
     public Task<AppSettings> GetAsync(CancellationToken ct)
     {
         EnsureLoaded();
@@ -20,16 +20,16 @@ public class SettingsRepository(AppJsonSettings appJsonSettings) : ISettingsRepo
     {
         _jsonSettings.EngineSettings = newSettings.EngineSettings;
         _jsonSettings.CloseBehavior = newSettings.CloseBehavior;
-        if (update is not null)
+        if (_update is not null)
         {
-            await update;
+            await _update;
         }
-        update = Task.Run(_jsonSettings.Save);
+        _update = Task.Run(_jsonSettings.Save);
     }
 
     public async Task FlushAsync(CancellationToken ct)
     {
-        var pending = update;
+        var pending = _update;
         if (pending is null)
             return;
 

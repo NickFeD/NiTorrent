@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
 using NiTorrent.App.Services;
 using NiTorrent.App.Services.AppLifecycle;
@@ -21,8 +20,7 @@ namespace NiTorrent.App;
 public partial class App : WinUIApplication
 {
     private readonly IHost _host;
-    private Task? _startupTask;
-    private int _shutdownStarted;
+    private readonly INiTorrentApplication _application;
 
     public new static App Current => (App)WinUIApplication.Current;
 
@@ -45,7 +43,8 @@ public partial class App : WinUIApplication
             .Build();
 
         Services = _host.Services;
-        GetService<AppShutdownService>().Initialize(ShutdownAsync);
+        _application = new NiTorrentApplication(_host, Services, Exit);
+        GetService<AppShutdownService>().Initialize(() => _application.ShutdownAsync(AppShutdownReason.UserRequested, CancellationToken.None));
         InitializeComponent();
     }
 
@@ -88,13 +87,24 @@ public partial class App : WinUIApplication
         services.AddSingleton<IJsonNavigationService, JsonNavigationService>();
         services.AddSingleton<ITorrentPreviewService, TorrentPreviewDialogService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
+        services.AddSingleton<IActivationQueue, ActivationQueue>();
+        services.AddSingleton<ShutdownTimeoutOptions>();
+        services.AddSingleton<IShutdownStateService, ShutdownStateService>();
         services.AddSingleton<AppShutdownService>();
         services.AddSingleton<IAppShutdownService>(sp => sp.GetRequiredService<AppShutdownService>());
         services.AddSingleton<AppLifecycleCoordinator>();
         services.AddHostedService<AppHostLifecycleService>();
-        services.AddTransient<IAppStartupTask, ContextMenuStartupTask>();
+        services.AddTransient<IAppLifecycleTask, ContextMenuStartupTask>();
+        services.AddTransient<IAppLifecycleTask, ShutdownStateStartupTask>();
         services.AddSingleton<MainWindowLifecycle>();
         services.AddSingleton<IAppShellLifecycle>(sp => sp.GetRequiredService<MainWindowLifecycle>());
+        services.AddTransient<IAppLifecycleTask, MainWindowLifecycleTask>();
+        services.AddTransient<IAppLifecycleTask, RestoreSessionLifecycleTask>();
+        services.AddTransient<IAppLifecycleTask, TrayLifecycleTask>();
+        services.AddTransient<IAppLifecycleTask, ReadyForActivationLifecycleTask>();
+        services.AddTransient<IAppLifecycleTask, TorrentRuntimeStopAcceptingWorkTask>();
+        services.AddTransient<IAppLifecycleTask, TorrentRuntimeStopTask>();
+        services.AddTransient<IAppLifecycleTask, TorrentRuntimeFlushStateTask>();
         services.AddSingleton<ThemeSettingsViewModel>();
         services.AddSingleton<NiTorrent.Application.Torrents.Queries.GetTorrentListQuery>();
         services.AddSingleton<GetTorrentListQuery>();
@@ -107,84 +117,14 @@ public partial class App : WinUIApplication
         services.AddTransient<DeleteTorrentUseCase>();
         services.AddTransient<UpdateSettingsUseCase>();
         services.AddSingleton<AppSettingsService>();
-        services.AddTransient<IAppStartupTask>(t => t.GetRequiredService<AppSettingsService>());
+        services.AddTransient<IAppLifecycleTask>(t => t.GetRequiredService<AppSettingsService>());
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
     {
-        var mainInstance = AppInstance.FindOrRegisterForKey("NiTorrent");
-        if (!mainInstance.IsCurrent)
-        {
-            await mainInstance.RedirectActivationToAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
-            Exit();
-            return;
-        }
+        var currentInstance = AppInstance.GetCurrent();
+        currentInstance.Activated += (_, e) => _ = _application.HandleActivationAsync(e, CancellationToken.None);
 
-        mainInstance.Activated += (_, e) => _ = HandleActivationAsync(e);
-
-        _startupTask = StartApplicationAsync();
-        await _startupTask;
-        await HandleActivationAsync(AppInstance.GetCurrent().GetActivatedEventArgs());
-    }
-
-    private async Task StartApplicationAsync()
-    {
-        var holder = GetService<UiDispatcherHolder>();
-        holder.Initialize(DispatcherQueue.GetForCurrentThread());
-
-        await _host.StartAsync();
-        await GetService<IAppShellLifecycle>().StartAsync();
-    }
-
-    private async Task HandleActivationAsync(AppActivationArguments args)
-    {
-        if (_startupTask is not null)
-            await _startupTask;
-
-        await GetService<IAppActivationService>().HandleAsync(args);
-    }
-
-    private async Task ShutdownAsync()
-    {
-        if (Interlocked.Exchange(ref _shutdownStarted, 1) == 1)
-            return;
-
-        var logger = Services.GetService<ILogger<App>>();
-
-        try
-        {
-            if (_startupTask is not null)
-                await _startupTask;
-        }
-        catch (Exception ex)
-        {
-            logger?.LogError(ex, "Application startup failed before shutdown");
-        }
-
-        var dispatcher = GetService<IUiDispatcher>();
-        var shellLifecycle = GetService<IAppShellLifecycle>();
-
-        try
-        {
-            await shellLifecycle.CloseAsync();
-        }
-        catch (Exception ex)
-        {
-            logger?.LogError(ex, "Shell shutdown failed");
-        }
-
-        try
-        {
-            await _host.StopAsync();
-        }
-        catch (Exception ex)
-        {
-            logger?.LogError(ex, "Host shutdown failed");
-        }
-        finally
-        {
-            _host.Dispose();
-            await dispatcher.EnqueueAsync(Exit);
-        }
+        await _application.StartAsync(currentInstance.GetActivatedEventArgs(), CancellationToken.None);
     }
 }

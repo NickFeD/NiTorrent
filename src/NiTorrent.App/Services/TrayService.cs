@@ -29,7 +29,7 @@ public sealed partial class TrayService : ITrayService, IDisposable
 
         _tray = new TrayIcon(
             trayiconId: 1,
-            iconPath: "Assets\\AppIcon.ico",
+            iconPath: Path.Combine(AppContext.BaseDirectory, "Assets", "AppIcon.ico"),
             tooltip: BuildTooltip())
         {
             IsVisible = false

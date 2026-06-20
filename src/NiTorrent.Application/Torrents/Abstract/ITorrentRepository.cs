@@ -13,4 +13,5 @@ public interface ITorrentRepository
     Task<TorrentDownload?> GetByIdAsync(Guid torrentId, CancellationToken ct);
     Task LoadingAsync(CancellationToken ct);
     Task UpdateAsync(TorrentDownload download, CancellationToken ct);
+    Task FlushAsync(CancellationToken ct);
 }

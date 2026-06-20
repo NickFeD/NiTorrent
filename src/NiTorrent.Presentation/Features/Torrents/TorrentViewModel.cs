@@ -26,11 +26,11 @@ public partial class TorrentViewModel(
     ITorrentRuntimeStateSource store,
     IUiDispatcher dispatcher,
     ITorrentPreviewService torrentPreview,
-    RestoreSessionUseCase restoreSessionUseCase) : ObservableObject
+    ITorrentEngineLifecycle torrentEngineLifecycle) : ObservableObject
 {
     private readonly PreviewTorrentContentsUseCase _previewTorrentContentsUseCase = previewTorrentContentsUseCase;
     private readonly CreateTorrentDownloadUseCase _createTorrentDownloadUseCase = createTorrentDownloadUseCase;
-    private readonly RestoreSessionUseCase _restoreSessionUseCase = restoreSessionUseCase;
+    private readonly ITorrentEngineLifecycle _torrentEngineLifecycle = torrentEngineLifecycle;
     private readonly ITorrentItemViewModelFactory _itemViewModelFactory = itemViewModelFactory;
     private readonly DeleteTorrentUseCase _deleteTorrentUseCase = deleteTorrentUseCase;
     private readonly GetTorrentListQuery _getTorrentListQuery = getTorrentListQuery;
@@ -142,7 +142,7 @@ public partial class TorrentViewModel(
 
             try
             {
-                await _restoreSessionUseCase.ExecuteAsync(ct);
+                await _torrentEngineLifecycle.RestoreSessionAsync(ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {

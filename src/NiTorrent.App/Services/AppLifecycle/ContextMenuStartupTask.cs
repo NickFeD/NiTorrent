@@ -5,18 +5,20 @@ namespace NiTorrent.App.Services.AppLifecycle;
 
 public sealed class ContextMenuStartupTask(
     IServiceProvider services,
-    ILogger<ContextMenuStartupTask> logger) : IAppStartupTask
+    ILogger<ContextMenuStartupTask> logger) : IAppLifecycleTask, IAppLifecycleShutdownStep
 {
     private readonly IServiceProvider _services = services;
     private readonly ILogger<ContextMenuStartupTask> _logger = logger;
 
-    public StartupStage Stage => StartupStage.Background;
+    public string Name => "Register shell context menu";
+
+    public AppStartupStage Stage => AppStartupStage.Background;
 
     public int Order => 1000;
 
-    public bool CanRunInParallel => true;
+    public int ShutdownOrder => 410;
 
-    public async Task ExecuteAsync(CancellationToken ct)
+    public async Task StartAsync(AppLifecycleContext context, CancellationToken cancellationToken)
     {
         if (!RuntimeHelper.IsPackaged())
             return;
@@ -39,4 +41,7 @@ public sealed class ContextMenuStartupTask(
         await menuService.SaveAsync(menu);
         _logger.LogInformation("Context menu registration updated");
     }
+
+    public Task StopAsync(AppLifecycleContext context, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 }

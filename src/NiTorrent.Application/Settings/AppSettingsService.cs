@@ -1,23 +1,24 @@
 ﻿namespace NiTorrent.Application.Settings;
 
-public sealed class AppSettingsService(ISettingsRepository repository) : IAppStartupTask
+public sealed class AppSettingsService(ISettingsRepository repository) : IAppLifecycleTask
 {
     private readonly ISettingsRepository _repository = repository;
 
     public AppSettings Current { get; private set; } = new AppSettings(); //AppSettings.Default;
 
-    public StartupStage Stage => StartupStage.Critical;
+    public string Name => "Load app settings";
+
+    public AppStartupStage Stage => AppStartupStage.Bootstrap;
 
     public int Order => 999;
 
-    public bool CanRunInParallel => false;
-
     public event Action<AppSettings>? Changed;
 
-    public Task ExecuteAsync(CancellationToken ct)
-    {
-        return InitializeAsync(ct);
-    }
+    public Task StartAsync(AppLifecycleContext context, CancellationToken cancellationToken)
+        => InitializeAsync(cancellationToken);
+
+    public Task StopAsync(AppLifecycleContext context, CancellationToken cancellationToken)
+        => Task.CompletedTask;
 
     public async Task InitializeAsync(CancellationToken ct = default)
     {

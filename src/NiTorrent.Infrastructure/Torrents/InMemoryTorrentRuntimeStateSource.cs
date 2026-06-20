@@ -3,7 +3,7 @@ using NiTorrent.Application.Torrents.DTo;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvider runtimeStatusProvider) : ITorrentRuntimeStateSource, NiTorrent.Application.IAppShutdownTask, IDisposable
+public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvider runtimeStatusProvider) : ITorrentRuntimeStateSource, NiTorrent.Application.IAppLifecycleTask, NiTorrent.Application.IAppLifecycleShutdownStep, IDisposable
 {
     private readonly ITorrentRuntimeStatusProvider _provider = runtimeStatusProvider;
 
@@ -17,7 +17,13 @@ public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvi
     private CancellationTokenSource? _cts;
     private Task? _monitorTask;
 
+    public string Name => "Torrent runtime state source";
+
+    public NiTorrent.Application.AppStartupStage Stage => NiTorrent.Application.AppStartupStage.Background;
+
     public int Order => 1000;
+
+    public int ShutdownOrder => 420;
 
     public bool TryGet(Guid torrentId, out TorrentRuntimeStatus status)
         => _statuses.TryGetValue(torrentId, out status!);
@@ -94,7 +100,10 @@ public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvi
         }
     }
 
-    public Task ExecuteAsync(CancellationToken ct)
+    public Task StartAsync(NiTorrent.Application.AppLifecycleContext context, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    public Task StopAsync(NiTorrent.Application.AppLifecycleContext context, CancellationToken cancellationToken)
         => StopPollingAsync();
 
     private void StartPolling()
