@@ -1,6 +1,7 @@
 ﻿namespace NiTorrent.Application.Settings;
 
-public class UpdateSettingsUseCase(AppSettingsService settingsService, IEngineSettingsService engineSettingsService)
+public class UpdateSettingsUseCase(AppSettingsService settingsService, IEngineSettingsService engineSettingsService,
+    Torrents.Abstract.ITorrentSession session)
 {
     private readonly AppSettingsService _settingsService = settingsService;
     private readonly IEngineSettingsService _engineSettingsService = engineSettingsService;
@@ -10,7 +11,11 @@ public class UpdateSettingsUseCase(AppSettingsService settingsService, IEngineSe
     {
         await _settingsService.UpdateAsync(command.NewSettings, ct);
 
-        await _engineSettingsService.ApplySettingsAsync(command.NewSettings.EngineSettings, ct);
+        await session.UseEngineAsync(async token =>
+        {
+            await _engineSettingsService.ApplySettingsAsync(command.NewSettings.EngineSettings, token);
+            return true;
+        }, ct);
     }
 
 }

@@ -12,7 +12,9 @@ public enum TorrentLifecycleState
     Paused = 7,
     Stopped = 8,
     Error = 9,
-    Removed = 10
+    Removed = 10,
+    Preparing = 11,
+    Deleting = 12
 }
 
 //

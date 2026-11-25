@@ -37,15 +37,19 @@ public partial class App : WinUIApplication
 
     public App()
     {
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
         _host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
             .UseContentRoot(AppContext.BaseDirectory)
             .ConfigureServices(ConfigureServices)
             .Build();
+        EarlyLifecycleLogger.Log($"Host built in {elapsed.ElapsedMilliseconds} ms");
 
         Services = _host.Services;
         _application = new NiTorrentApplication(_host, Services, Exit);
         GetService<AppShutdownService>().Initialize(() => _application.ShutdownAsync(AppShutdownReason.UserRequested, CancellationToken.None));
+        elapsed.Restart();
         InitializeComponent();
+        EarlyLifecycleLogger.Log($"App resources loaded in {elapsed.ElapsedMilliseconds} ms");
     }
 
     private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
@@ -88,36 +92,22 @@ public partial class App : WinUIApplication
         services.AddSingleton<ITorrentPreviewService, TorrentPreviewDialogService>();
         services.AddSingleton<IAppActivationService, AppActivationService>();
         services.AddSingleton<IActivationQueue, ActivationQueue>();
-        services.AddSingleton<ShutdownTimeoutOptions>();
         services.AddSingleton<IShutdownStateService, ShutdownStateService>();
         services.AddSingleton<AppShutdownService>();
         services.AddSingleton<IAppShutdownService>(sp => sp.GetRequiredService<AppShutdownService>());
-        services.AddSingleton<AppLifecycleCoordinator>();
-        services.AddHostedService<AppHostLifecycleService>();
-        services.AddTransient<IAppLifecycleTask, ContextMenuStartupTask>();
-        services.AddTransient<IAppLifecycleTask, ShutdownStateStartupTask>();
+        services.AddHostedService<ContextMenuStartupTask>();
         services.AddSingleton<MainWindowLifecycle>();
         services.AddSingleton<IAppShellLifecycle>(sp => sp.GetRequiredService<MainWindowLifecycle>());
-        services.AddTransient<IAppLifecycleTask, MainWindowLifecycleTask>();
-        services.AddTransient<IAppLifecycleTask, RestoreSessionLifecycleTask>();
-        services.AddTransient<IAppLifecycleTask, TrayLifecycleTask>();
-        services.AddTransient<IAppLifecycleTask, ReadyForActivationLifecycleTask>();
-        services.AddTransient<IAppLifecycleTask, TorrentRuntimeStopAcceptingWorkTask>();
-        services.AddTransient<IAppLifecycleTask, TorrentRuntimeStopTask>();
-        services.AddTransient<IAppLifecycleTask, TorrentRuntimeFlushStateTask>();
         services.AddSingleton<ThemeSettingsViewModel>();
         services.AddSingleton<NiTorrent.Application.Torrents.Queries.GetTorrentListQuery>();
         services.AddSingleton<GetTorrentListQuery>();
         services.AddSingleton<GetSettingsQuery>();
-        services.AddTransient<RestoreSessionUseCase>();
         services.AddTransient<CreateTorrentDownloadUseCase>();
         services.AddTransient<PreviewTorrentContentsUseCase>();
         services.AddTransient<StartTorrentUseCase>();
         services.AddTransient<PauseTorrentUseCase>();
         services.AddTransient<DeleteTorrentUseCase>();
         services.AddTransient<UpdateSettingsUseCase>();
-        services.AddSingleton<AppSettingsService>();
-        services.AddTransient<IAppLifecycleTask>(t => t.GetRequiredService<AppSettingsService>());
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)

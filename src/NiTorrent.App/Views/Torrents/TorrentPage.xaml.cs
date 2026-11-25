@@ -53,8 +53,11 @@ public sealed partial class TorrentPage : Page
         base.OnNavigatedFrom(e);
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e)
-        => ViewModel.TorrentLoading(CancellationToken.None);
+    private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        try { await ViewModel.TorrentLoading(CancellationToken.None); }
+        catch (Exception ex) { ViewModel.StatusText = $"Не удалось загрузить коллекцию: {ex.Message}"; }
+    }
     private void OnUnloaded(object sender, RoutedEventArgs e)
         => ViewModel.TorrentUnloaded();
 
@@ -140,13 +143,6 @@ public sealed partial class TorrentPage : Page
             _layoutMode = mode;
         }
 
-        var summaryMode = width < SingleColumnSummaryWidth
-            ? TorrentSummaryLayoutMode.SingleColumn
-            : width < CompactSummaryWidth
-                ? TorrentSummaryLayoutMode.TwoColumns
-                : TorrentSummaryLayoutMode.FourColumns;
-
-        ApplySummaryLayout(summaryMode);
         ApplyHeaderLayout(width < CompactHeaderWidth);
         ApplyTableLayout(width < CompactTableWidth, width < HideTableHeaderWidth);
     }

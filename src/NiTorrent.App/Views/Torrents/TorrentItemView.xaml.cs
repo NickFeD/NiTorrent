@@ -10,6 +10,7 @@ public sealed partial class TorrentItemView : UserControl
     public event EventHandler<TorrentItemViewModel>? DetailsRequested;
 
     public TorrentItemViewModel? Torrent => DataContext as TorrentItemViewModel;
+    public Visibility RetryVisibility(bool canRetry) => canRetry ? Visibility.Visible : Visibility.Collapsed;
 
     public TorrentItemView()
     {

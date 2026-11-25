@@ -11,6 +11,7 @@ using NiTorrent.Application.Torrents.Queries;
 using NiTorrent.Application.Torrents.UseCase;
 using NiTorrent.Presentation;
 using NiTorrent.Presentation.Abstractions;
+using Microsoft.Extensions.Logging;
 using static NiTorrent.Application.Torrents.TorrentSource;
 
 namespace NiTorrent.Presentation.Features.Torrents;
@@ -26,11 +27,12 @@ public partial class TorrentViewModel(
     ITorrentRuntimeStateSource store,
     IUiDispatcher dispatcher,
     ITorrentPreviewService torrentPreview,
-    ITorrentEngineLifecycle torrentEngineLifecycle) : ObservableObject
+    ITorrentSession session,
+    ILogger<TorrentViewModel>? logger = null) : ObservableObject
 {
     private readonly PreviewTorrentContentsUseCase _previewTorrentContentsUseCase = previewTorrentContentsUseCase;
     private readonly CreateTorrentDownloadUseCase _createTorrentDownloadUseCase = createTorrentDownloadUseCase;
-    private readonly ITorrentEngineLifecycle _torrentEngineLifecycle = torrentEngineLifecycle;
+    private readonly ITorrentSession _session = session;
     private readonly ITorrentItemViewModelFactory _itemViewModelFactory = itemViewModelFactory;
     private readonly DeleteTorrentUseCase _deleteTorrentUseCase = deleteTorrentUseCase;
     private readonly GetTorrentListQuery _getTorrentListQuery = getTorrentListQuery;
@@ -40,9 +42,11 @@ public partial class TorrentViewModel(
     private readonly IUiDispatcher _dispatcher = dispatcher;
     private readonly ITorrentRuntimeStateSource _store = store;
     private readonly SemaphoreSlim _startupGate = new(1, 1);
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
     private readonly Dictionary<Guid, TorrentItemViewModel> _torrents = new();
     private bool _isStoreSubscribed;
+    private int _loadGeneration;
     public ObservableCollection<TorrentItemViewModel> Torrents { get; set; } = new();
     public bool IsEmpty => Torrents.Count < 1;
 
@@ -81,78 +85,84 @@ public partial class TorrentViewModel(
     public int CompletedTorrentCount => Torrents.Count(x => x.IsCompleted || x.State.State == TorrentLifecycleState.Seeding);
     public string TotalTorrentCountText => $"{TotalTorrentCount} всего";
 
+    private void OnEngineStateChanged()
+    {
+        _dispatcher.TryEnqueue(() =>
+        {
+            if (_isStoreSubscribed)
+                StatusText = _session.EngineError ?? (_session.IsEngineReady ? "Движок готов" : "Подготовка движка");
+        });
+    }
+
     private async Task OnRuntimeStateChanged(TorrentRuntimeStateChangedEventArgs e)
     {
-        await _dispatcher.EnqueueAsync(() =>
+        await _refreshGate.WaitAsync();
+        try
         {
-            foreach (var removed in e.RemovedIds)
+            if (!_isStoreSubscribed) return;
+            var generation = _loadGeneration;
+            var collection = await _getTorrentListQuery.ExecuteAsync(CancellationToken.None);
+            await _dispatcher.EnqueueAsync(() =>
             {
-                if (_torrents.TryGetValue(removed, out var toRemove))
-                {
-                    _torrents.Remove(removed);
-                    toRemove.Dispose();
-                    Torrents.Remove(toRemove);
-                    if (ReferenceEquals(SelectedTorrent, toRemove))
-                        SelectedTorrent = null;
-                }
-            }
-            var byId = e.UpdatedStatuses.ToDictionary(x => x.TorrentId);
+                if (!_isStoreSubscribed || generation != _loadGeneration) return;
+                SynchronizeCollection(collection);
+                UpdateTotalSpeeds();
+                NotifyTorrentSummaryChanged();
+                if (_session.EngineError is { } error) StatusText = error;
+            });
+        }
+        finally { _refreshGate.Release(); }
+    }
 
-            foreach (var item in Torrents)
+    private void SynchronizeCollection(IEnumerable<NiTorrent.Domain.Torrents.TorrentDownload> collection)
+    {
+        var records = collection.ToDictionary(x => x.Id);
+        foreach (var id in _torrents.Keys.Where(id => !records.ContainsKey(id)).ToArray())
+        {
+            var item = _torrents[id];
+            _torrents.Remove(id);
+            Torrents.Remove(item);
+            item.Dispose();
+            if (ReferenceEquals(SelectedTorrent, item)) SelectedTorrent = null;
+        }
+        var snapshot = _store.GetSnapshot();
+        foreach (var record in records.Values)
+        {
+            if (!_torrents.TryGetValue(record.Id, out var item))
             {
-                if (byId.TryGetValue(item.Id, out var status))
-                {
-                    item.UpdateRuntime(status);
-                }
+                item = _itemViewModelFactory.Create(record, RemoveTorrentAsync);
+                _torrents.Add(record.Id, item);
+                Torrents.Add(item);
             }
-
-            UpdateTotalSpeeds();
-            NotifyTorrentSummaryChanged();
-        });
+            item.ApplyDownload(record);
+            if (snapshot.TryGetValue(record.Id, out var status)) item.UpdateRuntime(status);
+        }
     }
 
     public async Task TorrentLoading(CancellationToken ct)
     {
+        var elapsed = System.Diagnostics.Stopwatch.StartNew();
         await _startupGate.WaitAsync(ct);
         try
         {
-            if (_torrents.Count > 0)
-            {
-                NotifyTorrentSummaryChanged();
-                return;
-            }
-
-            var torrents = await _getTorrentListQuery.ExecuteAsync(ct);
-
-            foreach (var torrent in torrents)
-            {
-                var torrentViewModel = _itemViewModelFactory.Create(torrent, RemoveTorrentAsync);
-                Torrents.Add(torrentViewModel);
-                _torrents.Add(torrentViewModel.Id, torrentViewModel);
-            }
-
-            UpdateTotalSpeeds();
-            NotifyTorrentSummaryChanged();
-
+            var generation = ++_loadGeneration;
             if (!_isStoreSubscribed)
             {
-                _store.Subscribe(OnRuntimeStateChanged);
                 _isStoreSubscribed = true;
+                _store.Subscribe(OnRuntimeStateChanged);
+                _session.EngineStateChanged += OnEngineStateChanged;
             }
-
-            try
+            var torrents = await _getTorrentListQuery.ExecuteAsync(ct);
+            await _dispatcher.EnqueueAsync(() =>
             {
-                await _torrentEngineLifecycle.RestoreSessionAsync(ct);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                StatusText = "Не удалось восстановить сессию";
-                await _dialogs.ShowTextAsync("Ошибка восстановления", UserErrorMapper.ToMessage(ex, "Не удалось восстановить сессию торрентов."));
-            }
+                if (!_isStoreSubscribed || generation != _loadGeneration) return;
+                SynchronizeCollection(torrents);
+                UpdateTotalSpeeds();
+                NotifyTorrentSummaryChanged();
+                StatusText = _session.EngineError ?? "Коллекция загружена";
+                logger?.LogInformation("[Lifecycle] Window collection projected: {Count} torrents in {ElapsedMs} ms",
+                    Torrents.Count, elapsed.ElapsedMilliseconds);
+            }, ct);
         }
         finally
         {
@@ -161,12 +171,15 @@ public partial class TorrentViewModel(
     }
     public void TorrentUnloaded()
     {
+        ++_loadGeneration;
         if (_isStoreSubscribed)
         {
+            _session.EngineStateChanged -= OnEngineStateChanged;
             _store.UnsubscribeAsync(OnRuntimeStateChanged).GetAwaiter().GetResult();
             _isStoreSubscribed = false;
         }
 
+        foreach (var item in Torrents) item.Dispose();
         Torrents.Clear();
         _torrents.Clear();
         UpdateTotalSpeeds();
@@ -213,8 +226,8 @@ public partial class TorrentViewModel(
 
         var torrent = _itemViewModelFactory.Create(startedTorrent.TorrentDownload, RemoveTorrentAsync);
 
-        _torrents.Add(torrent.Id, torrent);
-        Torrents.Add(torrent);
+        if (_torrents.TryAdd(torrent.Id, torrent)) Torrents.Add(torrent);
+        else torrent.Dispose();
         UpdateTotalSpeeds();
         NotifyTorrentSummaryChanged();
     }
@@ -255,15 +268,14 @@ public partial class TorrentViewModel(
         try
         {
             await _deleteTorrentUseCase.ExecuteAsync(new DeleteTorrentCommand(toRemove.Id, deleteData), CancellationToken.None);
-
-            _torrents.Remove(toRemove.Id);
-            toRemove.Dispose();
-            Torrents.Remove(toRemove);
-            UpdateTotalSpeeds();
-            NotifyTorrentSummaryChanged();
-
-            if (ReferenceEquals(SelectedTorrent, toRemove))
-                SelectedTorrent = null;
+            var records = await _getTorrentListQuery.ExecuteAsync(CancellationToken.None);
+            await _dispatcher.EnqueueAsync(() =>
+            {
+                if (!_isStoreSubscribed) return;
+                SynchronizeCollection(records);
+                UpdateTotalSpeeds();
+                NotifyTorrentSummaryChanged();
+            });
         }
         catch (Exception ex)
         {

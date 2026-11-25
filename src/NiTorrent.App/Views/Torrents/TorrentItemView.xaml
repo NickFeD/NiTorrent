@@ -16,6 +16,7 @@
             <MenuFlyout>
                 <MenuFlyoutItem Text="Старт" Icon="Play" Command="{x:Bind Torrent.StartCommand, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="Пауза" Icon="Pause" Command="{x:Bind Torrent.PauseCommand, Mode=OneWay}"/>
+                <MenuFlyoutItem Text="Повторить" Icon="Refresh" Command="{x:Bind Torrent.RetryCommand, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="Папка" Icon="Folder" Command="{x:Bind Torrent.OpenFolderCommand, Mode=OneWay}"/>
                 <MenuFlyoutItem Text="Подробнее" Icon="PreviewLink" Click="Details_Click"/>
                 <MenuFlyoutSubItem Text="Удалить" Icon="Delete">
@@ -45,12 +46,11 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <Border Style="{StaticResource TorrentFileIconStyle}"
-                        Background="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}">
-                    <FontIcon Glyph="&#xE7C3;"
+                <Border Width="38" Height="32">
+                    <FontIcon Glyph="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}"
                               FontFamily="Segoe Fluent Icons"
-                              FontSize="17"
-                              Foreground="White"/>
+                              FontSize="16"
+                              Foreground="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}"/>
                 </Border>
 
                 <StackPanel Grid.Column="1"
@@ -59,11 +59,16 @@
                     <TextBlock Text="{x:Bind Torrent.Name, Mode=OneWay}"
                                Foreground="{ThemeResource TorrentTextPrimaryBrush}"
                                FontSize="13"
-                               FontWeight="Bold"
+                               FontWeight="Normal"
                                TextTrimming="CharacterEllipsis"
                                MaxLines="1"/>
 
-                    <Border Margin="0,5,0,0"
+                    <Button Content="Повторить"
+                            Command="{x:Bind Torrent.RetryCommand, Mode=OneWay}"
+                            Visibility="{x:Bind RetryVisibility(Torrent.CanRetry), Mode=OneWay}"
+                            Margin="0,4,0,0" Padding="8,2"/>
+
+                    <Border Visibility="Collapsed" Margin="0,5,0,0"
                             HorizontalAlignment="Left"
                             Style="{x:Bind Torrent.State, Mode=OneWay, Converter={StaticResource TorrentStateToBadgeStyleConverter}}">
                         <StackPanel Orientation="Horizontal" Spacing="7">
@@ -146,6 +151,7 @@
                     <MenuFlyout>
                         <MenuFlyoutItem Text="Старт" Icon="Play" Command="{x:Bind Torrent.StartCommand, Mode=OneWay}"/>
                         <MenuFlyoutItem Text="Пауза" Icon="Pause" Command="{x:Bind Torrent.PauseCommand, Mode=OneWay}"/>
+                        <MenuFlyoutItem Text="Повторить" Icon="Refresh" Command="{x:Bind Torrent.RetryCommand, Mode=OneWay}"/>
                         <MenuFlyoutItem Text="Папка" Icon="Folder" Command="{x:Bind Torrent.OpenFolderCommand, Mode=OneWay}"/>
                         <MenuFlyoutItem Text="Подробнее" Icon="PreviewLink" Click="Details_Click"/>
                         <MenuFlyoutSubItem Text="Удалить" Icon="Delete">

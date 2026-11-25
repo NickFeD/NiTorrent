@@ -2,315 +2,113 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
-using NiTorrent.App.Services;
 using NiTorrent.Application;
-using NiTorrent.Application.Abstractions;
-using NiTorrent.Application.Settings;
 using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Presentation.Abstractions;
 using System.Diagnostics;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
-public sealed class NiTorrentApplication(
-    IHost host,
-    IServiceProvider services,
-    Action exit) : INiTorrentApplication
+/// <summary>Windows activation/window bridge. The host owns the independent core.</summary>
+public sealed class NiTorrentApplication(IHost host, IServiceProvider services, Action exit) : INiTorrentApplication
 {
-    private readonly IHost _host = host;
-    private readonly IServiceProvider _services = services;
-    private readonly Action _exit = exit;
-    private readonly object _startupGate = new();
-    private readonly Stopwatch _shutdownElapsed = new();
+    private readonly object _gate = new();
+    private readonly CancellationTokenSource _startup = new();
     private Task? _startupTask;
     private int _shutdownStarted;
+    private Window? _startupErrorWindow;
+    private T Get<T>() where T : class => services.GetService<T>()
+        ?? throw new InvalidOperationException($"Missing service: {typeof(T)}");
 
-    public async Task StartAsync(AppActivationArguments activationArgs, CancellationToken cancellationToken)
+    public Task StartAsync(AppActivationArguments args, CancellationToken ct)
     {
-        _services.GetService<ILogger<NiTorrentApplication>>()?
-            .LogInformation("[Lifecycle] Activation received: {ActivationKind}", ActivationLogFormatter.Describe(activationArgs));
-        GetService<IActivationQueue>().Enqueue(activationArgs);
-
-        var startupTask = EnsureStartupStarted(activationArgs, cancellationToken);
-        await startupTask.ConfigureAwait(false);
-    }
-
-    public async Task HandleActivationAsync(AppActivationArguments activationArgs, CancellationToken cancellationToken)
-    {
-        _services.GetService<ILogger<NiTorrentApplication>>()?
-            .LogInformation("[Lifecycle] Activation received: {ActivationKind}", ActivationLogFormatter.Describe(activationArgs));
-        var activationQueue = GetService<IActivationQueue>();
-        activationQueue.Enqueue(activationArgs);
-
-        var startupTask = Volatile.Read(ref _startupTask);
-        if (startupTask is null)
-            return;
-
-        await startupTask.ConfigureAwait(false);
-
-        cancellationToken.ThrowIfCancellationRequested();
-        await activationQueue.DrainAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    public async Task ShutdownAsync(AppShutdownReason reason, CancellationToken cancellationToken)
-    {
-        if (Interlocked.Exchange(ref _shutdownStarted, 1) == 1)
-            return;
-
-        var logger = _services.GetService<ILogger<NiTorrentApplication>>();
-        var timeoutOptions = _services.GetService<ShutdownTimeoutOptions>() ?? new ShutdownTimeoutOptions();
-        var dispatcher = GetService<IUiDispatcher>();
-        var lifecycleCoordinator = GetService<AppLifecycleCoordinator>();
-        var context = CreateLifecycleContext(null, cancellationToken);
-
-        _shutdownElapsed.Restart();
-        logger?.LogInformation("[Lifecycle] Shutdown requested: {Reason}", reason);
-
-        await RunShutdownStepAsync(
-            "Wait for startup completion",
-            timeoutOptions.HostStopTimeout,
-            async ct =>
-            {
-                var startupTask = Volatile.Read(ref _startupTask);
-                if (startupTask is not null)
-                    await startupTask.WaitAsync(ct).ConfigureAwait(false);
-            },
-            logger,
-            cancellationToken).ConfigureAwait(false);
-
-        await RunShutdownStepAsync(
-            "Stop accepting activation",
-            timeoutOptions.ShellCloseTimeout,
-            ct =>
-            {
-                ct.ThrowIfCancellationRequested();
-                GetService<IActivationQueue>().StopAccepting();
-                return Task.CompletedTask;
-            },
-            logger,
-            cancellationToken).ConfigureAwait(false);
-
-        await RunShutdownStepAsync(
-            "Stop accepting torrent work",
-            timeoutOptions.EngineStopTimeout,
-            ct => GetService<ITorrentEngineLifecycle>().StopAcceptingWorkAsync(ct),
-            logger,
-            cancellationToken).ConfigureAwait(false);
-
-        await RunShutdownStepAsync(
-            "Save UI state and settings",
-            timeoutOptions.SessionFlushTimeout,
-            ct => GetService<ISettingsRepository>().FlushAsync(ct),
-            logger,
-            cancellationToken).ConfigureAwait(false);
-
-        await RunShutdownStepAsync(
-            "Close shell, dialogs and flyouts",
-            timeoutOptions.ShellCloseTimeout,
-            ct => GetService<IAppShellLifecycle>().CloseAsync(),
-            logger,
-            cancellationToken).ConfigureAwait(false);
-
-        await RunShutdownStepAsync(
-            "Stop lifecycle hooks and runtime tasks",
-            timeoutOptions.EngineStopTimeout,
-            ct => lifecycleCoordinator.StopAsync(
-                context,
-                ct,
-                task => SelectShutdownTimeout(task, timeoutOptions)),
-            logger,
-            cancellationToken).ConfigureAwait(false);
-
-        await RunShutdownStepAsync(
-            "Stop hosted services",
-            timeoutOptions.HostStopTimeout,
-            ct => _host.StopAsync(ct),
-            logger,
-            cancellationToken).ConfigureAwait(false);
-
-        await RunShutdownStepAsync(
-            "Write clean shutdown marker",
-            timeoutOptions.SessionFlushTimeout,
-            ct => GetService<IShutdownStateService>().MarkCleanShutdownAsync(ct),
-            logger,
-            cancellationToken).ConfigureAwait(false);
-
-        logger?.LogInformation(
-            "[Lifecycle] Clean shutdown completed in {ElapsedMs} ms",
-            _shutdownElapsed.ElapsedMilliseconds);
-
-        await RunShutdownStepAsync(
-            "Dispose host",
-            timeoutOptions.HostStopTimeout,
-            ct => dispatcher.EnqueueAsync(_host.Dispose, ct),
-            logger,
-            cancellationToken).ConfigureAwait(false);
-
-        await RunShutdownStepAsync(
-            "Exit dispatcher/application",
-            timeoutOptions.ShellCloseTimeout,
-            ct => dispatcher.EnqueueAsync(_exit, ct),
-            logger,
-            cancellationToken).ConfigureAwait(false);
-    }
-
-    private Task EnsureStartupStarted(AppActivationArguments activationArgs, CancellationToken cancellationToken)
-    {
-        lock (_startupGate)
+        Get<IActivationQueue>().Enqueue(args);
+        lock (_gate)
         {
-            _startupTask ??= StartCoreAsync(activationArgs, cancellationToken);
+            if (Volatile.Read(ref _shutdownStarted) != 0) return Task.CompletedTask;
+            _startupTask ??= StartCoreAsync(ct);
             return _startupTask;
         }
     }
 
-    private async Task StartCoreAsync(AppActivationArguments activationArgs, CancellationToken cancellationToken)
+    private async Task StartCoreAsync(CancellationToken ct)
     {
-        var holder = GetService<UiDispatcherHolder>();
-        holder.Initialize(DispatcherQueue.GetForCurrentThread());
-
-        var logger = _services.GetService<ILogger<NiTorrentApplication>>();
-        logger?.LogInformation("[Lifecycle] Host start requested");
-        var elapsed = Stopwatch.StartNew();
-        await _host.StartAsync(cancellationToken).ConfigureAwait(false);
-        elapsed.Stop();
-        logger?.LogInformation("[Lifecycle] Host start completed in {ElapsedMs} ms", elapsed.ElapsedMilliseconds);
-
-        var lifecycleCoordinator = GetService<AppLifecycleCoordinator>();
-        var context = CreateLifecycleContext(activationArgs, cancellationToken);
-        await lifecycleCoordinator.StartAsync(context, cancellationToken).ConfigureAwait(false);
-    }
-
-    private AppLifecycleContext CreateLifecycleContext(AppActivationArguments? activationArgs, CancellationToken cancellationToken)
-        => new(
-            _services,
-            activationArgs,
-            cancellationToken,
-            SynchronizationContext.Current,
-            GetService<IUiDispatcher>(),
-            _services.GetService<ILogger<NiTorrentApplication>>());
-
-    private static TimeSpan? SelectShutdownTimeout(IAppLifecycleTask task, ShutdownTimeoutOptions options)
-    {
-        if (task.Name.Contains("shell", StringComparison.OrdinalIgnoreCase) ||
-            task.Name.Contains("tray", StringComparison.OrdinalIgnoreCase))
-        {
-            return options.ShellCloseTimeout;
-        }
-
-        if (task.Name.Contains("torrent runtime state", StringComparison.OrdinalIgnoreCase) ||
-            task.Name.Contains("settings", StringComparison.OrdinalIgnoreCase) ||
-            task.Name.Contains("flush", StringComparison.OrdinalIgnoreCase))
-        {
-            return options.SessionFlushTimeout;
-        }
-
-        if (task.Name.Contains("torrent", StringComparison.OrdinalIgnoreCase) ||
-            task.Name.Contains("engine", StringComparison.OrdinalIgnoreCase))
-        {
-            return options.EngineStopTimeout;
-        }
-
-        return options.ShellCloseTimeout;
-    }
-
-    private static async Task RunShutdownStepAsync(
-        string name,
-        TimeSpan timeout,
-        Func<CancellationToken, Task> action,
-        ILogger? logger,
-        CancellationToken cancellationToken)
-    {
-        var elapsed = Stopwatch.StartNew();
-        logger?.LogInformation("[Lifecycle] Shutdown step started: {StepName}", name);
-
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        Task operation;
+        Get<UiDispatcherHolder>().Initialize(DispatcherQueue.GetForCurrentThread());
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, _startup.Token);
+        var token = linked.Token;
+        var clock = Stopwatch.StartNew();
+        var logger = Get<ILogger<NiTorrentApplication>>();
         try
         {
-            operation = action(timeoutCts.Token);
+            await host.StartAsync(token).ConfigureAwait(false);
+            logger.LogInformation("[Lifecycle] Core host started in {ElapsedMs} ms", clock.ElapsedMilliseconds);
+            token.ThrowIfCancellationRequested();
+            // Optional consumer: removing these shell calls does not change core startup.
+            await Get<IAppShellLifecycle>().StartAsync(token).ConfigureAwait(false);
+            token.ThrowIfCancellationRequested();
+            await Get<MainWindowLifecycle>().StartTrayAsync(token).ConfigureAwait(false);
+            await Get<IActivationQueue>().DrainAsync(token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            elapsed.Stop();
-            logger?.LogWarning(
-                "[Lifecycle] Shutdown step canceled after {ElapsedMs} ms: {StepName}",
-                elapsed.ElapsedMilliseconds,
-                name);
-            throw;
-        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            elapsed.Stop();
-            logger?.LogError(
-                ex,
-                "[Lifecycle] Shutdown step failed after {ElapsedMs} ms: {StepName}. Shutdown will continue.",
-                elapsed.ElapsedMilliseconds,
-                name);
-            return;
-        }
-
-        var delay = Task.Delay(timeout, cancellationToken);
-        var completed = await Task.WhenAny(operation, delay).ConfigureAwait(false);
-
-        if (completed != operation)
-        {
-            timeoutCts.Cancel();
-            elapsed.Stop();
-            logger?.LogWarning(
-                "[Lifecycle] Shutdown step timed out after {ElapsedMs} ms: {StepName}. Shutdown will continue.",
-                elapsed.ElapsedMilliseconds,
-                name);
-
-            _ = ObserveTimedOutShutdownStepAsync(name, operation, logger);
-            return;
-        }
-
-        try
-        {
-            await operation.ConfigureAwait(false);
-            elapsed.Stop();
-            logger?.LogInformation(
-                "[Lifecycle] Shutdown step completed in {ElapsedMs} ms: {StepName}",
-                elapsed.ElapsedMilliseconds,
-                name);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            elapsed.Stop();
-            logger?.LogWarning(
-                "[Lifecycle] Shutdown step canceled after {ElapsedMs} ms: {StepName}",
-                elapsed.ElapsedMilliseconds,
-                name);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            elapsed.Stop();
-            logger?.LogError(
-                ex,
-                "[Lifecycle] Shutdown step failed after {ElapsedMs} ms: {StepName}. Shutdown will continue.",
-                elapsed.ElapsedMilliseconds,
-                name);
+            logger.LogError(ex, "Application startup failed");
+            await Get<IUiDispatcher>().EnqueueAsync(() =>
+            {
+                if (Volatile.Read(ref _shutdownStarted) != 0) return;
+                var close = new Button { Content = "Выход" };
+                close.Click += (_, _) => _ = ShutdownAsync(AppShutdownReason.UserRequested, CancellationToken.None);
+                var panel = new StackPanel { Spacing = 16, Margin = new Thickness(24) };
+                panel.Children.Add(new TextBlock { Text = "Не удалось запустить NiTorrent", FontSize = 20 });
+                panel.Children.Add(new TextBlock { Text = ex.Message, TextWrapping = TextWrapping.Wrap });
+                panel.Children.Add(close);
+                _startupErrorWindow = new Window { Title = "NiTorrent — ошибка запуска", Content = panel };
+                _startupErrorWindow.Closed += (_, _) => _ = ShutdownAsync(AppShutdownReason.UserRequested, CancellationToken.None);
+                _startupErrorWindow.Activate();
+            }).ConfigureAwait(false);
         }
     }
 
-    private static async Task ObserveTimedOutShutdownStepAsync(string name, Task operation, ILogger? logger)
+    public async Task HandleActivationAsync(AppActivationArguments args, CancellationToken ct)
     {
-        try
-        {
-            await operation.ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            logger?.LogDebug(ex, "Timed out shutdown step completed after shutdown continued: {StepName}", name);
-        }
+        if (Volatile.Read(ref _shutdownStarted) != 0) return;
+        var queue = Get<IActivationQueue>();
+        queue.Enqueue(args);
+        Task? startup;
+        lock (_gate) startup = _startupTask;
+        if (startup is not null) await startup.ConfigureAwait(false);
+        if (Volatile.Read(ref _shutdownStarted) == 0) await queue.DrainAsync(ct).ConfigureAwait(false);
     }
 
-    private T GetService<T>() where T : class
+    public async Task ShutdownAsync(AppShutdownReason reason, CancellationToken ct)
     {
-        if (_services.GetService(typeof(T)) is not T service)
-            throw new ArgumentException($"{typeof(T)} needs to be registered in the application service provider.");
-
-        return service;
+        if (Interlocked.Exchange(ref _shutdownStarted, 1) != 0) return;
+        var logger = Get<ILogger<NiTorrentApplication>>();
+        var dispatcher = Get<IUiDispatcher>();
+        var clock = Stopwatch.StartNew();
+        Get<IActivationQueue>().StopAccepting();
+        Get<ITorrentSession>().RequestStop();
+        _startup.Cancel();
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(TimeSpan.FromSeconds(10));
+        var stopped = false;
+        try
+        {
+            // Only wait for the cancelled host/window startup, never for collection restoration.
+            Task? startup;
+            lock (_gate) startup = _startupTask;
+            if (startup is not null) await startup.WaitAsync(deadline.Token).ConfigureAwait(false);
+            await Get<IAppShellLifecycle>().CloseAsync().WaitAsync(deadline.Token).ConfigureAwait(false);
+            await dispatcher.EnqueueAsync(() => _startupErrorWindow?.Close(), deadline.Token).ConfigureAwait(false);
+            await host.StopAsync(deadline.Token).WaitAsync(deadline.Token).ConfigureAwait(false);
+            stopped = true;
+        }
+        catch (Exception ex) { logger.LogError(ex, "Shutdown was incomplete; clean marker is not guaranteed"); }
+        finally
+        {
+            logger.LogInformation("[Lifecycle] Shutdown finished in {ElapsedMs} ms; stopped={Stopped}", clock.ElapsedMilliseconds, stopped);
+            if (stopped) await dispatcher.EnqueueAsync(host.Dispose).ConfigureAwait(false);
+            await dispatcher.EnqueueAsync(exit).ConfigureAwait(false);
+        }
     }
 }

@@ -17,8 +17,8 @@ public class TorrentEngineCoordinator
     {
         ct.ThrowIfCancellationRequested();
 
-        //if (_engine is not null)
-        //    throw new InvalidOperationException("ClientEngine already initialized.");
+        if (_engine is not null)
+            throw new InvalidOperationException("ClientEngine already initialized.");
         _engine = new ClientEngine(settings);
 
         return Task.CompletedTask;
@@ -30,7 +30,7 @@ public class TorrentEngineCoordinator
 
         if (_engine is null)
         {
-            _engine = new ClientEngine(settings);
+            // The runtime owner applies initial settings and creates the engine.
             return;
         }
 

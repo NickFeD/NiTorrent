@@ -18,6 +18,9 @@ public sealed class JsonTorrentRepository : ITorrentRepository
 
     private ConcurrentDictionary<Guid, TorrentDownloadRecord> _itemsById = new();
     private bool _loaded;
+    private bool _dirty;
+    private readonly List<string> _pendingSourceDeletes = [];
+    public bool HasPendingWrites => _dirty;
 
     public JsonTorrentRepository(IAppStorageService storage)
     {
@@ -26,8 +29,6 @@ public sealed class JsonTorrentRepository : ITorrentRepository
         _torrentsRoot = _storage.GetLocalPath(@"Torrents");
         _filePath = _storage.GetLocalPath(@"Torrents\torrent_downloads.json");
 
-        _storage.EnsureDirectory(_torrentsRoot);
-        _storage.EnsureParentDirectory(_filePath);
     }
 
     public async Task AddAsync(TorrentDownload download, TorrentSource source, CancellationToken ct)
@@ -56,7 +57,6 @@ public sealed class JsonTorrentRepository : ITorrentRepository
         await EnsureLoadedAsync(ct);
 
         string? torrentFilePath = null;
-        var removed = false;
 
         await _gate.WaitAsync(ct);
         try
@@ -64,8 +64,8 @@ public sealed class JsonTorrentRepository : ITorrentRepository
             if (!_itemsById.TryRemove(id, out var removedRecord))
                 return;
 
-            removed = true;
             torrentFilePath = GetTorrentFilePath(removedRecord);
+            if (torrentFilePath is not null) _pendingSourceDeletes.Add(torrentFilePath);
             await SaveUnsafeAsync(ct);
         }
         finally
@@ -73,8 +73,7 @@ public sealed class JsonTorrentRepository : ITorrentRepository
             _gate.Release();
         }
 
-        if (removed)
-            TryDeleteFile(torrentFilePath);
+        // Source cleanup follows a successful durable snapshot, never a failed save.
     }
 
     public async Task<bool> ExistsByInfoHash(string infoHash, CancellationToken ct)
@@ -160,21 +159,36 @@ public sealed class JsonTorrentRepository : ITorrentRepository
             items.ToDictionary(x => x.Id));
     }
 
-    private async Task SaveUnsafeAsync(CancellationToken ct)
+    private async Task SaveUnsafeAsync(CancellationToken ct, bool throwOnError = false)
     {
-        _storage.EnsureParentDirectory(_filePath);
+        _dirty = true;
 
         var document = new TorrentRepositoryDocument
         {
             Items = _itemsById.Values.ToList()
         };
 
-        await using var stream = File.Create(_filePath);
-        await JsonSerializer.SerializeAsync(
-            stream,
-            document,
-            JsonTorrentRepositoryDocumentContext.Default.TorrentRepositoryDocument,
-            ct);
+        var temporary = _filePath + ".tmp";
+        try
+        {
+            _storage.EnsureParentDirectory(_filePath);
+            await using (var stream = File.Create(temporary))
+            {
+                await JsonSerializer.SerializeAsync(stream, document,
+                    JsonTorrentRepositoryDocumentContext.Default.TorrentRepositoryDocument, ct);
+                await stream.FlushAsync(ct);
+                stream.Flush(flushToDisk: true);
+            }
+            File.Move(temporary, _filePath, overwrite: true);
+            _dirty = false;
+            foreach (var sourcePath in _pendingSourceDeletes) TryDeleteFile(sourcePath);
+            _pendingSourceDeletes.Clear();
+        }
+        catch (Exception ex) when (!throwOnError && ex is IOException or UnauthorizedAccessException)
+        {
+            System.Diagnostics.Trace.TraceError("Torrent catalog save failed: {0}", ex);
+        }
+        finally { TryDeleteFile(temporary); }
     }
 
     private async Task<TorrentSourceRecord> CreateSourceRecordAsync(
@@ -264,6 +278,8 @@ public sealed class JsonTorrentRepository : ITorrentRepository
             record.SavePath)
         {
             Status = record.Status,
+            Size = (record.FileEntries ?? []).Sum(x => x.SizeByte),
+            DeleteFiles = record.DeleteFiles,
             FileEntries = (record.FileEntries ?? [])
                 .Select(x => new TorrentFileEntry(x.FullPath, x.SizeByte, x.IsSelected))
                 .ToList()
@@ -277,6 +293,7 @@ public sealed class JsonTorrentRepository : ITorrentRepository
             Name = download.Name,
             SavePath = download.SavePath,
             Status = download.Status,
+            DeleteFiles = download.DeleteFiles,
             FileEntries = download.FileEntries
                 .Select(x => new TorrentFileEntryRecord
                 {
@@ -315,6 +332,21 @@ public sealed class JsonTorrentRepository : ITorrentRepository
         return result;
     }
 
+    public async Task<StoredTorrent?> GetForRestoreAsync(Guid id, CancellationToken ct)
+    {
+        await EnsureLoadedAsync(ct);
+        if (!_itemsById.TryGetValue(id, out var record)) return null;
+        var source = record.Source ?? throw new InvalidDataException("Missing torrent source.");
+        TorrentSource restored = source.Kind switch
+        {
+            TorrentSourceKind.Magnet => new TorrentSource.Magnet(source.Value),
+            TorrentSourceKind.TorrentFile => new TorrentSource.TorrentFile(source.Value),
+            TorrentSourceKind.TorrentBytes => new TorrentSource.TorrentBytes(Convert.FromBase64String(source.Value)),
+            _ => throw new InvalidDataException("Unknown torrent source kind.")
+        };
+        return new StoredTorrent(ToDomain(record), restored);
+    }
+
     public Task LoadingAsync(CancellationToken ct)
     {
         return EnsureLoadedAsync(ct);
@@ -327,7 +359,7 @@ public sealed class JsonTorrentRepository : ITorrentRepository
         await _gate.WaitAsync(ct);
         try
         {
-            await SaveUnsafeAsync(ct);
+            await SaveUnsafeAsync(ct, throwOnError: true);
         }
         finally
         {
@@ -348,6 +380,7 @@ internal sealed class TorrentDownloadRecord
     public string Name { get; set; } = string.Empty;
     public string SavePath { get; set; } = string.Empty;
     public TorrentDownloadStatus Status { get; set; }
+    public bool DeleteFiles { get; set; }
     public List<TorrentFileEntryRecord> FileEntries { get; set; } = [];
     public TorrentSourceRecord? Source { get; set; }
 }

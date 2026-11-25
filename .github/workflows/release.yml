@@ -38,7 +38,7 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: |
-            10.x.x
+            11.x.x
 
       - name: Read app version from csproj
         id: version

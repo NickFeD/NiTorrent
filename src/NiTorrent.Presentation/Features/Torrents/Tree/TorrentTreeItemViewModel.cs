@@ -24,6 +24,34 @@ public sealed partial class TorrentTreeItemViewModel : ObservableObject
     public bool IsFolder => _folder != null;
     public bool IsFile => _file != null;
     public string TypeGlyph => IsFolder ? "\uE8B7" : "\uE7C3";
+    public string SizeText => _file is null ? "" : SizeFormatter.FormatBytes(_file.Size);
+    public Uri IconUri => new($"ms-appx:///Assets/FileTypes/{GetIconName()}.svg");
+
+    private string GetIconName()
+    {
+        if (IsFolder) return "folder";
+        if (IsPlaceholder) return "file";
+        return Path.GetExtension(Name).ToLowerInvariant() switch
+        {
+            ".txt" or ".md" or ".rtf" or ".doc" or ".docx" or ".odt" or ".log" or ".nfo" => "document",
+            ".pdf" => "pdf",
+            ".xls" or ".xlsx" or ".ods" or ".csv" => "spreadsheet",
+            ".ppt" or ".pptx" or ".odp" => "presentation",
+            ".zip" or ".rar" or ".7z" or ".tar" or ".gz" or ".bz2" or ".xz" or ".zst" or ".cab" => "archive",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".bmp" or ".svg" or ".tiff" or ".avif" => "image",
+            ".mkv" or ".mp4" or ".avi" or ".mov" or ".webm" or ".m4v" or ".wmv" or ".mpg" or ".ts" => "video",
+            ".mp3" or ".flac" or ".wav" or ".m4a" or ".aac" or ".ogg" or ".opus" or ".wma" or ".aiff" => "audio",
+            ".iso" or ".img" or ".bin" or ".cue" or ".nrg" => "disc",
+            ".cs" or ".cpp" or ".h" or ".js" or ".py" or ".json" or ".xml" or ".html" or ".css" or ".sh" or ".ps1" => "code",
+            ".exe" or ".msi" or ".msix" or ".bat" or ".cmd" or ".apk" or ".appx" => "executable",
+            ".ttf" or ".otf" or ".woff" or ".woff2" => "font",
+            ".epub" or ".mobi" or ".azw" or ".azw3" or ".fb2" => "ebook",
+            ".srt" or ".ass" or ".ssa" or ".vtt" or ".sub" => "subtitle",
+            ".ini" or ".cfg" or ".conf" or ".toml" or ".yaml" or ".yml" => "settings",
+            ".torrent" => "torrent",
+            _ => "file"
+        };
+    }
 
     public bool IsPlaceholder { get; }
 

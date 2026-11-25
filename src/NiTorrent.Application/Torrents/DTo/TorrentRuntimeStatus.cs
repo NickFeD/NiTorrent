@@ -8,4 +8,7 @@ public sealed record TorrentRuntimeStatus(
     string? ErrorMessage,
     long DownloadSpeed,
     long UploadSpeed,
-    double Progress);
+    double Progress)
+{
+    public NiTorrent.Domain.Torrents.TorrentDownloadStatus? DesiredStatus { get; init; }
+}

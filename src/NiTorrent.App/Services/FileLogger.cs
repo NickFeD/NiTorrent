@@ -38,6 +38,10 @@ internal sealed class FileLogger : ILogger
             Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
             File.AppendAllText(_filePath, message + Environment.NewLine, System.Text.Encoding.UTF8);
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            System.Diagnostics.Debug.WriteLine($"File logging failed: {ex.Message}");
+        }
         finally
         {
             Gate.Release();

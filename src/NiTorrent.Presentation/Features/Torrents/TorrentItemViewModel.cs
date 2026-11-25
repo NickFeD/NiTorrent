@@ -18,6 +18,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     private readonly PauseTorrentUseCase _pauseTorrentUseCase;
     private readonly IFolderLauncher _folderLauncher;
     private readonly IDialogService _dialogs;
+    private readonly NiTorrent.Application.Torrents.Abstract.ITorrentSession _session;
     private TorrentDownload _item;
 
     public Guid Id => _item.Id;
@@ -47,7 +48,10 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     public string ProgressText => $"{Progress:F1}%";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRetry))]
     public partial TorrentRuntimeStatus State { get; set; }
+
+    public bool CanRetry => State.State == TorrentLifecycleState.Error && _session.EngineError is null;
 
     [ObservableProperty]
     public partial string StateText { get; set; } = "";
@@ -79,13 +83,15 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         StartTorrentUseCase startTorrentUseCase,
         PauseTorrentUseCase pauseTorrentUseCase,
         IDialogService dialogs,
-        IFolderLauncher folderLauncher)
+        IFolderLauncher folderLauncher,
+        NiTorrent.Application.Torrents.Abstract.ITorrentSession session)
     {
         _removeAsync = removeAsync;
         _startTorrentUseCase = startTorrentUseCase;
         _pauseTorrentUseCase = pauseTorrentUseCase;
         _folderLauncher = folderLauncher;
         _dialogs = dialogs;
+        _session = session;
         _item = item;
         State = new TorrentRuntimeStatus(Id, Application.Torrents.Enum.TorrentLifecycleState.Unknown, null, 0, 0, 0);
     }
@@ -106,12 +112,14 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
             TorrentLifecycleState.Seeding => "Раздача",
             //TorrentLifecycleState.Completed => "Завершён",
             TorrentLifecycleState.Error => "Ошибка",
+            TorrentLifecycleState.Preparing => status.DesiredStatus == TorrentDownloadStatus.Paused ? "Подготовка • Пауза" : "Подготовка",
+            TorrentLifecycleState.Deleting => "Удаление",
             _ => "Неизвестно"
         };
     }
 
     private bool CanStart()
-        => _item.Status is TorrentDownloadStatus.Paused or TorrentDownloadStatus.Failed;
+        => _item.Status is TorrentDownloadStatus.Created or TorrentDownloadStatus.Paused or TorrentDownloadStatus.Failed;
     //=> State.State is TorrentLifecycleState.Stopped or TorrentLifecycleState.Paused or TorrentLifecycleState.Error;
 
     private bool CanPause()
@@ -131,6 +139,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         {
             var test = await _startTorrentUseCase.ExecuteAsync(new StartTorrentCommand(Id), ct);
             _item.Status = test.Status;
+            RefreshIntentCommands();
         }
         catch (Exception ex)
         {
@@ -145,6 +154,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         {
             var test = await _pauseTorrentUseCase.ExecuteAsync(new PauseTorrentCommand(Id), ct);
             _item.Status = test.Status;
+            RefreshIntentCommands();
         }
         catch (Exception ex)
         {
@@ -163,6 +173,21 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanRemove))]
     private Task RemoveWithDataAsync()
         => _removeAsync(this, true);
+
+    [RelayCommand(CanExecute = nameof(CanRetry))]
+    private void Retry() => _session.Retry(Id);
+
+    public void ApplyDownload(TorrentDownload item)
+    {
+        _item = item;
+        RefreshIntentCommands();
+    }
+
+    private void RefreshIntentCommands()
+    {
+        StartCommand.NotifyCanExecuteChanged();
+        PauseCommand.NotifyCanExecuteChanged();
+    }
 
     [RelayCommand]
     private void ToggleFavorite()
@@ -219,6 +244,7 @@ public partial class TorrentItemViewModel : ObservableObject, IDisposable
         {
             StartCommand.NotifyCanExecuteChanged();
             PauseCommand.NotifyCanExecuteChanged();
+            RetryCommand.NotifyCanExecuteChanged();
         }
     }
 }

@@ -25,6 +25,7 @@ public sealed partial class MainWindowLifecycle(
     private AppCloseBehavior _closeBehavior;
     private bool _allowClose;
     private bool _trayInitialized;
+    private bool _trayUnavailable;
     private bool _windowClosingHandlerAttached;
     private bool _disposed;
 
@@ -48,7 +49,7 @@ public sealed partial class MainWindowLifecycle(
     public Task ShowAsync()
         => _dispatcher.EnqueueAsync(() =>
         {
-            EnsureWindowCreated();
+            CreateAndInitialize();
             var window = _window!;
             _trayService.SetVisible(false);
             window.Show();
@@ -60,7 +61,13 @@ public sealed partial class MainWindowLifecycle(
         {
             EnsureWindowCreated();
             var window = _window!;
-            EnsureTrayInitialized();
+            if (!EnsureTrayInitialized())
+            {
+                // Keep a taskbar entry when the tray adapter cannot be created.
+                if (window.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+                    presenter.Minimize();
+                return;
+            }
             window.Hide();
             _trayService.SetVisible(true);
         });
@@ -86,7 +93,7 @@ public sealed partial class MainWindowLifecycle(
     public Task OpenTorrentFileAsync(string filePath)
         => _dispatcher.EnqueueAsync(() =>
         {
-            EnsureWindowCreated();
+            CreateAndInitialize();
             var window = _window!;
             _trayService.SetVisible(false);
             window.Show();
@@ -98,7 +105,7 @@ public sealed partial class MainWindowLifecycle(
     public Task OpenMagnetLinkAsync(string magnetLink)
         => _dispatcher.EnqueueAsync(() =>
         {
-            EnsureWindowCreated();
+            CreateAndInitialize();
 
             var window = _window!;
 
@@ -130,15 +137,27 @@ public sealed partial class MainWindowLifecycle(
             StopTray();
         }, ct);
 
-    private void EnsureTrayInitialized()
+    private bool EnsureTrayInitialized()
     {
         if (_trayInitialized)
-            return;
-
-        _trayService.Initialize();
-        _trayService.OpenRequested += OnTrayOpenRequested;
-        _trayService.ExitRequested += OnTrayExitRequested;
-        _trayInitialized = true;
+            return true;
+        if (_trayUnavailable) return false;
+        try
+        {
+            _trayService.Initialize();
+            _trayService.OpenRequested += OnTrayOpenRequested;
+            _trayService.ExitRequested += OnTrayExitRequested;
+            _trayInitialized = true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _trayUnavailable = true;
+            _trayService.Dispose();
+            Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(_logger, ex,
+                "Tray is unavailable; keep the window accessible and the core running");
+            return false;
+        }
     }
 
     private async void OnMainWindowClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs e)

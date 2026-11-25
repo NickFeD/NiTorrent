@@ -19,7 +19,6 @@ public class EngineSettingsService : IEngineSettingsService
         _settingsService = settings;
         _torrentEngineCoordinator = torrentEngineCoordinator;
         _storage = appStorageService;
-        settings.Changed += OnUpdateSettings;
     }
 
     public async Task InitializeAsync(CancellationToken ct)
@@ -80,9 +79,4 @@ public class EngineSettingsService : IEngineSettingsService
         return builder;
     }
 
-    private void OnUpdateSettings(AppSettings appSettings)
-    {
-        // HACK: Fire and forget, we don't want to await this and block the UI thread, but we also don't want to ignore it.
-        var _ = ApplySettingsAsync(appSettings.EngineSettings, CancellationToken.None);
-    }
 }

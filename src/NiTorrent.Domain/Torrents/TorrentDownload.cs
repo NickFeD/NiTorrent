@@ -10,6 +10,7 @@ public class TorrentDownload(Guid id, string infoHash, string name, string saveP
 
     public List<TorrentFileEntry> FileEntries { get; set; } = [];
     public long Size { get; set; }
+    public bool DeleteFiles { get; set; }
 
     public void Start()
     {

@@ -9,6 +9,14 @@ public sealed class AppStorageService : IAppStorageService
 
     public AppStorageService()
     {
+        // Isolated diagnostics can run the real app without touching the user's profile.
+        var diagnosticRoot = Environment.GetEnvironmentVariable("NITORRENT_DATA_ROOT");
+        if (!string.IsNullOrWhiteSpace(diagnosticRoot))
+        {
+            _localRoot = Path.GetFullPath(diagnosticRoot);
+            _cacheRoot = Path.Combine(_localRoot, "Cache");
+            return;
+        }
         // Keep app-owned files under LocalFolder; fall back for unpackaged runs without package identity.
         try
         {

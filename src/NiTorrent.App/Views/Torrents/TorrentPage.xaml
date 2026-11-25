@@ -16,8 +16,8 @@
 
             <Style x:Key="TorrentPageHeaderTextStyle" TargetType="TextBlock">
                 <Setter Property="Foreground" Value="{ThemeResource TorrentTextPrimaryBrush}"/>
-                <Setter Property="FontSize" Value="20"/>
-                <Setter Property="FontWeight" Value="Bold"/>
+                <Setter Property="FontSize" Value="28"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
             </Style>
 
             <Style x:Key="TorrentTableHeaderTextStyle"
@@ -33,7 +33,7 @@
     </Page.Resources>
 
     <Grid x:Name="LayoutRoot"
-          Padding="10"
+          Padding="20,16,12,12"
           RowSpacing="0"
           ColumnSpacing="0"
           Background="{ThemeResource TorrentBackgroundBrush}"
@@ -48,10 +48,10 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition x:Name="TorrentSummaryRow"
-                           Height="92"
-                           MinHeight="92"
-                           MaxHeight="124"/>
-            <RowDefinition Height="10"/>
+                           Height="0"
+                           MinHeight="0"
+                           MaxHeight="0"/>
+            <RowDefinition Height="0"/>
             <RowDefinition Height="*"/>
             <RowDefinition x:Name="TorrentDetailsOuterRow" Height="0"/>
         </Grid.RowDefinitions>
@@ -76,7 +76,7 @@
         </TeachingTip>
 
         <Border Grid.Row="0"
-                Style="{StaticResource TorrentSurfaceBorderStyle}"
+                Background="Transparent"
                 MinHeight="66"
                 Margin="0,0,0,10"
                 Padding="12,10">
@@ -289,7 +289,7 @@
         </Border>
 
         <Grid x:Name="SummaryGrid"
-              Grid.Row="1"
+              Grid.Row="1" Visibility="Collapsed"
               ColumnSpacing="10">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
@@ -456,7 +456,7 @@
                                   SelectionMode="Single"
                                   Background="Transparent"
                                   BorderThickness="0"
-                                  Padding="5"
+                                  Padding="0"
                                   HorizontalContentAlignment="Stretch"
                                   SelectionChanged="ListView_SelectionChanged"
                                   DoubleTapped="TorrentList_DoubleTapped">
@@ -464,8 +464,7 @@
                                 <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
                                     <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                                     <Setter Property="Padding" Value="0"/>
-                                    <Setter Property="Margin" Value="0,0,0,5"/>
-                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="Margin" Value="0"/>
                                     <Setter Property="BorderThickness" Value="0"/>
                                 </Style>
                             </ListView.ItemContainerStyle>

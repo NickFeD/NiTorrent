@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <BaselineFramework Condition="'$(BaselineFramework)' == ''">net11.0</BaselineFramework>
+    <TargetFramework>$(BaselineFramework)</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <!-- Compile the real storage and restore sources, without WinUI or packages.
+       This is an isolated probe, not a substitute torrent engine or app build. -->
+  <ItemGroup>
+    <Compile Include="../../src/NiTorrent.Domain/Torrents/TorrentDownload.cs" Link="Production/TorrentDownload.cs" />
+    <Compile Include="../../src/NiTorrent.Domain/Torrents/TorrentDownloadStatus.cs" Link="Production/TorrentDownloadStatus.cs" />
+    <Compile Include="../../src/NiTorrent.Domain/Torrents/TorrentFileEntry.cs" Link="Production/TorrentFileEntry.cs" />
+    <Compile Include="../../src/NiTorrent.Application/Abstractions/IAppStorageService.cs" Link="Production/IAppStorageService.cs" />
+    <Compile Include="../../src/NiTorrent.Application/Torrents/TorrentSource.cs" Link="Production/TorrentSource.cs" />
+    <Compile Include="../../src/NiTorrent.Application/Torrents/Abstract/ITorrentRepository.cs" Link="Production/ITorrentRepository.cs" />
+    <Compile Include="../../src/NiTorrent.Application/Torrents/Abstract/ITorrentRuntimeGateway.cs" Link="Production/ITorrentRuntimeGateway.cs" />
+    <Compile Include="../../src/NiTorrent.Application/Torrents/DTo/StoredTorrent.cs" Link="Production/StoredTorrent.cs" />
+    <Compile Include="../../src/NiTorrent.Application/Torrents/UseCase/RestoreSessionUseCase.cs" Link="Production/RestoreSessionUseCase.cs" />
+    <Compile Include="../../src/NiTorrent.Infrastructure/Torrents/JsonTorrentRepository.cs" Link="Production/JsonTorrentRepository.cs" />
+  </ItemGroup>
+</Project>

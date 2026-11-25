@@ -1,57 +1,70 @@
-﻿using NiTorrent.Application.Settings;
-using Nucs.JsonSettings;
-using Nucs.JsonSettings.Fluent;
-using Nucs.JsonSettings.Modulation.Recovery;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using NiTorrent.Application.Abstractions;
+using NiTorrent.Application.Settings;
 
 namespace NiTorrent.Infrastructure.Settings;
 
-public class SettingsRepository(AppJsonSettings appJsonSettings) : ISettingsRepository
+public sealed class SettingsRepository(Lazy<AppJsonSettings> settings, IAppStorageService storage,
+    ILogger<SettingsRepository> logger) : ISettingsRepository
 {
-    private AppJsonSettings _jsonSettings = appJsonSettings;
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private bool _dirty;
+    private AppJsonSettings JsonSettings => settings.Value;
 
-    private Task? _update;
-    public Task<AppSettings> GetAsync(CancellationToken ct)
+    public async Task<AppSettings> GetAsync(CancellationToken ct)
     {
-        EnsureLoaded();
-        return Task.FromResult(Map(_jsonSettings));
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try { return new() { EngineSettings = JsonSettings.EngineSettings, CloseBehavior = JsonSettings.CloseBehavior }; }
+        finally { _gate.Release(); }
     }
 
-    public async Task SaveAsync(AppSettings newSettings, CancellationToken ct)
+    public async Task SaveAsync(AppSettings settings, CancellationToken ct)
     {
-        _jsonSettings.EngineSettings = newSettings.EngineSettings;
-        _jsonSettings.CloseBehavior = newSettings.CloseBehavior;
-        if (_update is not null)
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            await _update;
+            JsonSettings.EngineSettings = settings.EngineSettings;
+            JsonSettings.CloseBehavior = settings.CloseBehavior;
+            _dirty = true;
+            try { await WriteAsync(ct).ConfigureAwait(false); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                logger.LogError(ex, "Settings remain in memory and will be retried on next save");
+            }
         }
-        _update = Task.Run(_jsonSettings.Save);
+        finally { _gate.Release(); }
     }
 
     public async Task FlushAsync(CancellationToken ct)
     {
-        var pending = _update;
-        if (pending is null)
-            return;
-
-        await pending.WaitAsync(ct);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try { if (_dirty) await WriteAsync(ct).ConfigureAwait(false); }
+        finally { _gate.Release(); }
     }
 
-    private void EnsureLoaded()
+    private async Task WriteAsync(CancellationToken ct)
     {
-        if (_jsonSettings is null)
+        var path = storage.GetLocalPath("torrent_settings.json");
+        storage.EnsureParentDirectory(path);
+        var temporary = path + ".tmp";
+        try
         {
-            _jsonSettings = JsonSettings.Configure<AppJsonSettings>()
-                .WithRecovery(RecoveryAction.RenameAndLoadDefault)
-                .LoadNow();
+            var snapshot = new AppSettings { EngineSettings = JsonSettings.EngineSettings, CloseBehavior = JsonSettings.CloseBehavior };
+            var bytes = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(snapshot, Formatting.Indented));
+            await using (var stream = File.Create(temporary))
+            {
+                await stream.WriteAsync(bytes, ct).ConfigureAwait(false);
+                await stream.FlushAsync(ct).ConfigureAwait(false);
+                stream.Flush(true);
+            }
+            File.Move(temporary, path, overwrite: true);
+            _dirty = false;
         }
-    }
-
-    private AppSettings Map(AppJsonSettings jsonSettings)
-    {
-        return new AppSettings
+        finally
         {
-            EngineSettings = jsonSettings.EngineSettings,
-            CloseBehavior = jsonSettings.CloseBehavior
-        };
+            try { File.Delete(temporary); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { logger.LogWarning(ex, "Temporary settings cleanup failed"); }
+        }
     }
 }

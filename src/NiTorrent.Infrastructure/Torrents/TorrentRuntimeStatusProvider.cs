@@ -3,16 +3,27 @@ using NiTorrent.Application.Torrents.DTo;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public class TorrentRuntimeStatusProvider(TorrentEngineCoordinator coordinator) : ITorrentRuntimeStatusProvider
+public class TorrentRuntimeStatusProvider(TorrentEngineCoordinator coordinator, ITorrentRepository repository, ITorrentSession session) : ITorrentRuntimeStatusProvider
 {
     private readonly TorrentEngineCoordinator _coordinator = coordinator;
 
-    public Task<IReadOnlyList<TorrentRuntimeStatus>> GetAllAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<TorrentRuntimeStatus>> GetAllAsync(CancellationToken ct)
     {
         var keyValues = _coordinator.GetTorrentMap();
-        var statuses = keyValues.Keys.ToList().Select(k =>
+        var preparation = session.GetPreparations();
+        var items = await repository.GetAllAsync(ct).ConfigureAwait(false);
+        var statuses = items.Select(item =>
         {
-            var engine = keyValues[k];
+            var k = item.Id;
+            preparation.TryGetValue(k, out var p);
+            if (session.EngineError is { } error)
+                return new TorrentRuntimeStatus(k, Application.Torrents.Enum.TorrentLifecycleState.Error, error, 0, 0, 0) { DesiredStatus = item.Status };
+            if (p?.State == TorrentPreparationState.Failed)
+                return new TorrentRuntimeStatus(k, Application.Torrents.Enum.TorrentLifecycleState.Error, p.Error, 0, 0, 0) { DesiredStatus = item.Status };
+            if (item.Status == Domain.Torrents.TorrentDownloadStatus.Deleted)
+                return new TorrentRuntimeStatus(k, Application.Torrents.Enum.TorrentLifecycleState.Deleting, null, 0, 0, 0) { DesiredStatus = item.Status };
+            if (p?.State != TorrentPreparationState.Ready || !keyValues.TryGetValue(k, out var engine))
+                return new TorrentRuntimeStatus(k, Application.Torrents.Enum.TorrentLifecycleState.Preparing, null, 0, 0, 0) { DesiredStatus = item.Status };
             var status = new TorrentRuntimeStatus(
                 k,
                 engine.State.Map(),
@@ -21,14 +32,14 @@ public class TorrentRuntimeStatusProvider(TorrentEngineCoordinator coordinator) 
                 engine.Monitor.UploadRate,
                 engine.PartialProgress);
 
-            return status;
+            return status with { DesiredStatus = item.Status };
         }).ToList();
 
-        return Task.FromResult<IReadOnlyList<TorrentRuntimeStatus>>(statuses);
+        return statuses;
     }
 
-    public Task<TorrentRuntimeStatus?> GetAsync(Guid torrentId, CancellationToken ct)
+    public async Task<TorrentRuntimeStatus?> GetAsync(Guid torrentId, CancellationToken ct)
     {
-        throw new NotImplementedException();
+        return (await GetAllAsync(ct).ConfigureAwait(false)).FirstOrDefault(s => s.TorrentId == torrentId);
     }
 }

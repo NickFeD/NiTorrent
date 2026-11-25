@@ -213,12 +213,12 @@
     </Style>
 
     <Style x:Key="TorrentRowContainerStyle" TargetType="Border">
-        <Setter Property="MinHeight" Value="64"/>
+        <Setter Property="MinHeight" Value="44"/>
         <Setter Property="Padding" Value="8,0"/>
-        <Setter Property="Background" Value="{ThemeResource TorrentRowSurfaceBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="CornerRadius" Value="0"/>
     </Style>
 
     <Style x:Key="TorrentRowSelectedContainerStyle"

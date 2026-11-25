@@ -4,10 +4,10 @@ using NiTorrent.Application.Torrents.DTo;
 
 namespace NiTorrent.Application.Torrents.UseCase;
 
-public sealed class StartTorrentUseCase(ITorrentRepository repository, ITorrentRuntimeGateway runtimeGateway)
+public sealed class StartTorrentUseCase(ITorrentRepository repository, ITorrentSession session)
 {
     private readonly ITorrentRepository _repository = repository;
-    private readonly ITorrentRuntimeGateway _runtimeGateway = runtimeGateway;
+    private readonly ITorrentSession _session = session;
 
     public async Task<StartTorrentResponse> ExecuteAsync(
         StartTorrentCommand command,
@@ -17,11 +17,8 @@ public sealed class StartTorrentUseCase(ITorrentRepository repository, ITorrentR
 
         var download = await _repository.GetByIdAsync(command.TorrentId, ct) ?? throw new InvalidOperationException("Torrent not found.");
 
-        download.Start();
-
-        await _runtimeGateway.StartAsync(download.Id, ct);
-
-        await _repository.UpdateAsync(download, ct);
+        await _session.SetStateAsync(download.Id, Domain.Torrents.TorrentDownloadStatus.Running, ct);
+        download.Status = Domain.Torrents.TorrentDownloadStatus.Running;
 
         return new StartTorrentResponse(download.Id, download.Status);
     }

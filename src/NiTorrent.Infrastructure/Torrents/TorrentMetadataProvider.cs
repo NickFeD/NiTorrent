@@ -8,9 +8,8 @@ using static NiTorrent.Application.Torrents.TorrentSource;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-internal class TorrentMetadataProvider(TorrentEngineCoordinator coordinator) : ITorrentMetadataProvider
+internal class TorrentMetadataProvider(TorrentEngineCoordinator coordinator, ITorrentSession session) : ITorrentMetadataProvider
 {
-    private readonly ClientEngine _clientEngine = coordinator.Engine;
 
     public async Task<TorrentMetadata> ExtractAsync(TorrentSource source, CancellationToken ct)
     {
@@ -44,7 +43,8 @@ internal class TorrentMetadataProvider(TorrentEngineCoordinator coordinator) : I
     private async Task<TorrentMetadata> MetadataFromMagnetAsync(string magnetUri, CancellationToken ct)
     {
         var magnet = MagnetLink.Parse(magnetUri);
-        var metadata = await _clientEngine.DownloadMetadataAsync(magnet, ct);
+        var metadata = await session.UseEngineAsync(
+            async token => await coordinator.Engine.DownloadMetadataAsync(magnet, token), ct);
         return await MetadataFromBytesAsync(metadata.ToArray(), ct);
     }
 

@@ -1,5 +1,6 @@
 ﻿using MonoTorrent;
 using NiTorrent.Application.Torrents;
+using MonoTorrent.Client;
 using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Domain.Torrents;
 
@@ -35,6 +36,9 @@ internal class TorrentRuntimeGateway(
         _workGate.ThrowIfNotAcceptingWork();
         var manager = _coordinator.GetTorrent(id);
 
+        if (!manager.HasMetadata)
+            throw new InvalidOperationException("Метаданные торрента недоступны: нельзя безопасно применить выбор файлов. Нужен сохранённый источник .torrent или метаданные в кэше.");
+
         var selectedFiles = torrentFiles.ToDictionary(x => x.FullPath, x => x.IsSelected);
 
         foreach (var managerFile in manager.Files)
@@ -64,7 +68,9 @@ internal class TorrentRuntimeGateway(
     {
         _workGate.ThrowIfNotAcceptingWork();
         ct.ThrowIfCancellationRequested();
-        return _coordinator.GetTorrent(torrentId).PauseAsync();
+        var manager = _coordinator.GetTorrent(torrentId);
+        return manager.State is TorrentState.Stopped or TorrentState.Paused
+            ? Task.CompletedTask : manager.PauseAsync();
     }
 
     public async Task RemoveAsync(Guid torrentId, bool deleteFiles, CancellationToken ct)
@@ -72,9 +78,12 @@ internal class TorrentRuntimeGateway(
         _workGate.ThrowIfNotAcceptingWork();
         ct.ThrowIfCancellationRequested();
         var manager = _coordinator.GetTorrent(torrentId);
-        _coordinator.RemoveTorrent(torrentId);
         await manager.StopAsync(TorrentStopTimeout);
-        await _coordinator.Engine.RemoveAsync(manager);
+        ct.ThrowIfCancellationRequested();
+        await _coordinator.Engine.RemoveAsync(manager, deleteFiles
+            ? MonoTorrent.Client.RemoveMode.CacheDataAndDownloadedData
+            : MonoTorrent.Client.RemoveMode.CacheDataOnly);
+        _coordinator.RemoveTorrent(torrentId);
     }
 
     public Task<bool> ExistsByIdAsync(Guid id)

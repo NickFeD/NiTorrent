@@ -10,6 +10,7 @@ public interface ITorrentRepository
     Task<bool> ExistsByInfoHash(string infoHash, CancellationToken ct);
     Task<List<TorrentDownload>> GetAllAsync(CancellationToken ct);
     Task<IReadOnlyList<StoredTorrent>> GetAllForRestoreAsync(CancellationToken ct);
+    Task<StoredTorrent?> GetForRestoreAsync(Guid id, CancellationToken ct);
     Task<TorrentDownload?> GetByIdAsync(Guid torrentId, CancellationToken ct);
     Task LoadingAsync(CancellationToken ct);
     Task UpdateAsync(TorrentDownload download, CancellationToken ct);

@@ -1,214 +1,66 @@
-﻿using NiTorrent.Application.Torrents.Abstract;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using NiTorrent.Application.Torrents.Abstract;
 using NiTorrent.Application.Torrents.DTo;
 
 namespace NiTorrent.Infrastructure.Torrents;
 
-public sealed class InMemoryTorrentRuntimeStateSource(ITorrentRuntimeStatusProvider runtimeStatusProvider) : ITorrentRuntimeStateSource, NiTorrent.Application.IAppLifecycleTask, NiTorrent.Application.IAppLifecycleShutdownStep, IDisposable
+/// <summary>The host owns polling. Subscribers only observe snapshots.</summary>
+public sealed class InMemoryTorrentRuntimeStateSource(
+    ITorrentRuntimeStatusProvider provider,
+    ILogger<InMemoryTorrentRuntimeStateSource> logger) : BackgroundService, ITorrentRuntimeStateSource
 {
-    private readonly ITorrentRuntimeStatusProvider _provider = runtimeStatusProvider;
-
-    private readonly Dictionary<Guid, TorrentRuntimeStatus> _statuses = new();
-    private readonly HashSet<Guid> _firstEqualProcessed = new();
-
-    private event Func<TorrentRuntimeStateChangedEventArgs, Task>? _changed;
-    private int _subscriberCount;
-
-    private readonly object _pollingGate = new();
-    private CancellationTokenSource? _cts;
-    private Task? _monitorTask;
-
-    public string Name => "Torrent runtime state source";
-
-    public NiTorrent.Application.AppStartupStage Stage => NiTorrent.Application.AppStartupStage.Background;
-
-    public int Order => 1000;
-
-    public int ShutdownOrder => 420;
+    private readonly object _gate = new();
+    private Dictionary<Guid, TorrentRuntimeStatus> _statuses = [];
+    private readonly HashSet<Func<TorrentRuntimeStateChangedEventArgs, Task>> _handlers = [];
 
     public bool TryGet(Guid torrentId, out TorrentRuntimeStatus status)
-        => _statuses.TryGetValue(torrentId, out status!);
-
+    {
+        lock (_gate) return _statuses.TryGetValue(torrentId, out status!);
+    }
     public IReadOnlyDictionary<Guid, TorrentRuntimeStatus> GetSnapshot()
-        => new Dictionary<Guid, TorrentRuntimeStatus>(_statuses);
-
-    public void Update(IReadOnlyList<TorrentRuntimeStatus> statuses)
     {
-        var incomingById = statuses.ToDictionary(x => x.TorrentId);
-        var changed = new List<TorrentRuntimeStatus>();
-
-        foreach (var status in statuses)
-        {
-            if (ProcessStatus(status))
-            {
-                changed.Add(status);
-            }
-        }
-
-        var removedIds = _statuses.Keys
-            .Where(id => !incomingById.ContainsKey(id))
-            .ToList();
-
-        foreach (var removedId in removedIds)
-        {
-            _statuses.Remove(removedId);
-            _firstEqualProcessed.Remove(removedId);
-        }
-
-        if (changed.Count > 0 || removedIds.Count > 0)
-        {
-            _changed?.Invoke(new TorrentRuntimeStateChangedEventArgs(changed, removedIds));
-        }
+        lock (_gate) return new Dictionary<Guid, TorrentRuntimeStatus>(_statuses);
     }
-
-    private bool ProcessStatus(TorrentRuntimeStatus status)
-    {
-        if (_statuses.TryGetValue(status.TorrentId, out var existing))
-        {
-            if (existing == status)
-            {
-                return _firstEqualProcessed.Add(status.TorrentId);
-            }
-        }
-
-        _statuses[status.TorrentId] = status;
-        _firstEqualProcessed.Remove(status.TorrentId);
-        return true;
-    }
-
     public void Subscribe(Func<TorrentRuntimeStateChangedEventArgs, Task> handler)
     {
-        _changed += handler;
-
-        if (++_subscriberCount == 1)
-        {
-            StartPolling();
-        }
-        else
-        {
-            _ = TickAsync(CancellationToken.None);
-        }
+        lock (_gate) _handlers.Add(handler);
     }
-
-    public async Task UnsubscribeAsync(Func<TorrentRuntimeStateChangedEventArgs, Task> handler)
+    public Task UnsubscribeAsync(Func<TorrentRuntimeStateChangedEventArgs, Task> handler)
     {
-        _changed -= handler;
-
-        if (_subscriberCount > 0 && --_subscriberCount == 0)
-        {
-            _changed = null;
-            await StopPollingAsync();
-        }
+        lock (_gate) _handlers.Remove(handler);
+        return Task.CompletedTask;
     }
-
-    public Task StartAsync(NiTorrent.Application.AppLifecycleContext context, CancellationToken cancellationToken)
-        => Task.CompletedTask;
-
-    public Task StopAsync(NiTorrent.Application.AppLifecycleContext context, CancellationToken cancellationToken)
-        => StopPollingAsync();
-
-    private void StartPolling()
+    public void Update(IReadOnlyList<TorrentRuntimeStatus> statuses)
     {
-        lock (_pollingGate)
+        Func<TorrentRuntimeStateChangedEventArgs, Task>[] handlers;
+        TorrentRuntimeStateChangedEventArgs change;
+        lock (_gate)
         {
-            if (_cts is not null)
-                return;
-
-            _cts = new CancellationTokenSource();
-            _monitorTask = MonitorAsync(_cts.Token);
+            var next = statuses.ToDictionary(s => s.TorrentId);
+            var updated = statuses.Where(s => !_statuses.TryGetValue(s.TorrentId, out var old) || old != s).ToList();
+            var removed = _statuses.Keys.Where(id => !next.ContainsKey(id)).ToList();
+            _statuses = next;
+            if (updated.Count == 0 && removed.Count == 0) return;
+            change = new(updated, removed);
+            handlers = _handlers.ToArray();
         }
+        foreach (var handler in handlers) _ = NotifyAsync(handler, change);
     }
-
-    private async Task StopPollingAsync()
+    private async Task NotifyAsync(Func<TorrentRuntimeStateChangedEventArgs, Task> handler, TorrentRuntimeStateChangedEventArgs change)
     {
-        CancellationTokenSource? cts;
-        Task? monitorTask;
-
-        lock (_pollingGate)
-        {
-            cts = _cts;
-            monitorTask = _monitorTask;
-            _cts = null;
-            _monitorTask = null;
-        }
-
-        if (cts is null)
-            return;
-
-        try
-        {
-            cts.Cancel();
-
-            if (monitorTask is not null)
-            {
-                await monitorTask.ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        finally
-        {
-            cts.Dispose();
-        }
+        try { await handler(change).ConfigureAwait(false); }
+        catch (Exception ex) { logger.LogWarning(ex, "Status observer failed"); }
     }
-
-    private async Task MonitorAsync(CancellationToken ct)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!ct.IsCancellationRequested)
+        while (!stoppingToken.IsCancellationRequested)
         {
-            await TickAsync(ct);
-            await Task.Delay(TimeSpan.FromSeconds(1), ct);
+            try { Update(await provider.GetAllAsync(stoppingToken).ConfigureAwait(false)); }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
+            catch (Exception ex) { logger.LogWarning(ex, "Status polling failed"); }
+            try { await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken).ConfigureAwait(false); }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { return; }
         }
     }
-
-    private async Task TickAsync(CancellationToken ct)
-    {
-        IReadOnlyList<TorrentRuntimeStatus> statuses;
-
-        try
-        {
-            statuses = await _provider.GetAllAsync(ct);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch
-        {
-            return;
-        }
-
-        var incomingById = statuses.ToDictionary(x => x.TorrentId);
-        var changed = new List<TorrentRuntimeStatus>();
-
-        foreach (var status in statuses)
-        {
-            if (ProcessStatus(status))
-            {
-                changed.Add(status);
-            }
-        }
-
-        var removedIds = _statuses.Keys
-            .Where(id => !incomingById.ContainsKey(id))
-            .ToList();
-
-        foreach (var removedId in removedIds)
-        {
-            _statuses.Remove(removedId);
-            _firstEqualProcessed.Remove(removedId);
-        }
-
-        if (changed.Count > 0 || removedIds.Count > 0)
-        {
-            var handlers = _changed;
-            if (handlers is not null)
-            {
-                await handlers.Invoke(
-                    new TorrentRuntimeStateChangedEventArgs(changed, removedIds));
-            }
-        }
-    }
-    public void Dispose()
-        => StopPollingAsync().GetAwaiter().GetResult();
 }
