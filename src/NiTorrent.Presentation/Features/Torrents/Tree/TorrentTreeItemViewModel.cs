@@ -18,13 +18,18 @@ public sealed partial class TorrentTreeItemViewModel : ObservableObject
     private bool _childrenLoaded;
 
     public TorrentTreeItemViewModel? Parent { get; }
-    public ObservableCollection<TorrentTreeItemViewModel> Children { get; } = new();
+    public TreeItemCollection Children { get; } = new();
+
+    [ObservableProperty]
+    public partial bool IsExpanded { get; set; }
 
     public string Name { get; }
     public bool IsFolder => _folder != null;
     public bool IsFile => _file != null;
     public string TypeGlyph => IsFolder ? "\uE8B7" : "\uE7C3";
-    public string SizeText => _file is null ? "" : SizeFormatter.FormatBytes(_file.Size);
+    public long SelectedSize => _folder?.SelectedSize ?? (_file?.IsSelected == true ? _file.Size : 0);
+    public string SizeText => IsPlaceholder ? "" : PreviewSizeFormatter.Format(SelectedSize);
+    public double SizeColumnWidth => _tree.SizeColumnWidth;
     public Uri IconUri => new($"ms-appx:///Assets/FileTypes/{GetIconName()}.svg");
 
     private string GetIconName()
@@ -119,6 +124,7 @@ public sealed partial class TorrentTreeItemViewModel : ObservableObject
             _tree.UpdateSelectionUpwards(_file.Parent);
 
             OnPropertyChanged(nameof(IsChecked));
+            OnPropertyChanged(nameof(SizeText));
             Parent?.RaiseCheckStateChangedUpwards();
         }
     }
@@ -140,9 +146,6 @@ public sealed partial class TorrentTreeItemViewModel : ObservableObject
 
     public static IReadOnlyList<TorrentTreeItemViewModel> CreateRootItems(TorrentTreeModel tree)
     {
-        // На всякий случай: после построения дерева привести CheckState папок в консистентное состояние
-        tree.UpdateSelectionFromChildren();
-
         var roots = new List<TorrentTreeItemViewModel>();
         foreach (var folder in tree.Root.Folders.Values)
             roots.Add(CreateFolder(tree, folder, parent: null));
@@ -200,6 +203,7 @@ public sealed partial class TorrentTreeItemViewModel : ObservableObject
                 Children.Add(CreateFile(_tree, f, this));
 
             _childrenLoaded = true;
+            SortLoadedChildren(_tree.SortBySize, _tree.SortDescending);
         }
         finally
         {
@@ -207,9 +211,39 @@ public sealed partial class TorrentTreeItemViewModel : ObservableObject
         }
     }
 
+    public void SortLoadedChildren(bool bySize, bool descending)
+    {
+        if (!_childrenLoaded) return;
+        SortItems(Children, bySize, descending);
+        foreach (var child in Children)
+            child.SortLoadedChildren(bySize, descending);
+    }
+
+    public void RefreshSizeColumnWidth()
+    {
+        OnPropertyChanged(nameof(SizeColumnWidth));
+        if (!_childrenLoaded) return;
+        foreach (var child in Children)
+            child.RefreshSizeColumnWidth();
+    }
+
+    public static void SortItems(TreeItemCollection items, bool bySize, bool descending)
+    {
+        var comparer = StringComparer.CurrentCultureIgnoreCase;
+        var sorted = bySize
+            ? (descending
+                ? items.OrderByDescending(x => x.IsFolder).ThenByDescending(x => x.SelectedSize).ThenBy(x => x.Name, comparer)
+                : items.OrderByDescending(x => x.IsFolder).ThenBy(x => x.SelectedSize).ThenBy(x => x.Name, comparer))
+            : (descending
+                ? items.OrderByDescending(x => x.IsFolder).ThenByDescending(x => x.Name, comparer)
+                : items.OrderByDescending(x => x.IsFolder).ThenBy(x => x.Name, comparer));
+        items.ApplyOrder(sorted.ToArray());
+    }
+
     private void RaiseCheckStateChangedLoadedSubtree()
     {
         OnPropertyChanged(nameof(IsChecked));
+        OnPropertyChanged(nameof(SizeText));
 
         if (!_childrenLoaded)
             return;
@@ -226,6 +260,7 @@ public sealed partial class TorrentTreeItemViewModel : ObservableObject
     private void RaiseCheckStateChangedUpwards()
     {
         OnPropertyChanged(nameof(IsChecked));
+        OnPropertyChanged(nameof(SizeText));
         Parent?.RaiseCheckStateChangedUpwards();
     }
 }

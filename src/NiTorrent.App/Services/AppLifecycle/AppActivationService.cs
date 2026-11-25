@@ -48,10 +48,10 @@ public sealed class AppActivationService : IAppActivationService
     {
         var activationItems = await ExtractActivationItemsAsync(args);
 
+        await _shellLifecycle.ShowAsync().ConfigureAwait(false);
+
         if (activationItems.Count == 0)
             return;
-
-        await _shellLifecycle.ShowAsync().ConfigureAwait(false);
 
         foreach (var item in activationItems)
         {

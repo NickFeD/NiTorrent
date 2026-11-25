@@ -6,6 +6,8 @@ namespace NiTorrent.Presentation.Features.Settings;
 
 public partial class ThemeSettingsViewModel : ObservableObject
 {
+    public string[] ThemeOptions { get; } = ["Light", "Dark", "Default"];
+    public string[] BackdropOptions { get; } = ["Mica", "MicaAlt", "Acrylic", "AcrylicThin"];
     private static readonly HashSet<string> AllowedThemes =
     [
         "Light",

@@ -5,5 +5,5 @@ namespace NiTorrent.Application.Settings;
 public class AppSettings
 {
     public TorrentEngineSettings EngineSettings { get; set; } = new TorrentEngineSettings();
-    public AppCloseBehavior CloseBehavior { get; set; }
+    public AppCloseBehavior CloseBehavior { get; set; } = AppCloseBehavior.AskUser;
 }

@@ -12,6 +12,7 @@
   <WinUISDKReferences>false</WinUISDKReferences>
 	<EnableMsixTooling>true</EnableMsixTooling>
 	<Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	<TrimMode>partial</TrimMode>
 	<ImplicitUsings>true</ImplicitUsings>
 	<LangVersion>Latest</LangVersion>
@@ -40,7 +41,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="**\*.xaml" Link="%(RecursiveDir)%(Filename)%(Extension)" />
+    <AdditionalFiles Include="**\*.xaml" Exclude="bin\**;obj\**" Link="%(RecursiveDir)%(Filename)%(Extension)" />
     <AdditionalFiles Include="Assets\NavViewMenu\AppData.json" Link="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 
@@ -92,6 +93,7 @@
     <PackageReference Include="DevWinUI" Version="11.1.0" />
     <PackageReference Include="DevWinUI.ContextMenu" Version="11.1.0" />
     <PackageReference Include="DevWinUI.SourceGenerator" Version="10.9.0" />
+    <PackageReference Include="H.NotifyIcon.WinUI" Version="2.4.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />

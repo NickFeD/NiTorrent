@@ -8,6 +8,10 @@ public sealed partial class FolderModel : ObservableObject
     public FolderModel? Parent { get; internal set; }
     public Dictionary<string, FolderModel> Folders { get; } = new();
     public Dictionary<string, FileNode> Files { get; } = new();
+    public long TotalSize { get; internal set; }
+    public long SelectedSize { get; internal set; }
+    public int TotalFileCount { get; internal set; }
+    public int SelectedFileCount { get; internal set; }
 
     /// <summary>
     /// Tri-state selection of the whole subtree:

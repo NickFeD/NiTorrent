@@ -184,9 +184,11 @@
                               Description="Определяет, что делать при нажатии на кнопку закрытия окна."
                               HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Info.png}">
                 <StackPanel Spacing="12">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}"
-                                  OnContent="Сворачивать в трей"
-                                  OffContent="Закрывать полностью" />
+                    <ComboBox SelectedIndex="{x:Bind ViewModel.CloseBehaviorIndex, Mode=TwoWay}" MinWidth="240" AutomationProperties.Name="Действие при закрытии окна">
+                        <ComboBoxItem Content="Завершить приложение" />
+                        <ComboBoxItem Content="Свернуть в трей" />
+                        <ComboBoxItem Content="Спрашивать" />
+                    </ComboBox>
                     <TextBlock Text="Если выбрать сворачивание, крестик главного окна скрывает приложение в трей. Пункт «Выход» в трее всегда закрывает приложение полностью."
                                TextWrapping="WrapWholeWords"
                                Opacity="0.72" />

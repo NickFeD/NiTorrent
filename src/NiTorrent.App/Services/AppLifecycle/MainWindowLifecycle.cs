@@ -1,257 +1,242 @@
-﻿using NiTorrent.Application;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.UI.Windowing;
+using NiTorrent.Application;
 using NiTorrent.Application.Settings;
 using NiTorrent.Application.Settings.Enums;
 using NiTorrent.Presentation.Abstractions;
+using NiTorrent.Presentation.Tray;
 using WinUIEx;
 
 namespace NiTorrent.App.Services.AppLifecycle;
 
-public sealed partial class MainWindowLifecycle(
-    IThemeService themeService,
-    ITrayService trayService,
-    IUiDispatcher dispatcher,
-    AppSettingsService settingsService,
-    IAppShutdownService shutdownService,
-    Microsoft.Extensions.Logging.ILogger<MainWindowLifecycle> logger) : IDisposable, IAppShellLifecycle
+public sealed partial class MainWindowLifecycle(IThemeService themeService, ITrayService trayService,
+    IUiDispatcher dispatcher, AppSettingsService settingsService, IAppShutdownService shutdownService,
+    ILogger<MainWindowLifecycle> logger) : IDisposable, IAppShellLifecycle
 {
-    private readonly IThemeService _themeService = themeService;
-    private readonly ITrayService _trayService = trayService;
-    private readonly IUiDispatcher _dispatcher = dispatcher;
-    private readonly AppSettingsService _settingsService = settingsService;
-    private readonly IAppShutdownService _shutdownService = shutdownService;
-    private readonly Microsoft.Extensions.Logging.ILogger<MainWindowLifecycle> _logger = logger;
-
+    private readonly TrayLifecycle _tray = new(trayService);
     private MainWindow? _window;
-    private AppCloseBehavior _closeBehavior;
-    private bool _allowClose;
-    private bool _trayInitialized;
-    private bool _trayUnavailable;
-    private bool _windowClosingHandlerAttached;
+    private ContentDialog? _dialog;
+    private bool _subscribed;
+    private bool _stopping;
+    private bool _closePending;
     private bool _disposed;
-
+    private int _activationVersion;
     public Window? CurrentWindow => _window;
 
-    public Task StartAsync(CancellationToken ct = default)
-        => _dispatcher.EnqueueAsync(() =>
-        {
-            ct.ThrowIfCancellationRequested();
-            CreateAndInitialize();
-            Activate();
-            Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[Lifecycle] Shell shown");
-        });
-
-    private void OnSettingsChanged(AppSettings settings)
-        => _closeBehavior = settings.CloseBehavior;
-
-    public void Activate()
-        => _window?.Activate();
-
-    public Task ShowAsync()
-        => _dispatcher.EnqueueAsync(() =>
-        {
-            CreateAndInitialize();
-            var window = _window!;
-            _trayService.SetVisible(false);
-            window.Show();
-            window.Activate();
-        });
-
-    public Task HideToTrayAsync()
-        => _dispatcher.EnqueueAsync(() =>
-        {
-            EnsureWindowCreated();
-            var window = _window!;
-            if (!EnsureTrayInitialized())
-            {
-                // Keep a taskbar entry when the tray adapter cannot be created.
-                if (window.AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
-                    presenter.Minimize();
-                return;
-            }
-            window.Hide();
-            _trayService.SetVisible(true);
-        });
-
-    public Task CloseAsync()
+    public Task StartAsync(CancellationToken ct = default) => dispatcher.EnqueueAsync(() =>
     {
-        if (_window is null)
-            return Task.CompletedTask;
+        ct.ThrowIfCancellationRequested();
+        CreateAndInitialize();
+        ShowWindow();
+        logger.LogInformation("[Lifecycle] Shell shown");
+    }, ct);
 
-        return _dispatcher.EnqueueAsync(() =>
-        {
-            var window = _window;
-            if (window is null)
-                return;
+    public void Activate() { if (!_stopping) ShowWindow(); }
+    public Task ShowAsync() => dispatcher.EnqueueAsync(() =>
+    {
+        if (_stopping) return;
+        CreateAndInitialize();
+        ShowWindow();
+    });
 
-            StopTray();
-            _allowClose = true;
-            DetachWindowClosingHandler();
-            window.Hide();
-        });
+    private void ShowWindow()
+    {
+        if (_stopping || _window is null) return;
+        _activationVersion++;
+        _dialog?.Hide();
+        _window.Show();
+        if (_window.AppWindow.Presenter is OverlappedPresenter { State: OverlappedPresenterState.Minimized } presenter)
+            presenter.Restore();
+        _window.Activate();
+        _tray.Leave();
     }
 
-    public Task OpenTorrentFileAsync(string filePath)
-        => _dispatcher.EnqueueAsync(() =>
-        {
-            CreateAndInitialize();
-            var window = _window!;
-            _trayService.SetVisible(false);
-            window.Show();
-            window.Activate();
-            window.OpenTorrentFileFromActivation(filePath);
-        });
-
-
-    public Task OpenMagnetLinkAsync(string magnetLink)
-        => _dispatcher.EnqueueAsync(() =>
-        {
-            CreateAndInitialize();
-
-            var window = _window!;
-
-            _trayService.SetVisible(false);
-            window.Show();
-            window.Activate();
-
-            window.OpenMagnetLinkFromActivation(magnetLink);
-        });
-
-    public Task StartTrayAsync(CancellationToken ct = default)
-        => _dispatcher.EnqueueAsync(() =>
-        {
-            ct.ThrowIfCancellationRequested();
-            EnsureTrayInitialized();
-        }, ct);
-
-    public Task StopTrayAsync(CancellationToken ct = default)
+    public Task HideToTrayAsync() => OnUiAsync(EnterTrayAsync);
+    private async Task EnterTrayAsync()
     {
-        if (!_trayInitialized)
-            return Task.CompletedTask;
-
-        return StopTrayOnDispatcherAsync(ct);
+        if (_stopping || _window is null) return;
+        var result = await _tray.EnterAsync(() => _window.Hide());
+        if (result != TrayTransitionResult.Failed || _stopping) return;
+        logger.LogWarning(_tray.LastError, "[Tray] Both registration attempts failed");
+        ShowWindow();
+        await ShowTrayErrorAsync();
     }
 
-    private Task StopTrayOnDispatcherAsync(CancellationToken ct = default)
-        => _dispatcher.EnqueueAsync(() =>
-        {
-            StopTray();
-        }, ct);
-
-    private bool EnsureTrayInitialized()
+    public Task CloseAsync() => dispatcher.EnqueueAsync(() =>
     {
-        if (_trayInitialized)
-            return true;
-        if (_trayUnavailable) return false;
+        if (_stopping) return;
+        _stopping = true;
+        _activationVersion++;
+        _dialog?.Hide();
+        _tray.Dispose();
+        StopTray();
+        if (_window is not null)
+        {
+            _window.AppWindow.Closing -= OnMainWindowClosing;
+            _window.Hide();
+        }
+    });
+
+    public Task OpenTorrentFileAsync(string filePath) => dispatcher.EnqueueAsync(() =>
+    {
+        if (_stopping) return;
+        CreateAndInitialize();
+        ShowWindow();
+        _window!.OpenTorrentFileFromActivation(filePath);
+    });
+    public Task OpenMagnetLinkAsync(string magnetLink) => dispatcher.EnqueueAsync(() =>
+    {
+        if (_stopping) return;
+        CreateAndInitialize();
+        ShowWindow();
+        _window!.OpenMagnetLinkFromActivation(magnetLink);
+    });
+
+    // Subscribe at startup, but allocate/register a native icon only when entering the tray.
+    public Task StartTrayAsync(CancellationToken ct = default) => dispatcher.EnqueueAsync(() =>
+    {
+        if (_subscribed || _stopping) return;
+        trayService.OpenRequested += OnTrayOpenRequested;
+        trayService.ExitRequested += OnTrayExitRequested;
+        trayService.RecoveryRequested += OnRecoveryRequested;
+        trayService.BulkFailed += OnBulkFailed;
+        _subscribed = true;
+    }, ct);
+    public Task StopTrayAsync(CancellationToken ct = default) => dispatcher.EnqueueAsync(StopTray, ct);
+    private void StopTray()
+    {
+        if (_subscribed)
+        {
+            trayService.OpenRequested -= OnTrayOpenRequested;
+            trayService.ExitRequested -= OnTrayExitRequested;
+            trayService.RecoveryRequested -= OnRecoveryRequested;
+            trayService.BulkFailed -= OnBulkFailed;
+            _subscribed = false;
+        }
+        trayService.Dispose();
+    }
+
+    private async void OnMainWindowClosing(AppWindow sender, AppWindowClosingEventArgs e)
+    {
+        if (_stopping) return;
+        e.Cancel = true;
+        if (_closePending || _dialog is not null) return;
+        _closePending = true;
         try
         {
-            _trayService.Initialize();
-            _trayService.OpenRequested += OnTrayOpenRequested;
-            _trayService.ExitRequested += OnTrayExitRequested;
-            _trayInitialized = true;
-            return true;
+            switch (settingsService.Current.CloseBehavior)
+            {
+                case AppCloseBehavior.ExitApplication:
+                    shutdownService.RequestShutdown();
+                    break;
+                case AppCloseBehavior.MinimizeToTray:
+                    await EnterTrayAsync();
+                    break;
+                default:
+                    await AskCloseAsync();
+                    break;
+            }
         }
-        catch (Exception ex)
+        catch (Exception ex) { logger.LogError(ex, "[Tray] Close request failed; window remains available"); ShowWindow(); }
+        finally { _closePending = false; }
+    }
+
+    private async Task AskCloseAsync()
+    {
+        var remember = new CheckBox { Content = "Запомнить выбор", Margin = new Thickness(0, 12, 0, 0) };
+        var content = new StackPanel { Spacing = 8 };
+        content.Children.Add(new TextBlock { Text = "Завершить приложение или продолжить работу в трее?", TextWrapping = TextWrapping.Wrap });
+        content.Children.Add(remember);
+        var version = _activationVersion;
+        var result = await ShowDialogAsync(new ContentDialog
         {
-            _trayUnavailable = true;
-            _trayService.Dispose();
-            Microsoft.Extensions.Logging.LoggerExtensions.LogWarning(_logger, ex,
-                "Tray is unavailable; keep the window accessible and the core running");
-            return false;
-        }
+            Title = "Закрытие NiTorrent", Content = content,
+            PrimaryButtonText = "Завершить приложение", SecondaryButtonText = "Свернуть в трей",
+            CloseButtonText = "Отмена", DefaultButton = ContentDialogButton.Close
+        });
+        if (_stopping || version != _activationVersion || result == ContentDialogResult.None) return;
+        var behavior = result == ContentDialogResult.Primary ? AppCloseBehavior.ExitApplication : AppCloseBehavior.MinimizeToTray;
+        if (remember.IsChecked == true)
+            await settingsService.UpdateAsync(new AppSettings { EngineSettings = settingsService.Current.EngineSettings, CloseBehavior = behavior });
+        if (_stopping || version != _activationVersion) return;
+        if (behavior == AppCloseBehavior.ExitApplication) shutdownService.RequestShutdown();
+        else await EnterTrayAsync();
     }
 
-    private async void OnMainWindowClosing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs e)
+    private async Task ShowTrayErrorAsync()
     {
-        if (_allowClose)
-            return;
-
-        switch (_closeBehavior)
+        var result = await ShowDialogAsync(new ContentDialog
         {
-            case AppCloseBehavior.ExitApplication:
-                e.Cancel = true;
-                _shutdownService.RequestShutdown();
-                return;
-            case AppCloseBehavior.MinimizeToTray:
-                e.Cancel = true;
-                await HideToTrayAsync();
-                break;
-            case AppCloseBehavior.AskUser:
-                e.Cancel = true;
-                _shutdownService.RequestShutdown();
-                break;
-        }
+            Title = "Не удалось создать значок в трее",
+            Content = "Две попытки не удались. Можно завершить NiTorrent или оставить окно открытым.",
+            PrimaryButtonText = "Завершить приложение", CloseButtonText = "Оставить открытым",
+            DefaultButton = ContentDialogButton.Close
+        });
+        if (!_stopping && result == ContentDialogResult.Primary) shutdownService.RequestShutdown();
     }
 
-    private void OnTrayOpenRequested()
-        => _ = ShowAsync();
-
-    private Task OnTrayExitRequested()
+    private async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
     {
-        _shutdownService.RequestShutdown();
-        return Task.CompletedTask;
+        if (_stopping || _dialog is not null || _window?.Content?.XamlRoot is not { } root)
+            return ContentDialogResult.None;
+        _dialog = dialog;
+        dialog.XamlRoot = root;
+        try { return await dialog.ShowAsync(); }
+        finally { _dialog = null; }
     }
 
-    private Window CreateAndInitialize()
+    private void OnTrayOpenRequested() => _ = ObserveAsync(ShowAsync());
+    private Task OnTrayExitRequested() { shutdownService.RequestShutdown(); return Task.CompletedTask; }
+    private void OnRecoveryRequested()
     {
-        if (_window is not null)
-            return _window;
+        if (_tray.IsInTray && !_stopping) _ = ObserveAsync(OnUiAsync(EnterTrayAsync));
+    }
+    private void OnBulkFailed(int failed) => _ = ObserveAsync(OnUiAsync(async () =>
+    {
+        if (_stopping) return;
+        ShowWindow();
+        await ShowDialogAsync(new ContentDialog
+        {
+            Title = "Не удалось обработать все торренты",
+            Content = failed < 0 ? "Команда не выполнена. Подробности записаны в журнал." : $"Не удалось изменить состояние {failed} торрентов. Остальные записи обработаны.",
+            CloseButtonText = "Закрыть"
+        });
+    }));
+    private async Task ObserveAsync(Task task)
+    {
+        try { await task; }
+        catch (Exception ex) { logger.LogError(ex, "[Tray] UI operation failed"); }
+    }
+    private Task OnUiAsync(Func<Task> action)
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (!dispatcher.TryEnqueue(async () =>
+        {
+            try { await action(); completion.TrySetResult(); }
+            catch (Exception ex) { completion.TrySetException(ex); }
+        })) completion.TrySetException(new InvalidOperationException("UI dispatcher is unavailable."));
+        return completion.Task;
+    }
 
-        _closeBehavior = _settingsService.Current.CloseBehavior;
-        _settingsService.Changed += OnSettingsChanged;
-
+    private void CreateAndInitialize()
+    {
+        if (_window is not null || _stopping) return;
         var window = new MainWindow();
         window.Title = window.AppWindow.Title = ProcessInfoHelper.ProductNameAndVersion;
         window.AppWindow.SetIcon("Assets/AppIcon.ico");
         window.AppWindow.Closing += OnMainWindowClosing;
-        _windowClosingHandlerAttached = true;
-
-        _themeService.Initialize(window);
-
+        themeService.Initialize(window);
         _window = window;
-        Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(_logger, "[Lifecycle] Shell created");
-        return window;
+        logger.LogInformation("[Lifecycle] Shell created");
     }
-
-    private void EnsureWindowCreated()
-    {
-        if (_window is null)
-            throw new InvalidOperationException("Main window is not initialized");
-    }
-
-    private void DetachWindowClosingHandler()
-    {
-        if (!_windowClosingHandlerAttached)
-            return;
-
-        var appWindow = _window?.AppWindow;
-        if (appWindow is not null)
-            appWindow.Closing -= OnMainWindowClosing;
-
-        _windowClosingHandlerAttached = false;
-    }
-
     public void Dispose()
     {
-        if (_disposed)
-            return;
-
+        if (_disposed) return;
         _disposed = true;
-        _settingsService.Changed -= OnSettingsChanged;
-
+        _stopping = true;
+        _dialog?.Hide();
+        _tray.Dispose();
         StopTray();
-
-        DetachWindowClosingHandler();
-    }
-
-    private void StopTray()
-    {
-        if (!_trayInitialized)
-            return;
-
-        _trayService.OpenRequested -= OnTrayOpenRequested;
-        _trayService.ExitRequested -= OnTrayExitRequested;
-        _trayInitialized = false;
-
-        _trayService.Dispose();
+        if (_window is not null) _window.AppWindow.Closing -= OnMainWindowClosing;
     }
 }

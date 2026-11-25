@@ -17,9 +17,6 @@ public class TorrentDownload(Guid id, string infoHash, string name, string saveP
         if (Status == TorrentDownloadStatus.Deleted)
             throw new InvalidOperationException("Deleted torrent cannot be started.");
 
-        if (Status == TorrentDownloadStatus.Completed)
-            throw new InvalidOperationException("Completed torrent cannot be started.");
-
         if (Status == TorrentDownloadStatus.Running)
             return;
 
@@ -31,12 +28,7 @@ public class TorrentDownload(Guid id, string infoHash, string name, string saveP
         if (Status == TorrentDownloadStatus.Deleted)
             throw new InvalidOperationException("Deleted torrent cannot be paused.");
 
-        if (Status == TorrentDownloadStatus.Completed)
-            throw new InvalidOperationException("Completed torrent cannot be paused.");
-
-        if (Status != TorrentDownloadStatus.Running)
-            throw new InvalidOperationException("Only running torrent can be paused.");
-
+        // Pause is a persisted intention, including before preparation and after completion.
         Status = TorrentDownloadStatus.Paused;
     }
 

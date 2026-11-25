@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace NiTorrent.App.Services;
 
-internal sealed class FileLoggerProvider : ILoggerProvider
+internal sealed partial class FileLoggerProvider : ILoggerProvider
 {
     private readonly string _filePath;
 

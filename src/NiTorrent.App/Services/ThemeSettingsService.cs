@@ -10,8 +10,8 @@ public sealed class ThemeSettingsService(IThemeService themeService) : IThemeSet
     {
         ct.ThrowIfCancellationRequested();
 
-        var theme = ReadStringProperty("ElementTheme", "Default");
-        var backdrop = ReadStringProperty("BackdropType", "Acrylic");
+        var theme = _themeService.ElementTheme.ToString();
+        var backdrop = _themeService.BackdropType.ToString();
 
         return Task.FromResult(new ThemeSettingsDraft(theme, backdrop));
     }
@@ -20,43 +20,8 @@ public sealed class ThemeSettingsService(IThemeService themeService) : IThemeSet
     {
         ct.ThrowIfCancellationRequested();
 
-        await InvokeAsync("SetElementThemeAsync", settings.ElementTheme, ct).ConfigureAwait(false);
-        await InvokeAsync("SetBackdropTypeAsync", settings.BackdropType, ct).ConfigureAwait(false);
-    }
-
-    private string ReadStringProperty(string propertyName, string fallback)
-    {
-        var property = _themeService.GetType().GetProperty(propertyName);
-        if (property is null)
-            return fallback;
-
-        var value = property.GetValue(_themeService);
-        return value?.ToString() ?? fallback;
-    }
-
-    private async Task InvokeAsync(string methodName, string value, CancellationToken ct)
-    {
-        var methods = _themeService.GetType()
-            .GetMethods()
-            .Where(x => x.Name == methodName && x.GetParameters().Length == 1)
-            .ToList();
-
-        if (methods.Count == 0)
-            throw new InvalidOperationException($"{methodName} is not available on IThemeService implementation.");
-
-        var method = methods[0];
-        var parameterType = method.GetParameters()[0].ParameterType;
-        object converted = value;
-
-        if (parameterType.IsEnum)
-            converted = Enum.Parse(parameterType, value, ignoreCase: true);
-        else if (parameterType != typeof(string) && parameterType != typeof(object))
-            converted = Convert.ChangeType(value, parameterType);
-
-        var task = method.Invoke(_themeService, [converted]) as Task;
-        if (task is not null)
-            await task.ConfigureAwait(false);
-
+        await _themeService.SetElementThemeAsync(Enum.Parse<ElementTheme>(settings.ElementTheme, true)).ConfigureAwait(false);
+        await _themeService.SetBackdropTypeAsync(Enum.Parse<BackdropType>(settings.BackdropType, true)).ConfigureAwait(false);
         ct.ThrowIfCancellationRequested();
     }
 }

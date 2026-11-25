@@ -18,5 +18,5 @@ public class AppJsonSettings : JsonSettings
     }
 
     public TorrentEngineSettings EngineSettings { get; set; } = new TorrentEngineSettings();
-    public AppCloseBehavior CloseBehavior { get; set; } = AppCloseBehavior.ExitApplication;
+    public AppCloseBehavior CloseBehavior { get; set; } = AppCloseBehavior.AskUser;
 }

@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddSingleton<ISettingsRepository, SettingsRepository>();
         services.AddSingleton<TorrentEngineCoordinator>();
         services.AddSingleton<AppSettingsService>();
+        services.AddSingleton<SetAllTorrentStatesUseCase>();
         services.AddSingleton<TorrentSession>();
         services.AddSingleton<ITorrentSession>(sp => sp.GetRequiredService<TorrentSession>());
         services.AddSingleton<CoreShutdownState>();

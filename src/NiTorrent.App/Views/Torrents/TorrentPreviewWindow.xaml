@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:tree="using:NiTorrent.Presentation.Features.Torrents.Tree"
+    xmlns:primitives="using:Microsoft.UI.Xaml.Controls.Primitives"
     xmlns:winuiEx="using:WinUIEx"
     x:Name="RootWindow"
     MinWidth="560" MinHeight="520" Width="720" Height="700">
@@ -47,7 +48,7 @@
                 </Grid>
             </StackPanel>
 
-            <Grid Grid.Row="3" RowDefinitions="Auto,Auto,*" RowSpacing="6" MinHeight="0">
+            <Grid Grid.Row="3" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="6" MinHeight="0">
                 <TextBlock Text="Содержимое" FontSize="16" FontWeight="SemiBold" />
                 <TextBlock Grid.Row="1" Text="Выберите файлы для загрузки"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -55,11 +56,19 @@
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                         BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <Grid RowDefinitions="Auto,*">
-                        <Grid ColumnDefinitions="*,Auto" Padding="16,8"
+                        <Grid ColumnDefinitions="*,Auto" Padding="8,4"
                               BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
-                            <TextBlock Text="Имя" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                            <TextBlock Grid.Column="1" Text="Размер" Margin="12,0,8,0"
-                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            <Button x:Name="NameSortButton" Content="Имя ↑" Click="NameSort_Click"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    Style="{ThemeResource SubtleButtonStyle}" />
+                            <Grid Grid.Column="1" Width="{x:Bind ViewModel.SizeColumnWidth, Mode=OneWay}">
+                                <Button x:Name="SizeSortButton" Content="Размер" Click="SizeSort_Click"
+                                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                        Style="{ThemeResource SubtleButtonStyle}" />
+                                <primitives:Thumb Width="10" HorizontalAlignment="Left"
+                                                  DragDelta="SizeColumnSplitter_DragDelta"
+                                                  AutomationProperties.Name="Изменить ширину столбца размера" />
+                            </Grid>
                         </Grid>
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
@@ -71,15 +80,14 @@
                                 <TreeView.ItemTemplate>
                                     <DataTemplate x:DataType="tree:TorrentTreeItemViewModel">
                                         <TreeViewItem ItemsSource="{x:Bind Children}"
+                                                      IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
                                                       HorizontalContentAlignment="Stretch">
                                             <TreeViewItem.Content>
                                                 <Grid ColumnDefinitions="Auto,Auto,*,Auto" ColumnSpacing="8">
                                                     <CheckBox IsThreeState="True" MinWidth="2"
                                                               IsEnabled="{x:Bind CanToggle}"
                                                               IsChecked="{x:Bind IsChecked, Mode=OneWay}"
-                                                              Command="{x:Bind ToggleCommand}"
-                                                              x:SuppressXamlTrimWarnings="True"
-                                                              CommandParameter="{Binding IsChecked, RelativeSource={RelativeSource Mode=Self}}" />
+                                                              Click="FileSelection_Click" />
                                                     <Image Grid.Column="1" Width="24" Height="24">
                                                         <Image.Source>
                                                             <SvgImageSource UriSource="{x:Bind IconUri}" />
@@ -87,7 +95,8 @@
                                                     </Image>
                                                     <TextBlock Grid.Column="2" Text="{x:Bind Name}"
                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Grid.Column="3" Text="{x:Bind SizeText}"
+                                                    <TextBlock Grid.Column="3" Text="{x:Bind SizeText, Mode=OneWay}"
+                                                               Width="{x:Bind SizeColumnWidth, Mode=OneWay}"
                                                                VerticalAlignment="Center" Margin="8,0"
                                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                                 </Grid>
@@ -99,6 +108,9 @@
                         </ScrollViewer>
                     </Grid>
                 </Border>
+                <TextBlock Grid.Row="3" Text="{x:Bind ViewModel.SelectionSummary, Mode=OneWay}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           TextWrapping="Wrap" />
             </Grid>
         </Grid>
 

@@ -34,6 +34,28 @@ public sealed partial class TorrentPreviewWindow : WindowEx
     }
 
 
+    private void FileSelection_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox { DataContext: TorrentTreeItemViewModel item } checkBox)
+            item.ToggleCommand.Execute(checkBox.IsChecked);
+    }
+
+    private void NameSort_Click(object sender, RoutedEventArgs e) => SetSort(false);
+    private void SizeSort_Click(object sender, RoutedEventArgs e) => SetSort(true);
+
+    private void SetSort(bool bySize)
+    {
+        ViewModel.SetSort(bySize);
+        var arrow = ViewModel.Tree.SortDescending ? " ↓" : " ↑";
+        NameSortButton.Content = "Имя" + (bySize ? "" : arrow);
+        SizeSortButton.Content = "Размер" + (bySize ? arrow : "");
+    }
+
+    private void SizeColumnSplitter_DragDelta(object sender, Microsoft.UI.Xaml.Controls.Primitives.DragDeltaEventArgs e)
+    {
+        ViewModel.SizeColumnWidth = Math.Clamp(ViewModel.SizeColumnWidth - e.HorizontalChange, 80, Math.Max(80, Root.ActualWidth - 220));
+    }
+
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
         _tcs.TrySetResult(new TorrentPreviewDialogResult(

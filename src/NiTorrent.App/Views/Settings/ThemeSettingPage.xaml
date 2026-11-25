@@ -23,26 +23,15 @@
             <dev:SettingsCard Description="Выберите тему приложения."
                               Header="App theme"
                               HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Theme.png}">
-                <ComboBox SelectedValuePath="Tag"
-                          x:SuppressXamlTrimWarnings="True"
-                          SelectedValue="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}">
-                    <ComboBoxItem Content="Light" Tag="Light" />
-                    <ComboBoxItem Content="Dark" Tag="Dark" />
-                    <ComboBoxItem Content="Default" Tag="Default" />
-                </ComboBox>
+                <ComboBox ItemsSource="{x:Bind ViewModel.ThemeOptions}"
+                          SelectedItem="{x:Bind ViewModel.SelectedTheme, Mode=TwoWay}" />
             </dev:SettingsCard>
 
             <dev:SettingsCard Description="Выберите материал фона приложения."
                               Header="Material"
                               HeaderIcon="{dev:BitmapIcon Source=Assets/Fluent/Backdrop.png}">
-                <ComboBox SelectedValuePath="Tag"
-                          x:SuppressXamlTrimWarnings="True"
-                          SelectedValue="{x:Bind ViewModel.SelectedBackdrop, Mode=TwoWay}">
-                    <ComboBoxItem Content="Mica" Tag="Mica" />
-                    <ComboBoxItem Content="Mica Alt" Tag="MicaAlt" />
-                    <ComboBoxItem Content="Acrylic" Tag="Acrylic" />
-                    <ComboBoxItem Content="Acrylic Thin" Tag="AcrylicThin" />
-                </ComboBox>
+                <ComboBox ItemsSource="{x:Bind ViewModel.BackdropOptions}"
+                          SelectedItem="{x:Bind ViewModel.SelectedBackdrop, Mode=TwoWay}" />
             </dev:SettingsCard>
 
             <dev:SettingsCard ActionIcon="{dev:BitmapIcon Source=Assets/Fluent/External.png}"

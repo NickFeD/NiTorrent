@@ -4,7 +4,10 @@ public interface ITrayService : IDisposable
 {
     event Action? OpenRequested;
     event Func<Task>? ExitRequested;
+    event Action? RecoveryRequested;
+    event Action<int>? BulkFailed;
 
-    void Initialize();
-    void SetVisible(bool visible);
+    // Show must either register a usable icon or throw. Hide also cleans partial registrations.
+    void Show();
+    void Hide();
 }

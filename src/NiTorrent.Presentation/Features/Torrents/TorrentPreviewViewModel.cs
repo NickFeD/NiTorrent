@@ -10,13 +10,24 @@ public partial class TorrentPreviewViewModel : ObservableObject
 {
     public TorrentPreview Torrent { get; }
     public string Name => Torrent.Name;
-    public string Size => FormatSize(Torrent.TotalSize);
+    public string Size => PreviewSizeFormatter.Format(Tree.Root.TotalSize);
+    public string SelectionSummary => $"Всего: {PreviewSizeFormatter.Format(Tree.Root.TotalSize)} (выбрано: {PreviewSizeFormatter.Format(Tree.Root.SelectedSize)}, файлов: {Tree.Root.SelectedFileCount} из {Tree.Root.TotalFileCount})";
+
+    [ObservableProperty]
+    public partial double SizeColumnWidth { get; set; } = 140;
+
+    partial void OnSizeColumnWidthChanged(double value)
+    {
+        Tree.SizeColumnWidth = value;
+        foreach (var item in RootItems)
+            item.RefreshSizeColumnWidth();
+    }
 
     [ObservableProperty]
     public partial string OutputFolder { get; set; }
 
     public TorrentTreeModel Tree { get; }
-    public ObservableCollection<TorrentTreeItemViewModel> RootItems { get; } = [];
+    public TreeItemCollection RootItems { get; } = [];
 
     public TorrentPreviewViewModel(TorrentPreview torrentPreview)
     {
@@ -33,16 +44,27 @@ public partial class TorrentPreviewViewModel : ObservableObject
 
         foreach (var root in TorrentTreeItemViewModel.CreateRootItems(Tree))
             RootItems.Add(root);
+        ApplySort();
+        Tree.SelectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(SelectionSummary));
+            if (Tree.SortBySize) ApplySort();
+        };
     }
 
 
 
-    private static string FormatSize(long bytes)
+    public void SetSort(bool bySize)
     {
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1024 * 1024) return $"{bytes / 1024d:F1} KB";
-        if (bytes < 1024 * 1024 * 1024) return $"{bytes / 1024d / 1024d:F1} MB";
-        return $"{bytes / 1024d / 1024d / 1024d:F1} GB";
+        Tree.SortDescending = Tree.SortBySize == bySize && !Tree.SortDescending;
+        Tree.SortBySize = bySize;
+        ApplySort();
+    }
+    private void ApplySort()
+    {
+        TorrentTreeItemViewModel.SortItems(RootItems, Tree.SortBySize, Tree.SortDescending);
+        foreach (var item in RootItems)
+            item.SortLoadedChildren(Tree.SortBySize, Tree.SortDescending);
     }
     public List<TorrentFileEntry> GetFiles()
         => Tree.GetFiles();

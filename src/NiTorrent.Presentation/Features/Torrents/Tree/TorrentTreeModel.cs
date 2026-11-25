@@ -5,10 +5,15 @@ namespace NiTorrent.Presentation.Features.Torrents.Tree;
 public class TorrentTreeModel
 {
     public FolderModel Root { get; }
+    public event EventHandler? SelectionChanged;
+    public bool SortBySize { get; set; }
+    public bool SortDescending { get; set; }
+    public double SizeColumnWidth { get; set; } = 140;
 
     public TorrentTreeModel(IEnumerable<TorrentFileEntry> files)
     {
         Root = BuildModel(files);
+        UpdateSelectionFromChildren();
     }
 
     public void SortIfNeeded(FolderModel folder)
@@ -45,6 +50,9 @@ public class TorrentTreeModel
 
         foreach (var sub in folder.Folders.Values)
             SetFolderSelection(sub, isSelected);
+
+        folder.SelectedSize = isSelected ? folder.TotalSize : 0;
+        folder.SelectedFileCount = isSelected ? folder.TotalFileCount : 0;
     }
 
     /// <summary>
@@ -69,6 +77,7 @@ public class TorrentTreeModel
         while (stack2.Count > 0)
         {
             var folder = stack2.Pop();
+            RecalculateTotals(folder);
             folder.CheckState = ComputeFolderCheckState(folder);
         }
     }
@@ -82,13 +91,38 @@ public class TorrentTreeModel
         var current = start;
         while (current != null)
         {
-            var newState = ComputeFolderCheckState(current);
-            if (current.CheckState == newState)
-                break;
-
-            current.CheckState = newState;
+            RecalculateTotals(current);
+            current.CheckState = ComputeFolderCheckState(current);
             current = current.Parent;
         }
+        SelectionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static void RecalculateTotals(FolderModel folder)
+    {
+        long totalSize = 0, selectedSize = 0;
+        int totalCount = 0, selectedCount = 0;
+        foreach (var file in folder.Files.Values)
+        {
+            totalSize += file.Size;
+            totalCount++;
+            if (file.IsSelected)
+            {
+                selectedSize += file.Size;
+                selectedCount++;
+            }
+        }
+        foreach (var child in folder.Folders.Values)
+        {
+            totalSize += child.TotalSize;
+            selectedSize += child.SelectedSize;
+            totalCount += child.TotalFileCount;
+            selectedCount += child.SelectedFileCount;
+        }
+        folder.TotalSize = totalSize;
+        folder.SelectedSize = selectedSize;
+        folder.TotalFileCount = totalCount;
+        folder.SelectedFileCount = selectedCount;
     }
     public List<TorrentFileEntry> GetFiles()
     {

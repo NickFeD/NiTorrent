@@ -50,7 +50,8 @@ public partial class TorrentSettingsViewModel : ObservableObject
     [ObservableProperty] public partial bool AutoSaveLoadFastResume { get; set; }
     [ObservableProperty] public partial bool AutoSaveLoadMagnetLinkMetadata { get; set; }
     [ObservableProperty] public partial TorrentFastResumeMode SelectedFastResumeMode { get; set; } = TorrentFastResumeMode.BestEffort;
-    [ObservableProperty] public partial bool MinimizeToTrayOnClose { get; set; }
+    // Indices match persisted AppCloseBehavior values; existing explicit choices stay intact.
+    [ObservableProperty] public partial int CloseBehaviorIndex { get; set; } = (int)AppCloseBehavior.AskUser;
     [ObservableProperty] public partial bool HasUnsavedChanges { get; set; }
 
     private bool _isLoading;
@@ -73,7 +74,7 @@ public partial class TorrentSettingsViewModel : ObservableObject
     partial void OnAutoSaveLoadFastResumeChanged(bool value) => MarkDirty();
     partial void OnAutoSaveLoadMagnetLinkMetadataChanged(bool value) => MarkDirty();
     partial void OnSelectedFastResumeModeChanged(TorrentFastResumeMode value) => MarkDirty();
-    partial void OnMinimizeToTrayOnCloseChanged(bool value) => MarkDirty();
+    partial void OnCloseBehaviorIndexChanged(int value) => MarkDirty();
 
     private void MarkDirty()
     {
@@ -113,7 +114,7 @@ public partial class TorrentSettingsViewModel : ObservableObject
             AutoSaveLoadFastResume = _settings.EngineSettings.AutoSaveLoadFastResume;
             AutoSaveLoadMagnetLinkMetadata = _settings.EngineSettings.AutoSaveLoadMagnetLinkMetadata;
             SelectedFastResumeMode = _settings.EngineSettings.FastResumeMode;
-            MinimizeToTrayOnClose = _settings.CloseBehavior == AppCloseBehavior.MinimizeToTray;
+            CloseBehaviorIndex = (int)_settings.CloseBehavior;
             HasUnsavedChanges = false;
         }
         finally
@@ -135,9 +136,8 @@ public partial class TorrentSettingsViewModel : ObservableObject
     {
         var settings = new AppSettings()
         {
-            CloseBehavior = MinimizeToTrayOnClose
-                ? AppCloseBehavior.MinimizeToTray
-                : AppCloseBehavior.ExitApplication,
+            CloseBehavior = Enum.IsDefined(typeof(AppCloseBehavior), CloseBehaviorIndex)
+                ? (AppCloseBehavior)CloseBehaviorIndex : AppCloseBehavior.AskUser,
             EngineSettings = new TorrentEngineSettings()
             {
                 //DefaultDownloadPath = DefaultDownloadPath,
