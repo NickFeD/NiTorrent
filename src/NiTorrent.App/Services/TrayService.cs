@@ -11,14 +11,14 @@ namespace NiTorrent.App.Services;
 
 // Core avoids the WinUI wrapper's automatic recovery and automatic Efficiency Mode.
 public sealed partial class TrayService(IUiDispatcher ui, ITorrentRuntimeStateSource statuses,
-    SetAllTorrentStatesUseCase bulkCommands, ILogger<TrayService> logger) : ITrayService
+    SetAllTorrentStatesUseCase bulkCommands, IThemeService themeService, ILogger<TrayService> logger) : ITrayService
 {
     private static readonly Guid IconId = new("0c9992d3-3388-4aef-a055-75c8e4773ce6");
     private NativeTrayIcon? _tray;
     private System.Drawing.Icon? _icon;
     private readonly CancellationTokenSource _stopping = new();
     private bool _bulkBusy;
-    private bool _menuOpen;
+    private FluentTrayMenu? _menu;
     private bool _disposed;
     public event Action? OpenRequested;
     public event Func<Task>? ExitRequested;
@@ -46,6 +46,8 @@ public sealed partial class TrayService(IUiDispatcher ui, ITorrentRuntimeStateSo
 
     public void Hide()
     {
+        _menu?.Dispose();
+        _menu = null;
         _ = statuses.UnsubscribeAsync(OnStatusesChanged);
         var tray = _tray;
         _tray = null;
@@ -103,30 +105,29 @@ public sealed partial class TrayService(IUiDispatcher ui, ITorrentRuntimeStateSo
             if (_tray is not { } tray) return;
             try { tray.UpdateToolTip(BuildTooltip()); }
             catch (Exception ex) { logger.LogWarning(ex, "[Tray] Tooltip update failed"); }
+            _menu?.Update(SpeedText(), _bulkBusy);
         });
         return Task.CompletedTask;
     }
 
     private void ShowMenuSafely(System.Drawing.Point position)
     {
-        if (_tray is not { } tray || _disposed || _menuOpen) return;
-        _menuOpen = true;
-        logger.LogInformation("[Tray] Menu opened; bulkBusy={BulkBusy}", _bulkBusy);
+        if (_tray is null || _disposed) return;
         try
         {
-            var menu = new PopupMenu();
-            menu.Items.Add(new PopupMenuItem { Text = SpeedText(), Enabled = false });
-            menu.Items.Add(new PopupMenuSeparator());
-            menu.Items.Add(new PopupMenuItem("Открыть", (_, _) => OpenRequested?.Invoke()));
-            menu.Items.Add(new PopupMenuItem("Приостановить всё", (_, _) => _ = RunBulkAsync(false)) { Enabled = !_bulkBusy });
-            menu.Items.Add(new PopupMenuItem("Продолжить всё", (_, _) => _ = RunBulkAsync(true)) { Enabled = !_bulkBusy });
-            menu.Items.Add(new PopupMenuSeparator());
-            menu.Items.Add(new PopupMenuItem("Выход", (_, _) => _ = ExitSafelyAsync()));
-            WindowUtilities.SetForegroundWindow(tray.WindowHandle);
-            menu.Show(tray.WindowHandle, position.X, position.Y);
+            _menu ??= new FluentTrayMenu(() => OpenRequested?.Invoke(),
+                () => _ = RunBulkAsync(false), () => _ = RunBulkAsync(true), () => _ = ExitSafelyAsync(), OnMenuFailed);
+            _menu.Show(position, themeService.ActualTheme, SpeedText(), _bulkBusy);
         }
-        catch (Exception ex) { logger.LogError(ex, "[Tray] Menu failed"); }
-        finally { _menuOpen = false; logger.LogInformation("[Tray] Menu closed"); }
+        catch (Exception ex) { OnMenuFailed(ex); }
+    }
+
+    private void OnMenuFailed(Exception ex)
+    {
+        logger.LogError(ex, "[Tray] Fluent menu failed");
+        _menu?.Dispose();
+        _menu = null;
+        OpenRequested?.Invoke();
     }
 
     private async Task RunBulkAsync(bool running)
