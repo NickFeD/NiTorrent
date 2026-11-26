@@ -1,4 +1,4 @@
-﻿global using DevWinUI;
+global using DevWinUI;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.UI;
 global using Microsoft.UI.Xaml;

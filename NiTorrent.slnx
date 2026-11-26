@@ -4,6 +4,27 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/Modules/" />
+  <Folder Name="/Modules/Desktop/">
+    <Project Path="src/Modules/Desktop/Contracts/NiTorrent.Desktop.Contracts.csproj" />
+    <Project Path="src/Modules/Desktop/WinUI/NiTorrent.Desktop.WinUI.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
+    <Project Path="src/Modules/Desktop/Presentation/NiTorrent.Presentation.csproj" Id="51bc6d76-5b82-4907-ba8d-cf2f4e33a4da" />
+  </Folder>
+  <Folder Name="/Modules/Torrents/">
+    <Project Path="src/Modules/Torrents/Contracts/NiTorrent.Torrents.Contracts.csproj" />
+    <Project Path="src/Modules/Torrents/Engines/MonoTorrent/NiTorrent.Torrents.MonoTorrent.csproj" />
+    <Project Path="src/Modules/Torrents/Application/NiTorrent.Application.csproj" Id="b48c459c-669e-457a-bd51-819396ab0970" />
+    <Project Path="src/Modules/Torrents/Domain/NiTorrent.Domain.csproj" Id="e515169e-7d2f-4644-bec4-1806aa23dbd6" />
+    <Project Path="src/Modules/Torrents/Infrastructure/NiTorrent.Infrastructure.csproj" Id="bc1fef36-c2a9-4eef-a632-a1ea04208650" />
+  </Folder>
+  <Folder Name="/Modules/Updates/" />
+  <Folder Name="/Modules/Updates/Contracts/">
+    <Project Path="src/Modules/Updates/Contracts/NiTorrent.Updates.Contracts.csproj" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path="../../.editorconfig" />
     <File Path="../../.github/workflows/dotnet-release.yml" />
@@ -15,16 +36,19 @@
       <Platform Solution="*|x86" Project="x86" />
       <Deploy />
     </Project>
-    <Project Path="src/NiTorrent.Application/NiTorrent.Application.csproj" Id="b48c459c-669e-457a-bd51-819396ab0970" />
-    <Project Path="src/NiTorrent.Domain/NiTorrent.Domain.csproj" Id="e515169e-7d2f-4644-bec4-1806aa23dbd6" />
-    <Project Path="src/NiTorrent.Infrastructure/NiTorrent.Infrastructure.csproj" Id="bc1fef36-c2a9-4eef-a632-a1ea04208650" />
-    <Project Path="src/NiTorrent.Presentation/NiTorrent.Presentation.csproj" Id="51bc6d76-5b82-4907-ba8d-cf2f4e33a4da" />
   </Folder>
-  <Folder Name="/src/Modules/" />
-  <Folder Name="/src/Tests/">
-    <Project Path="src/NiTorrent.Lifecycle.Tests/NiTorrent.Lifecycle.Tests.csproj" />
-    <File Path="src/NiTorrent.Application.Tests/NiTorrent.Application.Tests.csproj" />
-    <File Path="src/NiTorrent.Domain.Tests/NiTorrent.Domain.Tests.csproj" />
-    <File Path="src/NiTorrent.Infrastructure.Tests/NiTorrent.Infrastructure.Tests.csproj" />
+  <Folder Name="/tests/">
+    <Project Path="tests/NiTorrent.Lifecycle.Tests/NiTorrent.Lifecycle.Tests.csproj" />
+    <File Path="tests/NiTorrent.Application.Tests/NiTorrent.Application.Tests.csproj" />
+    <File Path="tests/NiTorrent.Domain.Tests/NiTorrent.Domain.Tests.csproj" />
+    <File Path="tests/NiTorrent.Infrastructure.Tests/NiTorrent.Infrastructure.Tests.csproj" />
+    <Project Path="tests/NiTorrent.Architecture.Tests/NiTorrent.Architecture.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Updates/Windows/">
+    <Project Path="src/Modules/Updates/Windows/NiTorrent.Updates.Windows.csproj">
+      <Platform Solution="*|ARM64" Project="ARM64" />
+      <Platform Solution="*|x64" Project="x64" />
+      <Platform Solution="*|x86" Project="x86" />
+    </Project>
   </Folder>
 </Solution>

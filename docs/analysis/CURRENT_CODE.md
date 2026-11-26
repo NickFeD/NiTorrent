@@ -1,79 +1,62 @@
-# Текущее устройство кода
+# РўРµРєСѓС‰РµРµ СѓСЃС‚СЂРѕР№СЃС‚РІРѕ РєРѕРґР°
 
-Снимок: 2026-11-23, `265f29b`. Ниже описана реализация по исходникам, без утверждения о прохождении сборки и пользовательских сценариев.
+РЎРІРµСЂРµРЅРѕ 2026-11-27. РСЃС‚РѕС‡РЅРёРє вЂ” СЂР°Р±РѕС‡РµРµ РґРµСЂРµРІРѕ, Р° РЅРµ СЃРѕСЃС‚РѕСЏРЅРёРµ РєРѕРјРјРёС‚Р° РёР»Рё СЃС‚Р°СЂС‹Рµ workflow-РґРѕРєСѓРјРµРЅС‚С‹. [РЎРЅРёРјРѕРє РґРѕ РёР·РјРµРЅРµРЅРёР№](history/CURRENT_CODE_2026-11-23.md) СЃРѕС…СЂР°РЅС‘РЅ РѕС‚РґРµР»СЊРЅРѕ.
 
-## Модули и зависимости
+## РџСЂРѕРµРєС‚С‹ Рё РІСЂРµРјСЏ Р¶РёР·РЅРё
 
-| Проект | Ответственность | Прямые ссылки на проекты |
-| --- | --- | --- |
-| `NiTorrent.Domain` | `TorrentDownload`, его статусы и файлы; `SavePath` | Нет |
-| `NiTorrent.Application` | Сценарии, интерфейсы хранения/runtime, настройки, координация lifecycle | Domain |
-| `NiTorrent.Infrastructure` | Адаптер MonoTorrent, JSON-хранилище, runtime-статусы, настройки | Application |
-| `NiTorrent.Presentation` | MVVM, список, preview, карточки и детали, UI-абстракции | Application |
-| `NiTorrent.App` | WinUI/XAML, окно, DI, активация, трей, платформенные адаптеры | Infrastructure, Presentation |
+11 production-РїСЂРѕРµРєС‚РѕРІ СЃРіСЂСѓРїРїРёСЂРѕРІР°РЅС‹ РІ [NiTorrent.slnx](../../NiTorrent.slnx). SDK Р·Р°РєСЂРµРїР»С‘РЅ РІ [global.json](../../global.json): .NET 11.0.100. App, Desktop.WinUI Рё Updates.Windows РёСЃРїРѕР»СЊР·СѓСЋС‚ Windows TFM; РѕСЃС‚Р°Р»СЊРЅС‹Рµ production-РїСЂРѕРµРєС‚С‹ вЂ” `net11.0`.
 
-Состав указан в [NiTorrent.slnx](../../NiTorrent.slnx), зависимости — в `.csproj` соответствующих проектов. Domain/Application/Infrastructure/Presentation нацелены на `net10.0`; App — на `net10.0-windows10.0.26100.0`. В исходниках проектов указаны MonoTorrent `3.0.2`, CommunityToolkit.Mvvm `8.4.2`, Microsoft.WindowsAppSDK `2.2.0`. Это версии из репозитория, а не проверка доступности или актуальности пакетов.
-
-Точки сборки зависимостей:
-
-- [App.xaml.cs](../../src/NiTorrent.App/App.xaml.cs): host, application use cases, lifecycle и платформенные адаптеры.
-- [Infrastructure/DI/DependencyInjection.cs](../../src/NiTorrent.Infrastructure/DI/DependencyInjection.cs): основные infrastructure-регистрации. Соседний `Infrastructure/DependencyInjection.cs` — устаревшая совместимая обёртка.
-- [Presentation/DependencyInjection.cs](../../src/NiTorrent.Presentation/DependencyInjection.cs): view models и фабрика элементов списка.
-
-## Данные и состояния
-
-[TorrentDownload](../../src/NiTorrent.Domain/Torrents/TorrentDownload.cs) содержит `Id`, `InfoHash`, имя, путь, `Status`, `FileEntries`, `Size`. Статусы: `Created`, `Running`, `Paused`, `Completed`, `Failed`, `Deleted`.
-
-Методы доменной модели задают часть переходов: `Start` запрещает запуск Deleted/Completed; `Pause` разрешена только из Running; повторный `MarkDeleted` допустим. При этом `Status` и список файлов имеют публичные setters: переходы через методы не являются единственным способом изменить объект.
-
-У runtime отдельное описание: [TorrentRuntimeStatus](../../src/NiTorrent.Application/Torrents/DTo/TorrentRuntimeStatus.cs) и [TorrentLifecycleState](../../src/NiTorrent.Application/Torrents/Enum/TorrentLifecycleState.cs). Сохранённый статус и состояние движка нельзя считать одним понятием.
-
-## Запуск, восстановление и завершение
-
-1. [Program](../../src/NiTorrent.App/Program.cs) настраивает WinRT и единственный экземпляр приложения; вторичная активация перенаправляется основному экземпляру.
-2. [App](../../src/NiTorrent.App/App.xaml.cs) собирает host и передаёт управление [NiTorrentApplication](../../src/NiTorrent.App/Services/AppLifecycle/NiTorrentApplication.cs).
-3. [AppLifecycleCoordinator](../../src/NiTorrent.Application/AppLifecycleCoordinator.cs) последовательно выполняет задачи по `Stage`, затем `Order`.
-4. Этапы: Bootstrap → Core → Shell → Restore → Background → Ready. Настройки загружаются на Bootstrap; репозиторий и движок — на Core; окно создаётся на Shell.
-5. [RestoreSessionLifecycleTask](../../src/NiTorrent.App/Services/AppLifecycle/RestoreSessionLifecycleTask.cs) вызывает lifecycle движка, далее [RestoreSessionUseCase](../../src/NiTorrent.Application/Torrents/UseCase/RestoreSessionUseCase.cs) добавляет сохранённые торренты в runtime и запускает записи со статусом Running.
-6. Восстановление дополнительно запрашивает `TorrentViewModel.TorrentLoading`. `TorrentEngineLifecycle` использует gate и флаг завершённого восстановления, чтобы ограничить повторное выполнение.
-7. Для остановки предусмотрены отдельные задачи запрета новых операций, остановки движка и flush. Координатор учитывает `ShutdownOrder`, иначе обратный порядок успешно запущенных задач; для отдельных шагов доступны таймауты.
-
-По этому порядку Core завершается до показа Shell. Старое требование показывать окно до полной готовности движка нужно сверять отдельно; отзывчивость здесь не измерялась.
-
-## Добавление
-
-Основной путь из [TorrentViewModel](../../src/NiTorrent.Presentation/Features/Torrents/TorrentViewModel.cs): выбор `.torrent` либо ввод magnet → `PreviewTorrentContentsUseCase` → preview-диалог → `CreateTorrentDownloadUseCase` → элемент списка.
-
-[TorrentMetadataProvider](../../src/NiTorrent.Infrastructure/Torrents/TorrentMetadataProvider.cs) получает байты из файла или скачивает metadata для magnet. Оба варианта преобразуются в metadata с источником `TorrentBytes`.
-
-[CreateTorrentDownloadUseCase](../../src/NiTorrent.Application/Torrents/UseCase/CreateTorrentDownloadUseCase.cs) повторно получает metadata, проверяет наличие InfoHash, создаёт модель, сохраняет запись, добавляет её в runtime, применяет выбор файлов, сохраняет Running и вызывает запуск движка. Между этими действиями есть несколько отдельных операций с побочными эффектами; общей транзакции в методе нет.
-
-## Управление торрентом
-
-| Действие | Текущая последовательность |
+| Р Р°СЃРїРѕР»РѕР¶РµРЅРёРµ | РћС‚РІРµС‚СЃС‚РІРµРЅРЅРѕСЃС‚СЊ |
 | --- | --- |
-| [Start](../../src/NiTorrent.Application/Torrents/UseCase/StartTorrentUseCase.cs) | Прочитать запись → изменить локальную модель → runtime Start → сохранить запись |
-| [Pause](../../src/NiTorrent.Application/Torrents/UseCase/PauseTorrentUseCase.cs) | Прочитать запись → изменить локальную модель → runtime Pause → сохранить запись |
-| [Delete](../../src/NiTorrent.Application/Torrents/UseCase/DeleteTorrentUseCase.cs) | Прочитать запись → MarkDeleted → runtime Remove → удалить запись из репозитория |
+| `src/NiTorrent.App` | Program, host, РІС‹Р±РѕСЂ РґРІРёР¶РєР°, Р»РѕРіРёСЂРѕРІР°РЅРёРµ, РїР»Р°С‚С„РѕСЂРјРµРЅРЅС‹Рµ storage-РїСѓС‚Рё, СЃРѕРіР»Р°СЃРѕРІР°РЅРЅРѕРµ Р·Р°РІРµСЂС€РµРЅРёРµ |
+| `src/Modules/Torrents/Contracts` | ITorrentsModule, ITorrentsLifetime, ITorrentSettings, ITorrentObservations Рё РѕС‚РґРµР»СЊРЅС‹Рµ РјРѕРґРµР»Рё РґР°РЅРЅС‹С… |
+| `src/Modules/Torrents/Domain` | TorrentDownload, РЅР°РјРµСЂРµРЅРёСЏ Рё РїСЂР°РІРёР»Р° РїРµСЂРµС…РѕРґРѕРІ |
+| `src/Modules/Torrents/Application` | TorrentSession, СЃС†РµРЅР°СЂРёРё, Р°РґР°РїС‚Р°С†РёСЏ РІРЅРµС€РЅРµРіРѕ РёРЅС‚РµСЂС„РµР№СЃР° РјРѕРґСѓР»СЏ |
+| `src/Modules/Torrents/Infrastructure` | JSON-РєР°С‚Р°Р»РѕРі, РЅР°СЃС‚СЂРѕР№РєРё, host-Р·Р°РґР°С‡Рё Рё РѕР±С‰РёР№ СЃР±РѕСЂ РЅР°Р±Р»СЋРґРµРЅРёР№; Р±РµР· Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ Р°РґР°РїС‚РµСЂР° РґРІРёР¶РєР° |
+| `src/Modules/Torrents/Engines/MonoTorrent` | MonoTorrent-Р°РґР°РїС‚РµСЂ; СЂРµР°Р»РёР·Р°С†РёРё internal, РїСѓР±Р»РёС‡РЅР° С‚РѕС‡РєР° СЂРµРіРёСЃС‚СЂР°С†РёРё |
+| `src/Modules/Desktop/Contracts` | РљРѕРЅС‚СЂР°РєС‚С‹ С‚РµРјС‹, URI Рё СЃРІРµРґРµРЅРёР№ Рѕ РїСЂРёР»РѕР¶РµРЅРёРё |
+| `src/Modules/Desktop/Presentation` | ViewModel, СЃРѕСЃС‚РѕСЏРЅРёРµ СЃС‚СЂР°РЅРёС†С‹, СѓРїСЂР°РІР»РµРЅРёРµ РµС‘ РЅР°Р±Р»СЋРґРµРЅРёРµРј |
+| `src/Modules/Desktop/WinUI` | РћРєРЅР°, XAML, СЃС‚СЂР°РЅРёС†С‹, РЅР°РІРёРіР°С†РёСЏ, Р°РєС‚РёРІР°С†РёРё, С‚СЂРµР№, РїР»Р°С‚С„РѕСЂРјРµРЅРЅС‹Рµ UI-Р°РґР°РїС‚РµСЂС‹ |
+| `src/Modules/Updates/{Contracts,Windows}` | РРЅС‚РµСЂС„РµР№СЃ РѕР±РЅРѕРІР»РµРЅРёР№ Рё РїРµСЂРµРЅРµСЃС‘РЅРЅС‹Р№ Р°РґР°РїС‚РµСЂ DevWinUI; РЅРѕРІС‹Р№ РјРµС…Р°РЅРёР·Рј РѕР±РЅРѕРІР»РµРЅРёСЏ РЅРµ РґРѕР±Р°РІР»СЏР»СЃСЏ |
+| `tests` | Р”РІР° Р°РєС‚РёРІРЅС‹С… Рё С‚СЂРё РёСЃС‚РѕСЂРёС‡РµСЃРєРёС… С‚РµСЃС‚РѕРІС‹С… РїСЂРѕРµРєС‚Р° |
 
-[ITorrentRuntimeGateway](../../src/NiTorrent.Application/Torrents/Abstract/ITorrentRuntimeGateway.cs) — seam между сценариями и движком, [TorrentRuntimeGateway](../../src/NiTorrent.Infrastructure/Torrents/TorrentRuntimeGateway.cs) — его адаптер. [TorrentRuntimeWorkGate](../../src/NiTorrent.Infrastructure/Torrents/TorrentRuntimeWorkGate.cs) запрещает новые операции при завершении; это не очередь ожидания готовности движка.
+РќРµРєРѕС‚РѕСЂС‹Рµ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІР° РёРјС‘РЅ Рё РёРјРµРЅР° СЃР±РѕСЂРѕРє СЃРѕС…СЂР°РЅРµРЅС‹. РќР°РїСЂРёРјРµСЂ, РїСЂРѕСЃС‚С‹Рµ TorrentDownloadStatus/TorrentFileEntry РёРјРµСЋС‚ РїСЂРµР¶РЅРёР№ namespace, РЅРѕ РїСЂРёРЅР°РґР»РµР¶Р°С‚ Contracts. РџРѕ РѕРґРЅРѕРјСѓ namespace РЅРµР»СЊР·СЏ РѕРїСЂРµРґРµР»СЏС‚СЊ Р·Р°РІРёСЃРёРјРѕСЃС‚СЊ РѕС‚ Domain. UI РїРѕР»СѓС‡Р°РµС‚ TorrentListItem, Р° РЅРµ Р¶РёРІРѕР№ TorrentDownload.
 
-## Чтение и интерфейс
+## РўРѕС‡РєРё СЃР±РѕСЂРєРё
 
-[GetTorrentListQuery](../../src/NiTorrent.Application/Torrents/Queries/GetTorrentListQuery.cs) возвращает список доменных объектов из репозитория. Отдельной проекции `TorrentListItemReadModel`, описанной в старых документах, в этом пути нет.
+- [App](../../src/NiTorrent.App/App.xaml.cs): AddNiTorrentInfrastructure, СЏРІРЅС‹Р№ AddMonoTorrentEngine, Desktop Рё Updates.
+- [Torrents registration](../../src/Modules/Torrents/Infrastructure/DI/DependencyInjection.cs): СЃРѕСЃС‚РѕСЏРЅРёРµ РјРѕРґСѓР»СЏ Рё host-Р·Р°РґР°С‡Рё.
+- [MonoTorrent registration](../../src/Modules/Torrents/Engines/MonoTorrent/DependencyInjection.cs): РІС‹Р±СЂР°РЅРЅС‹Р№ Р°РґР°РїС‚РµСЂ. Headless-host РґРѕР»Р¶РµРЅ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ РµРіРѕ РѕС‚РґРµР»СЊРЅРѕ.
+- [Desktop registration](../../src/Modules/Desktop/WinUI/DependencyInjection.cs) Рё [Presentation registration](../../src/Modules/Desktop/Presentation/DependencyInjection.cs).
 
-[InMemoryTorrentRuntimeStateSource](../../src/NiTorrent.Infrastructure/Torrents/InMemoryTorrentRuntimeStateSource.cs) опрашивает provider при наличии подписчиков с задержкой в одну секунду между циклами. `TorrentViewModel` подписывается на изменения и отправляет обновления через `IUiDispatcher`.
+## Р—Р°РїСѓСЃРє Рё Р·Р°РІРµСЂС€РµРЅРёРµ
 
-Страница деталей и её view model присутствуют, но наличие XAML и полей не подтверждает полноту функции: см. [наблюдения](OBSERVATIONS.md).
+Program РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚ РµРґРёРЅСЃС‚РІРµРЅРЅС‹Р№ СЌРєР·РµРјРїР»СЏСЂ Рё РїРµСЂРµРЅР°РїСЂР°РІР»РµРЅРёРµ Р°РєС‚РёРІР°С†РёР№. NiTorrentApplication Р·Р°РїСѓСЃРєР°РµС‚ host, Р·Р°С‚РµРј РѕР±РѕР»РѕС‡РєСѓ. StorageHostedService Р·Р°РіСЂСѓР¶Р°РµС‚ РЅР°СЃС‚СЂРѕР№РєРё Рё РєР°С‚Р°Р»РѕРі; TorrentSessionHostedService Р·Р°РїСѓСЃРєР°РµС‚ РѕС‚СЃР»РµР¶РёРІР°РµРјС‹Р№ РёСЃРїРѕР»РЅРёС‚РµР»СЊ СЃРµСЃСЃРёРё; РЅР°Р±Р»СЋРґРµРЅРёРµ РѕР¶РёРґР°РµС‚ РїРѕС‚СЂРµР±РёС‚РµР»РµР№. РЎРѕР·РґР°РЅРёРµ РґРІРёР¶РєР° Рё РїРѕРґРіРѕС‚РѕРІРєР° С‚РѕСЂСЂРµРЅС‚РѕРІ РЅРµ С‚СЂРµР±СѓСЋС‚ РѕРєРЅР°. Р—Р°РІРµСЂС€РµРЅРёРµ host РЅРµ РѕР·РЅР°С‡Р°РµС‚, С‡С‚Рѕ РїСЂРё СЃС‚Р°СЂС‚Рµ РІСЃСЏ РєРѕР»Р»РµРєС†РёСЏ СѓР¶Рµ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅР°.
 
-## Хранение и настройки
+[TorrentSession](../../src/Modules/Torrents/Application/Torrents/TorrentSession.cs) СЃРѕС…СЂР°РЅСЏРµС‚ Р°РєС‚СѓР°Р»СЊРЅРѕРµ РЅР°РјРµСЂРµРЅРёРµ, РїР»Р°РЅРёСЂСѓРµС‚ РїРѕРґРіРѕС‚РѕРІРєСѓ Рё РїРµСЂРµС‡РёС‚С‹РІР°РµС‚ РµРіРѕ РїРѕСЃР»Рµ РґР»РёС‚РµР»СЊРЅС‹С… РѕРїРµСЂР°С†РёР№. Р”РµР№СЃС‚РІРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ РїРѕР»СѓС‡Р°СЋС‚ РїСЂРёРѕСЂРёС‚РµС‚ СЃ Р·Р°С‰РёС‚РѕР№ РѕР±С‹С‡РЅРѕР№ РѕС‡РµСЂРµРґРё РѕС‚ РіРѕР»РѕРґР°РЅРёСЏ. РћС€РёР±РєР° Р·Р°РїРёСЃРё С‚РѕСЂСЂРµРЅС‚Р° РёР·РѕР»РёСЂСѓРµС‚СЃСЏ; РїРѕРІС‚РѕСЂ РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє СЌС‚РѕР№ Р·Р°РїРёСЃРё. РћР±С‰РёР№ РґРІРёР¶РѕРє РёРјРµРµС‚ РѕРіСЂР°РЅРёС‡РµРЅРЅС‹Р№ РїРѕРІС‚РѕСЂ СЃС‚Р°СЂС‚Р°.
 
-[JsonTorrentRepository](../../src/NiTorrent.Infrastructure/Torrents/JsonTorrentRepository.cs) хранит записи в `Torrents/torrent_downloads.json`, пути разрешает через `IAppStorageService`. Записывает Id, InfoHash, имя, путь, статус, выбор файлов и источник. Для TorrentBytes используется Base64 в JSON; для TorrentFile предусмотрена локальная копия файла. Сохранения внутри экземпляра репозитория ограничены `SemaphoreSlim`.
+Exit Р·Р°РєСЂС‹РІР°РµС‚ РїСЂРёС‘Рј РєРѕРјР°РЅРґ, РѕС‚РјРµРЅСЏРµС‚ startup/РѕРїРµСЂР°С†РёРё, Р·Р°РєСЂС‹РІР°РµС‚ РѕР±РѕР»РѕС‡РєСѓ Рё РѕСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ host РІ РѕР±СЂР°С‚РЅРѕРј РїРѕСЂСЏРґРєРµ. РћР±С‰РёР№ СЃСЂРѕРє РѕР¶РёРґР°РЅРёСЏ вЂ” 10 СЃРµРєСѓРЅРґ; clean marker СЃС‚Р°РІРёС‚СЃСЏ С‚РѕР»СЊРєРѕ РїРѕСЃР»Рµ СѓСЃРїРµС€РЅРѕР№ РѕСЃС‚Р°РЅРѕРІРєРё Рё СЃРѕС…СЂР°РЅРµРЅРёСЏ. ViewModel РЅРµ Р·Р°РїСѓСЃРєР°РµС‚ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ Рё РЅРµ РІР»Р°РґРµРµС‚ РІСЂРµРјРµРЅРµРј Р¶РёР·РЅРё РґРІРёР¶РєР°.
 
-[AppStorageService](../../src/NiTorrent.App/Services/AppStorageService.cs) использует пакетный LocalFolder либо fallback `%LOCALAPPDATA%/NiTorrent/LocalState`. Поэтому перенос данных между packaged/unpackaged вариантами нельзя считать автоматическим.
+## Р”РѕР±Р°РІР»РµРЅРёРµ Рё СѓРїСЂР°РІР»РµРЅРёРµ
 
-Настройки загружаются через [SettingsRepository](../../src/NiTorrent.Infrastructure/Settings/SettingsRepository.cs) и `AppJsonSettings`; DI задаёт файл `torrent_settings.json`. [UpdateSettingsUseCase](../../src/NiTorrent.Application/Settings/UpdateSettingsUseCase.cs) сначала вызывает обновление сохранённых настроек и `Current`, затем применение к движку. `SaveAsync` репозитория ставит сохранение в фоновую задачу; `FlushAsync` ожидает её завершения.
+[ITorrentsModule](../../src/Modules/Torrents/Contracts/ITorrentsModule.cs) РїСЂРµРґРѕСЃС‚Р°РІР»СЏРµС‚ Preview/Add/Start/Pause/Delete/SetAll/Retry Рё С‡С‚РµРЅРёРµ РєРѕР»Р»РµРєС†РёРё. Р”Р»СЏ `.torrent` Рё magnet РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РѕР±С‰РёР№ РїСѓС‚СЊ metadata в†’ preview в†’ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёРµ в†’ СЃРѕС…СЂР°РЅС‘РЅРЅР°СЏ Р·Р°РїРёСЃСЊ в†’ РїРѕРґРіРѕС‚РѕРІРєР° СЃРµСЃСЃРёРµР№. Magnet С‚СЂРµР±СѓРµС‚ РґРѕСЃС‚СѓРїРЅРѕРіРѕ РґРІРёР¶РєР° РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ metadata. РџСЂРµРґРїСЂРѕСЃРјРѕС‚СЂ СЃ РЅРµРјРµРґР»РµРЅРЅС‹Рј РїРѕРєР°Р·РѕРј РѕР¶РёРґР°РЅРёСЏ Рё РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ С‡РµСЂРµР· РЅРѕРІС‹Р№ РёСЃС‚РѕС‡РЅРёРє РѕСЃС‚Р°СЋС‚СЃСЏ РѕС‚РґРµР»СЊРЅС‹РјРё Р±СѓРґСѓС‰РёРјРё СЃС†РµРЅР°СЂРёСЏРјРё.
 
-## Выпуск
+Start/Pause СЃРЅР°С‡Р°Р»Р° СЃРѕС…СЂР°РЅСЏСЋС‚ РЅР°РјРµСЂРµРЅРёРµ; РёСЃРїРѕР»РЅРёС‚РµР»СЊ РїСЂРёРјРµРЅСЏРµС‚ Р°РєС‚СѓР°Р»СЊРЅС‹Р№ РІС‹Р±РѕСЂ РїРѕ РіРѕС‚РѕРІРЅРѕСЃС‚Рё Р·Р°РїРёСЃРё. РЈРґР°Р»РµРЅРёРµ Р±РµР· С„Р°Р№Р»РѕРІ РЅРµ С‚СЂРµР±СѓРµС‚ РїРѕРґРіРѕС‚РѕРІРєРё РјРµРЅРµРґР¶РµСЂР°. РЈРґР°Р»РµРЅРёРµ СЃ С„Р°Р№Р»Р°РјРё СЃРѕС…СЂР°РЅСЏРµС‚ Deleted/DeleteFiles Рё Р·Р°РІРµСЂС€Р°РµС‚СЃСЏ С‡РµСЂРµР· РґРІРёР¶РѕРє Р±РµР· Р·Р°РїСѓСЃРєР° РїРµСЂРµРґР°С‡Рё; РЅРµСѓСЃРїРµС€РЅР°СЏ РѕРїРµСЂР°С†РёСЏ РѕСЃС‚Р°С‘С‚СЃСЏ РґРѕСЃС‚СѓРїРЅРѕР№ РґР»СЏ РїРѕРІС‚РѕСЂР° Рё РїРµСЂРµР·Р°РїСѓСЃРєР°.
 
-[release.yml](../../.github/workflows/release.yml) описывает публикацию win-x64, ZIP, Inno Setup и GitHub Release. В команде публикации явно отключены AOT и trimming, хотя App.csproj содержит другие значения по умолчанию. В workflow нет шага запуска тестов. Выполнение workflow и наличие успешного релиза в этом анализе не проверялись.
+## РќР°Р±Р»СЋРґРµРЅРёРµ
+
+[ITorrentObservations](../../src/Modules/Torrents/Contracts/TorrentObservation.cs) РІРѕР·РІСЂР°С‰Р°РµС‚ РЅРµР·Р°РІРёСЃРёРјС‹Р№ IDisposable. РћР±Р»Р°СЃС‚Рё вЂ” РѕР±С‰РёРµ СЃРєРѕСЂРѕСЃС‚Рё, РєРѕР»Р»РµРєС†РёСЏ, РєРѕРЅРєСЂРµС‚РЅС‹Р№ С‚РѕСЂСЂРµРЅС‚. РџРёСЂС‹/С‚СЂРµРєРµСЂС‹ РІ С‚РµРєСѓС‰РµРј Р°РґР°РїС‚РµСЂРµ РЅР°Р±Р»СЋРґРµРЅРёСЏ РІРѕР·РІСЂР°С‰Р°СЋС‚ Unsupported СЃ РѕР±СЉСЏСЃРЅРµРЅРёРµРј; СЌС‚Рѕ РЅРµ РѕРіСЂР°РЅРёС‡РµРЅРёРµ СЃР°РјРѕР№ Р±РёР±Р»РёРѕС‚РµРєРё MonoTorrent.
+
+РћРґРёРЅ СЃР±РѕСЂС‰РёРє РѕР±СЃР»СѓР¶РёРІР°РµС‚ РїРѕС‚СЂРµР±РёС‚РµР»РµР№ РїСЂРёРјРµСЂРЅРѕ СЂР°Р· РІ СЃРµРєСѓРЅРґСѓ. РџРѕСЃР»РµРґРЅСЏСЏ РѕС‚РїРёСЃРєР° РїСЂРµРєСЂР°С‰Р°РµС‚ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Р№ СЃР±РѕСЂ; РѕР±СЏР·Р°С‚РµР»СЊРЅР°СЏ СЂР°Р±РѕС‚Р° СЏРґСЂР° РїСЂРѕРґРѕР»Р¶Р°РµС‚СЃСЏ. РЈ РєР°Р¶РґРѕРіРѕ РїРѕС‚СЂРµР±РёС‚РµР»СЏ РїРѕСЃР»РµРґРѕРІР°С‚РµР»СЊРЅР°СЏ РґРѕСЃС‚Р°РІРєР° Рё РѕРґРёРЅ РїРѕСЃР»РµРґРЅРёР№ РѕР¶РёРґР°СЋС‰РёР№ СЃРЅРёРјРѕРє. РџСЂРё РѕС€РёР±РєРµ СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ РїРѕСЃР»РµРґРЅРёРµ Р·РЅР°С‡РµРЅРёСЏ СЃ Disconnected; РїРѕСЃР»Рµ СѓСЃРїРµС€РЅРѕРіРѕ С‡С‚РµРЅРёСЏ СЃРѕСЃС‚РѕСЏРЅРёРµ РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё. РСЃС‚РѕСЂРёСЏ РЅРѕРІС‹Рј РјРµС…Р°РЅРёР·РјРѕРј РЅРµ СЃРѕР·РґР°С‘С‚СЃСЏ.
+
+[TorrentPageObservation](../../src/Modules/Desktop/Presentation/Features/Torrents/TorrentPageObservation.cs) РѕС‚РєР»СЋС‡Р°РµС‚ СЃС‚СЂР°РЅРёС†Сѓ РїСЂРё СЃРєСЂС‹С‚РёРё РІ С‚СЂРµР№, СЃРѕС…СЂР°РЅСЏРµС‚ Р»РѕРєР°Р»СЊРЅС‹Р№ РІС‹Р±РѕСЂ Рё РїРѕРґРєР»СЋС‡Р°РµС‚ РµС‘ РїСЂРё РІРѕР·РІСЂР°С‚Рµ. РўСЂРµР№ РёРјРµРµС‚ СЃРѕР±СЃС‚РІРµРЅРЅСѓСЋ РїРѕРґРїРёСЃРєСѓ Summary. РЈ С‚РµРєСѓС‰РµР№ СЃС‚СЂР°РЅРёС†С‹ РґРµС‚Р°Р»РµР№ С‡Р°СЃС‚СЊ РЅР°РїРѕР»РЅРµРЅРёСЏ РѕСЃС‚Р°С‘С‚СЃСЏ Р·Р°РіР»СѓС€РєРѕР№: СЃР°Рј С„Р°РєС‚ СЃСѓС‰РµСЃС‚РІРѕРІР°РЅРёСЏ XAML РЅРµ РѕР·РЅР°С‡Р°РµС‚ СЂР°Р±РѕС‚Сѓ peers/РіСЂР°С„РёРєР°/СЂР°СЃС€РёСЂРµРЅРЅС‹С… РЅР°СЃС‚СЂРѕРµРє.
+
+## РҐСЂР°РЅРµРЅРёРµ Рё РІС‹РїСѓСЃРє
+
+[JsonTorrentRepository](../../src/Modules/Torrents/Infrastructure/Torrents/JsonTorrentRepository.cs) СЃРѕС…СЂР°РЅСЏРµС‚ `Torrents/torrent_downloads.json`, РІ С‚РѕРј С‡РёСЃР»Рµ РЅР°РјРµСЂРµРЅРёРµ, РІС‹Р±РѕСЂ С„Р°Р№Р»РѕРІ Рё РёСЃС‚РѕС‡РЅРёРє. TorrentBytes РѕСЃС‚Р°СЋС‚СЃСЏ Base64; С„РѕСЂРјР°С‚ Рё СЂР°СЃРїРѕР»РѕР¶РµРЅРёРµ РґР°РЅРЅС‹С… РЅРµ РјРёРіСЂРёСЂРѕРІР°Р»Рё. Р—Р°РїРёСЃРё РєР°С‚Р°Р»РѕРіР°/РЅР°СЃС‚СЂРѕРµРє РёСЃРїРѕР»СЊР·СѓСЋС‚ РІСЂРµРјРµРЅРЅС‹Р№ С„Р°Р№Р» Рё Р·Р°РјРµРЅСѓ; РЅРµСѓРґР°С‡РЅР°СЏ РѕР±С‹С‡РЅР°СЏ Р·Р°РїРёСЃСЊ РѕСЃС‚Р°РІР»СЏРµС‚ РґР°РЅРЅС‹Рµ РІ РїР°РјСЏС‚Рё РґР»СЏ СЃР»РµРґСѓСЋС‰РµР№ РїРѕРїС‹С‚РєРё. Р¤РёРЅР°Р»СЊРЅС‹Р№ flush РґРѕР»Р¶РµРЅ СЃРѕРѕР±С‰РёС‚СЊ Рѕ СЃР±РѕРµ. РќРµ СЃС‡РёС‚Р°С‚СЊ СЌС‚Рѕ РіР°СЂР°РЅС‚РёРµР№ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ РїРѕС‚РµСЂСЊ РїСЂРё Р°РІР°СЂРёР№РЅРѕРј Р·Р°РІРµСЂС€РµРЅРёРё.
+
+РЎРµРјР°РЅС‚РёРєР° Apply РїРѕРєР° РЅРµ СЏРІР»СЏРµС‚СЃСЏ С‚СЂР°РЅР·Р°РєС†РёРµР№ Р·Р°РїРёСЃРё Рё РїСЂРёРјРµРЅРµРЅРёСЏ: РЅР°СЃС‚СЂРѕР№РєРё/Current РѕР±РЅРѕРІР»СЏСЋС‚СЃСЏ РґРѕ РїСЂРёРјРµРЅРµРЅРёСЏ Рє РґРІРёР¶РєСѓ, Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРѕРіРѕ РѕС‚РєР°С‚Р° РЅРµС‚. РџРѕРґСЂРѕР±РЅРѕСЃС‚Рё Рё РІРѕРїСЂРѕСЃС‹ вЂ” [OBSERVATIONS](OBSERVATIONS.md), [QUESTIONS](QUESTIONS.md).
+
+Р’СЃРµ С‚РµСЃС‚РѕРІС‹Рµ РїСЂРѕРµРєС‚С‹ РЅР°С…РѕРґСЏС‚СЃСЏ РІ [tests](../../tests). РђРєС‚РёРІРЅС‹Рµ Lifecycle Рё Architecture РґР°СЋС‚ 73 + 13 С‚РµСЃС‚РѕРІ РІ РїРѕСЃР»РµРґРЅРёС… РїСЂРѕРіРѕРЅР°С…; С‚СЂРё РїСЂРѕРµРєС‚Р° РїСЂРµР¶РЅРµР№ РјРѕРґРµР»Рё РЅРµ Р°РєС‚РёРІРёСЂРѕРІР°РЅС‹. [Architecture workflow](../../.github/workflows/architecture.yml) РїСЂРѕРІРµСЂСЏРµС‚ PR, [release workflow](../../.github/workflows/release.yml) Р·Р°РІРёСЃРёС‚ РѕС‚ СѓСЃРїРµС€РЅРѕР№ РїСЂРѕРІРµСЂРєРё. РЈРґР°Р»С‘РЅРЅС‹Р№ Р·Р°РїСѓСЃРє CI Рё required checks РІРµС‚РєРё РЅРµ РЅР°СЃС‚СЂР°РёРІР°Р»РёСЃСЊ РІ СЌС‚РѕР№ СЃРµСЃСЃРёРё.
+
+РўРѕС‡РЅС‹Рµ СЂРµР·СѓР»СЊС‚Р°С‚С‹, РєРѕРјР°РЅРґС‹ Рё РѕРіСЂР°РЅРёС‡РµРЅРёСЏ вЂ” [РѕС‚С‡С‘С‚ РїРµСЂРІРѕРіРѕ СЌС‚Р°РїР°](MODULAR_MONOLITH_IMPLEMENTED_2026-11-27.md).

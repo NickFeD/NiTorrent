@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable><IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" />
+    <ProjectReference Include="../../src/NiTorrent.App/NiTorrent.App.csproj" ReferenceOutputAssembly="false"
+        AdditionalProperties="Platform=x64;WindowsPackageType=None;PublishAot=false;PublishTrimmed=false;PublishReadyToRun=false" />
+  </ItemGroup>
+</Project>

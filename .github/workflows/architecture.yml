@@ -1,0 +1,28 @@
+name: Architecture and lifecycle
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'NiTorrent.slnx'
+      - 'global.json'
+      - '.github/workflows/**'
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Check module architecture
+        run: dotnet test tests/NiTorrent.Architecture.Tests/NiTorrent.Architecture.Tests.csproj -c Release -p:Platform=x64 -p:WindowsPackageType=None -p:PublishAot=false -p:PublishTrimmed=false -p:PublishReadyToRun=false --logger "trx;LogFileName=architecture.trx" --results-directory artifacts/verification
+      - name: Check lifecycle and observations
+        run: dotnet test tests/NiTorrent.Lifecycle.Tests/NiTorrent.Lifecycle.Tests.csproj -c Release --logger "trx;LogFileName=lifecycle.trx" --results-directory artifacts/verification

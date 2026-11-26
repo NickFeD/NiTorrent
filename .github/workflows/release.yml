@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - 'src/**'
+      - 'tests/**'
       - 'installer/**'
       - '.github/workflows/release.yml'
 
@@ -25,7 +26,12 @@ env:
   INNO_SCRIPT_PATH: installer/NiTorrent.iss
 
 jobs:
+  verify:
+    uses: ./.github/workflows/architecture.yml
+    permissions:
+      contents: read
   release:
+    needs: verify
     runs-on: windows-latest
 
     steps:

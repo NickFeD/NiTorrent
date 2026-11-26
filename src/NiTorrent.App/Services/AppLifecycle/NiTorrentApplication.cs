@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using Microsoft.Windows.AppLifecycle;
 using NiTorrent.Application;
-using NiTorrent.Application.Torrents.Abstract;
+using NiTorrent.Torrents.Contracts;
 using NiTorrent.Presentation.Abstractions;
 using System.Diagnostics;
 
@@ -16,7 +16,6 @@ public sealed class NiTorrentApplication(IHost host, IServiceProvider services, 
     private readonly CancellationTokenSource _startup = new();
     private Task? _startupTask;
     private int _shutdownStarted;
-    private Window? _startupErrorWindow;
     private T Get<T>() where T : class => services.GetService<T>()
         ?? throw new InvalidOperationException($"Missing service: {typeof(T)}");
 
@@ -53,19 +52,9 @@ public sealed class NiTorrentApplication(IHost host, IServiceProvider services, 
         catch (Exception ex)
         {
             logger.LogError(ex, "Application startup failed");
-            await Get<IUiDispatcher>().EnqueueAsync(() =>
-            {
-                if (Volatile.Read(ref _shutdownStarted) != 0) return;
-                var close = new Button { Content = "Выход" };
-                close.Click += (_, _) => _ = ShutdownAsync(AppShutdownReason.UserRequested, CancellationToken.None);
-                var panel = new StackPanel { Spacing = 16, Margin = new Thickness(24) };
-                panel.Children.Add(new TextBlock { Text = "Не удалось запустить NiTorrent", FontSize = 20 });
-                panel.Children.Add(new TextBlock { Text = ex.Message, TextWrapping = TextWrapping.Wrap });
-                panel.Children.Add(close);
-                _startupErrorWindow = new Window { Title = "NiTorrent — ошибка запуска", Content = panel };
-                _startupErrorWindow.Closed += (_, _) => _ = ShutdownAsync(AppShutdownReason.UserRequested, CancellationToken.None);
-                _startupErrorWindow.Activate();
-            }).ConfigureAwait(false);
+            await Get<IStartupErrorPresenter>().ShowAsync(ex.Message,
+                () => ShutdownAsync(AppShutdownReason.UserRequested, CancellationToken.None),
+                () => Volatile.Read(ref _shutdownStarted) != 0).ConfigureAwait(false);
         }
     }
 
@@ -87,7 +76,7 @@ public sealed class NiTorrentApplication(IHost host, IServiceProvider services, 
         var dispatcher = Get<IUiDispatcher>();
         var clock = Stopwatch.StartNew();
         Get<IActivationQueue>().StopAccepting();
-        Get<ITorrentSession>().RequestStop();
+        Get<ITorrentsLifetime>().RequestStop();
         _startup.Cancel();
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
         deadline.CancelAfter(TimeSpan.FromSeconds(10));
@@ -99,7 +88,7 @@ public sealed class NiTorrentApplication(IHost host, IServiceProvider services, 
             lock (_gate) startup = _startupTask;
             if (startup is not null) await startup.WaitAsync(deadline.Token).ConfigureAwait(false);
             await Get<IAppShellLifecycle>().CloseAsync().WaitAsync(deadline.Token).ConfigureAwait(false);
-            await dispatcher.EnqueueAsync(() => _startupErrorWindow?.Close(), deadline.Token).ConfigureAwait(false);
+            await Get<IStartupErrorPresenter>().CloseAsync(deadline.Token).ConfigureAwait(false);
             await host.StopAsync(deadline.Token).WaitAsync(deadline.Token).ConfigureAwait(false);
             stopped = true;
         }

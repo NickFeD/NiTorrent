@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net11.0-windows10.0.26100.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <UseWinUI>true</UseWinUI><WinUISDKReferences>false</WinUISDKReferences>
+    <RootNamespace>NiTorrent.App</RootNamespace><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>
+    <Platforms>x86;x64;ARM64</Platforms><IsPackable>false</IsPackable><AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <WindowsPackageType>None</WindowsPackageType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Common" Version="8.4.2" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="DevWinUI" Version="11.1.0" />
+    <PackageReference Include="DevWinUI.ContextMenu" Version="11.1.0" />
+    <PackageReference Include="DevWinUI.SourceGenerator" Version="10.9.0" />
+    <PackageReference Include="H.NotifyIcon.WinUI" Version="2.4.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="11.0.0" />
+    <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.3.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2957" />
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.7.0" />
+    <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="3.0.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="nucs.JsonSettings" Version="2.3.2" />
+    <PackageReference Include="nucs.JsonSettings.AutoSaveGenerator" Version="2.0.4" />
+    <PackageReference Include="WinUIEx" Version="2.9.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Presentation/NiTorrent.Presentation.csproj" />
+    <AdditionalFiles Include="**/*.xaml" Exclude="bin/**;obj/**" />
+    <AdditionalFiles Include="../../../NiTorrent.App/Assets/NavViewMenu/AppData.json" Link="Assets/NavViewMenu/AppData.json" />
+  </ItemGroup>
+</Project>
