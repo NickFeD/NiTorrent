@@ -5,7 +5,7 @@
 под разные DPI. Окно предварительного просмотра использует эти ресурсы для
 узлов дерева файлов.
 
-Предлагаемое соответствие расширений (сравнение без учёта регистра):
+Текущее соответствие расширений (сравнение без учёта регистра):
 
 | Значок | Расширения |
 | --- | --- |
@@ -19,7 +19,7 @@
 | `video` | mkv, mp4, avi, mov, webm, m4v, wmv, mpg, ts |
 | `audio` | mp3, flac, wav, m4a, aac, ogg, opus, wma, aiff |
 | `disc` | iso, img, bin, cue, nrg |
-| `code` | cs, cpp, h, js, ts, py, json, xml, html, css, sh, ps1 |
+| `code` | cs, cpp, h, js, py, json, xml, html, css, sh, ps1 |
 | `executable` | exe, msi, msix, bat, cmd, apk, appx |
 | `font` | ttf, otf, woff, woff2 |
 | `ebook` | epub, mobi, azw, azw3, fb2 |
@@ -29,5 +29,5 @@
 | `file` | неизвестное расширение или файл без расширения |
 
 Список легко расширять: добавить SVG в этот каталог и сопоставить расширение
-с именем ресурса в `TorrentTreeItemViewModel.GetIconName`. Для составных
+с именем ресурса в [TorrentTreeItemViewModel.GetIconName](../../../Modules/Desktop/Presentation/Features/Torrents/Tree/TorrentTreeItemViewModel.cs). `.ts` сейчас относится к видео. Для составных
 расширений сейчас используется последнее окончание (например, `.gz`).

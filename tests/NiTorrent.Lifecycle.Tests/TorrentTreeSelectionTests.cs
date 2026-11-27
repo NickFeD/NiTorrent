@@ -57,23 +57,6 @@ public class TorrentTreeSelectionTests
     }
 
     [Fact]
-    public async Task SortingKeepsChildrenInTheirFolderAndLeavesOtherFoldersUnloaded()
-    {
-        var tree = new TorrentTreeModel([
-            new TorrentFileEntry("folder/b.bin", 200, true),
-            new TorrentFileEntry("folder/a.bin", 100, true),
-            new TorrentFileEntry("other/c.bin", 300, true)
-        ]);
-        var folder = TorrentTreeItemViewModel.CreateRootItems(tree).Single(x => x.Name == "folder");
-        await folder.EnsureChildrenLoadedAsync();
-        var original = folder.Children.ToArray();
-        folder.SortLoadedChildren(true, true);
-        Assert.Equal(new[] { "b.bin", "a.bin" }, folder.Children.Select(x => x.Name));
-        Assert.Same(original.Single(x => x.Name == "b.bin"), folder.Children[0]);
-        Assert.Equal(2, folder.Children.Count);
-    }
-
-    [Fact]
     public void SelectedSizeUsesDecimalUnitsAndZeroForUnselectedFile()
     {
         var tree = new TorrentTreeModel([
@@ -86,7 +69,7 @@ public class TorrentTreeSelectionTests
     }
 
     [Fact]
-    public async Task SortCommandsOrderEachExpandedLevelAndApplyToFoldersOpenedLater()
+    public async Task ChangingSelectionKeepsTreeOrderAndDoesNotReloadOtherFolders()
     {
         TorrentFileEntry[] files = [
             new("folder/z.bin", 500, true),
@@ -100,37 +83,16 @@ public class TorrentTreeSelectionTests
         var folder = vm.RootItems.Single(x => x.Name == "folder");
         var later = vm.RootItems.Single(x => x.Name == "later");
         await folder.EnsureChildrenLoadedAsync();
-        vm.SetSort(true);
-        Assert.Equal(new[] { "a.bin", "z.bin" }, folder.Children.Select(x => x.Name));
-        Assert.Equal(new[] { "root-a.bin", "root-z.bin" }, vm.RootItems.Where(x => x.IsFile).Select(x => x.Name));
-        Assert.True(later.Children.Single().IsPlaceholder);
-        vm.SetSort(true);
-        Assert.Equal(new[] { "z.bin", "a.bin" }, folder.Children.Select(x => x.Name));
-        await later.EnsureChildrenLoadedAsync();
-        Assert.Equal(new[] { "c.bin", "b.bin" }, later.Children.Select(x => x.Name));
-        vm.SetSort(false);
-        Assert.Equal(new[] { "a.bin", "z.bin" }, folder.Children.Select(x => x.Name));
-        Assert.Equal(new[] { "b.bin", "c.bin" }, later.Children.Select(x => x.Name));
-    }
-
-    [Fact]
-    public async Task SortingRaisesOneResetKeepsFoldersFirstAndPreservesExpandedNodes()
-    {
-        TorrentFileEntry[] files = [
-            new("z/a.bin", 10, true), new("a/a.bin", 10, true),
-            new("z.txt", 30, true), new("a.txt", 20, true)
-        ];
-        var vm = new TorrentPreviewViewModel(new TorrentPreview(false, "test", "hash", 70, files));
-        var folder = vm.RootItems.Single(x => x.Name == "z");
-        await folder.EnsureChildrenLoadedAsync();
-        folder.IsExpanded = true;
+        var before = vm.RootItems.ToArray();
+        var childrenBefore = folder.Children.ToArray();
         var changes = new List<NotifyCollectionChangedAction>();
         vm.RootItems.CollectionChanged += (_, e) => changes.Add(e.Action);
-        vm.SetSort(false);
-        Assert.Equal(new[] { "z", "a", "z.txt", "a.txt" }, vm.RootItems.Select(x => x.Name));
-        Assert.Equal(new[] { NotifyCollectionChangedAction.Reset }, changes);
-        Assert.Same(folder, vm.RootItems[0]);
-        Assert.True(folder.IsExpanded);
-        Assert.Equal("a.bin", folder.Children.Single().Name);
+        folder.Children.CollectionChanged += (_, e) => changes.Add(e.Action);
+        folder.Children.Single(x => x.Name == "a.bin").ToggleCommand.Execute(false);
+        Assert.Equal(before, vm.RootItems);
+        Assert.Equal(childrenBefore, folder.Children);
+        Assert.Empty(changes);
+        Assert.True(later.Children.Single().IsPlaceholder);
+        Assert.Equal(1450, vm.Tree.Root.SelectedSize);
     }
 }

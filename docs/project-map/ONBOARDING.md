@@ -1,27 +1,11 @@
-﻿# Onboarding
+# Начало работы
 
-Status: active
-Last updated: 2026-04-05
+Обновлено 2026-11-27.
 
-## Quick start
+1. Прочитать [основной контекст](../analysis/README.md), [текущую карту кода](../analysis/CURRENT_CODE.md) и [реализацию модульного монолита](../analysis/MODULAR_MONOLITH_IMPLEMENTED_2026-11-27.md).
+2. Проверить состояние рабочего дерева и применимые инструкции; не восстанавливать старые каталоги при виде большого diff после переноса.
+3. Прочитать затронутые требования и [открытые вопросы](../analysis/QUESTIONS.md).
+4. Найти сценарий в src/Modules и тесты в tests. Имена старых workflows из архивов не использовать как карту кода.
+5. Выбрать релевантные skills и выполнить проверки по [чеклисту](REGRESSION_CHECKLIST.md).
 
-1. Read `README_ARCHITECTURE.md` (single entry point).
-2. Read `USER_APP_LOGIC.md` and `TARGET_ARCHITECTURE.md`.
-3. Read `APPLICATION_CONTRACTS.md` and `ANTI_PATTERNS.md`.
-4. Before implementation, check `OPEN_QUESTIONS.md`.
-5. Before merge, run through `REGRESSION_CHECKLIST.md`.
-
-## Core implementation flow
-
-- UI -> `ITorrentWorkflowService`
-- User commands (`start/pause/remove`) -> `ITorrentCommandService`
-- Add/preview/settings apply -> `ITorrentWriteService`
-- Startup restore/sync -> restore + sync workflows
-- UI read-side -> `ITorrentReadModelFeed`
-
-## Non-negotiable rules
-
-- Do not add a second command pipeline outside intent/deferred model.
-- Do not bypass application contracts from UI.
-- Do not surface raw infrastructure/engine exceptions to users.
-- Do not implement ambiguous behavior without recording and resolving it via `OPEN_QUESTIONS.md`.
+Точка выбора движка находится в App. Desktop использует Contracts; сессия и передача продолжаются без окон. Подробные правила работы — [WORKING_GUIDE](../analysis/WORKING_GUIDE.md).

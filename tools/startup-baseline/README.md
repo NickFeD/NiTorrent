@@ -1,14 +1,14 @@
 # Изолированные замеры запуска
 
-Инструменты для Windows/.NET 10 и 11. Они не меняют исходники приложения или его зависимости. Основной отчёт: [STARTUP_BASELINE_2026-11-24.md](../../docs/analysis/STARTUP_BASELINE_2026-11-24.md).
+Инструменты для Windows/.NET 10 и 11; по умолчанию используется net11.0. Они не меняют исходники приложения или его зависимости. Основной исторический отчёт: [STARTUP_BASELINE_2026-11-24.md](../../docs/analysis/STARTUP_BASELINE_2026-11-24.md). Текущая архитектура — [CURRENT_CODE](../../docs/analysis/CURRENT_CODE.md).
 
 ## Чтение коллекции и подготовка восстановления
 
 Из корня репозитория:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/startup-baseline/Run-StorageBaseline.ps1 -Framework net10.0 -Catalog 'C:\Users\NickFeD\AppData\Local\NiTorrent\LocalState\Torrents\torrent_downloads.json'
-powershell -NoProfile -ExecutionPolicy Bypass -File tools/startup-baseline/Run-StorageBaseline.ps1 -Framework net11.0 -Catalog 'C:\Users\NickFeD\AppData\Local\NiTorrent\LocalState\Torrents\torrent_downloads.json'
+$catalogPath = Join-Path $env:LOCALAPPDATA 'NiTorrent/LocalState/Torrents/torrent_downloads.json'
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/startup-baseline/Run-StorageBaseline.ps1 -Framework net11.0 -Catalog $catalogPath
 ```
 
 `ExecutionPolicy Bypass` действует только для нового процесса PowerShell и нужен здесь из-за запрета запуска локальных скриптов. Системная политика не изменяется. Для сравнения закрыть другие активные нагрузки и выполнять команды последовательно.
@@ -19,11 +19,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tools/startup-baseline/Run-S
 
 Каждый сценарий по умолчанию содержит 2 прогревочных и 7 измеряемых проходов. Отдельно измеряются:
 
-- конструктор репозитория с созданием/проверкой каталогов;
+- конструктор репозитория (в текущей реализации без файлового I/O);
 - `LoadingAsync`: чтение JSON и создание внутреннего словаря;
 - `GetAllAsync`: получение моделей списка;
 - `GetAllForRestoreAsync`: модели восстановления и декодирование Base64;
-- `RestoreSessionUseCase` с пустым gateway: подготовка и настоящие `Task.Delay(5)`, без MonoTorrent, сети и файлов скачивания.
+- прежний `RestoreSessionUseCase` с пустым gateway: подготовка и настоящие `Task.Delay(5)`, без MonoTorrent, сети и файлов скачивания. Это сохранённый измерительный сценарий, а не текущий путь запуска через TorrentSession.
 
 Последняя метрика уже включает повторный `GetAllForRestoreAsync`; складывать их как независимые фазы нельзя. `ReadAllocatedBytes` относится к чтению и обеим проекциям, исключая следующий no-op restore. Это счётчик всего процесса, не только одного async-потока.
 

@@ -1,30 +1,7 @@
-﻿# Open Questions
+# Открытые вопросы
 
-Status: active
-Last updated: 2026-04-05
+Обновлено 2026-11-27. Прежняя запись None больше не описывает состояние проекта.
 
-Purpose:
-Track requirement ambiguities and pending clarifications so implementation does not invent unplanned behavior.
+Единый актуальный список — [QUESTIONS](../analysis/QUESTIONS.md), согласованные ответы первого этапа — [MM-01–MM-06](../analysis/MODULAR_MONOLITH_REQUIREMENTS.md). Здесь второй список не ведётся, чтобы решения не расходились.
 
-## How to use
-
-1. Add a question when one requirement has 2+ valid interpretations.
-2. List affected documents/contracts/components.
-3. Do not ship behavior based on assumptions until a decision is confirmed.
-4. After decision, update this file entry to `Resolved` and link the change.
-
-## Template
-
-- ID: Q-YYYYMMDD-XX
-- Status: Open | Resolved
-- Requirement reference:
-- Ambiguity:
-- Option A:
-- Option B:
-- Impacted scenarios/contracts:
-- Decision:
-- Updated files:
-
-## Current questions
-
-- None.
+Остаются, в частности: выбор второго движка и владение серверной коллекцией; будущая многооконность; подробности торрента; ошибки Apply/сохранения; восстановление через новый источник; бюджеты запуска и политика публикации. Эти вопросы не отменяют уже завершённый первый этап.

@@ -1,7 +1,10 @@
 # План Исправлений По Архитектурному Аудиту
 
+<!-- documentation-status-2026-11-27 -->
+> Исторический аудит/план прежней модели. Не является незавершённым поручением или текущей архитектурой. Актуальные состояние и ограничения — [контекст](../analysis/README.md) и [наблюдения](../analysis/OBSERVATIONS.md).
+
 Дата: 2026-04-05  
-Связанный отчёт: [ARCH_AUDIT_REPORT.md](C:/GitHub/NiTorrent/docs/project-map/ARCH_AUDIT_REPORT.md)
+Связанный отчёт: [ARCH_AUDIT_REPORT.md](ARCH_AUDIT_REPORT.md)
 
 ## Summary
 

@@ -40,24 +40,9 @@ public sealed partial class TorrentPreviewWindow : WindowEx
             item.ToggleCommand.Execute(checkBox.IsChecked);
     }
 
-    private void NameSort_Click(object sender, RoutedEventArgs e) => SetSort(false);
-    private void SizeSort_Click(object sender, RoutedEventArgs e) => SetSort(true);
-
-    private void SetSort(bool bySize)
-    {
-        ViewModel.SetSort(bySize);
-        var arrow = ViewModel.Tree.SortDescending ? " ↓" : " ↑";
-        NameSortButton.Content = "Имя" + (bySize ? "" : arrow);
-        SizeSortButton.Content = "Размер" + (bySize ? arrow : "");
-    }
-
-    private void SizeColumnSplitter_DragDelta(object sender, Microsoft.UI.Xaml.Controls.Primitives.DragDeltaEventArgs e)
-    {
-        ViewModel.SizeColumnWidth = Math.Clamp(ViewModel.SizeColumnWidth - e.HorizontalChange, 80, Math.Max(80, Root.ActualWidth - 220));
-    }
-
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
+        if (!ViewModel.CanConfirm) return;
         _tcs.TrySetResult(new TorrentPreviewDialogResult(
             SelectedFiles: Files,
             OutputFolder: ViewModel.OutputFolder));
@@ -94,7 +79,14 @@ public sealed partial class TorrentPreviewWindow : WindowEx
     private void OnClosed(object sender, WindowEventArgs e)
     {
         Closed -= OnClosed;
+        ViewModel.Close();
         _tcs.TrySetResult(null);
+    }
+
+    private async void Root_Loaded(object sender, RoutedEventArgs e)
+    {
+        Root.Loaded -= Root_Loaded;
+        await ViewModel.LoadCommand.ExecuteAsync(null);
     }
 }
 

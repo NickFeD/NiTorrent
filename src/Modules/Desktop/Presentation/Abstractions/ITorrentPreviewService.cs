@@ -1,4 +1,4 @@
-﻿using NiTorrent.Application.Torrents.DTo;
+﻿using NiTorrent.Application.Torrents;
 using NiTorrent.Domain.Torrents;
 
 namespace NiTorrent.Presentation.Abstractions;
@@ -6,7 +6,7 @@ namespace NiTorrent.Presentation.Abstractions;
 public interface ITorrentPreviewService
 {
     Task<TorrentPreviewDialogResult?> ShowAsync(
-        TorrentPreview preview,
+        TorrentSource source,
         CancellationToken ct = default);
 }
 

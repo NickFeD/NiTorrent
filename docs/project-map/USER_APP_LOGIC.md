@@ -1,4 +1,7 @@
-﻿# User App Logic
+# User App Logic
+
+<!-- documentation-status-2026-11-27 -->
+> Ранее записанная продуктовая спецификация, не доказательство реализации. Поздние согласованные требования lifecycle, трея и модульного монолита перечислены в [актуальном контексте](../analysis/README.md). Расхождения не разрешают молча менять поведение; см. [наблюдения](../analysis/OBSERVATIONS.md).
 
 This document describes the application **from the user's point of view**, not from the current code implementation.
 It is a behavioral specification: we first define **what the app must do**, and only then design the target architecture to support it.

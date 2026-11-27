@@ -1,5 +1,8 @@
 # Startup/Restore Redesign Plan
 
+<!-- documentation-status-2026-11-27 -->
+> Исторический аудит/план прежней модели. Не является незавершённым поручением или текущей архитектурой. Актуальные состояние и ограничения — [контекст](../analysis/README.md) и [наблюдения](../analysis/OBSERVATIONS.md).
+
 Status: active  
 Last updated: 2026-04-06
 

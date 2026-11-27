@@ -6,9 +6,6 @@ public class TorrentTreeModel
 {
     public FolderModel Root { get; }
     public event EventHandler? SelectionChanged;
-    public bool SortBySize { get; set; }
-    public bool SortDescending { get; set; }
-    public double SizeColumnWidth { get; set; } = 140;
 
     public TorrentTreeModel(IEnumerable<TorrentFileEntry> files)
     {

@@ -1,5 +1,8 @@
 # Быстрый запуск, жизненный цикл и много окон
 
+<!-- documentation-status-2026-11-27 -->
+> Датированный отчёт/исследование предыдущего этапа. Наблюдения, команды и ограничения ниже относятся к его дате. Текущая карта, подписки и тесты — [в отчёте модульного монолита](MODULAR_MONOLITH_IMPLEMENTED_2026-11-27.md); рабочие инструкции — [в README](README.md).
+
 Дата: 2026-11-23. Контекст уточнён владельцем после первого анализа. Документ фиксирует пожелания и варианты для исследования. Он не является принятым ADR и не разрешает изменение кода.
 
 Продолжение 2026-11-24: получены [первые измерения](STARTUP_BASELINE_2026-11-24.md). Владелец планирует .NET 11 и стабильные зависимости, включая WindowsAppSDK 2.7.0; уже заменил внутреннее восстановление движка собственным. Эти условия нужно сохранять при выборе следующих экспериментов.
@@ -21,17 +24,17 @@
 
 ### Окно ждёт ранние этапы
 
-[AppLifecycleCoordinator](../../src/NiTorrent.Application/AppLifecycleCoordinator.cs) ожидает задачи последовательно. [TorrentEngineStartupTask](../../src/NiTorrent.Infrastructure/Torrents/TorrentEngineStartupTask.cs) выполняется на Core, [MainWindowLifecycleTask](../../src/NiTorrent.App/Services/AppLifecycle/MainWindowLifecycleTask.cs) — позже на Shell. Следовательно, время Core входит во время до показа окна.
+`AppLifecycleCoordinator` (исторический путь: `../../src/NiTorrent.Application/AppLifecycleCoordinator.cs`) ожидает задачи последовательно. `TorrentEngineStartupTask` (исторический путь: `../../src/NiTorrent.Infrastructure/Torrents/TorrentEngineStartupTask.cs`) выполняется на Core, `MainWindowLifecycleTask` (исторический путь: `../../src/NiTorrent.App/Services/AppLifecycle/MainWindowLifecycleTask.cs`) — позже на Shell. Следовательно, время Core входит во время до показа окна.
 
-`async` в объявлении метода не означает перенос работы с UI-потока. Например, [TorrentEngineCoordinator.InitializeAsync](../../src/NiTorrent.Infrastructure/Torrents/TorrentEngineCoordinator.cs) синхронно выполняет `new ClientEngine(...)` и возвращает `Task.CompletedTask`. На каком потоке реально выполняется каждый участок данного запуска, требуется установить трассировкой: ранние `await` могут завершаться синхронно.
+`async` в объявлении метода не означает перенос работы с UI-потока. Например, [TorrentEngineCoordinator.InitializeAsync](../../src/Modules/Torrents/Engines/MonoTorrent/TorrentEngineCoordinator.cs) синхронно выполняет `new ClientEngine(...)` и возвращает `Task.CompletedTask`. На каком потоке реально выполняется каждый участок данного запуска, требуется установить трассировкой: ранние `await` могут завершаться синхронно.
 
-Простая перестановка Shell перед Core недостаточна: [TorrentMetadataProvider](../../src/NiTorrent.Infrastructure/Torrents/TorrentMetadataProvider.cs) обращается к `coordinator.Engine` при создании адаптера. Создание view models может разрешить эту зависимость до готовности движка. Сначала нужно отделить возможность создать окно от необходимости иметь готовый runtime.
+Простая перестановка Shell перед Core недостаточна: [TorrentMetadataProvider](../../src/Modules/Torrents/Engines/MonoTorrent/TorrentMetadataProvider.cs) обращается к `coordinator.Engine` при создании адаптера. Создание view models может разрешить эту зависимость до готовности движка. Сначала нужно отделить возможность создать окно от необходимости иметь готовый runtime.
 
 ### Фактическая работа начинается раньше lifecycle-методов
 
-[AppHostLifecycleService](../../src/NiTorrent.App/Services/AppLifecycle/AppHostLifecycleService.cs) зависит от координатора, а тот получает `IEnumerable<IAppLifecycleTask>` и материализует его в конструкторе. Поэтому при разрешении этого графа создаются задачи и их зависимости ещё до вызова их `StartAsync`.
+`AppHostLifecycleService` (исторический путь: `../../src/NiTorrent.App/Services/AppLifecycle/AppHostLifecycleService.cs`) зависит от координатора, а тот получает `IEnumerable<IAppLifecycleTask>` и материализует его в конструкторе. Поэтому при разрешении этого графа создаются задачи и их зависимости ещё до вызова их `StartAsync`.
 
-В частности, фабрика `AppJsonSettings` в [DI](../../src/NiTorrent.Infrastructure/DI/DependencyInjection.cs) вызывает `JsonSettings.Load`, а конструктор [JsonTorrentRepository](../../src/NiTorrent.Infrastructure/Torrents/JsonTorrentRepository.cs) создаёт каталоги. Это стоимость разрешения графа объектов, которую нельзя приписывать чистой работе алгоритма DI-контейнера.
+В частности, фабрика `AppJsonSettings` в [DI](../../src/Modules/Torrents/Infrastructure/DI/DependencyInjection.cs) вызывает `JsonSettings.Load`, а конструктор [JsonTorrentRepository](../../src/Modules/Torrents/Infrastructure/Torrents/JsonTorrentRepository.cs) создаёт каталоги. Это стоимость разрешения графа объектов, которую нельзя приписывать чистой работе алгоритма DI-контейнера.
 
 ### По графу вызовов возможно два создания движка на запуске
 
@@ -42,7 +45,7 @@
 3. `OnUpdateSettings` вызывает `ApplySettingsAsync`; если движка ещё нет, `TorrentEngineCoordinator.ApplySettingsAsync` создаёт `ClientEngine`.
 4. На Core `TorrentEngineLifecycle.StartAsync` вызывает `EngineSettingsService.InitializeAsync`, затем `TorrentEngineCoordinator.InitializeAsync`, который снова присваивает новый `ClientEngine`. Защита от повторной инициализации закомментирована.
 
-Источники: [AppSettingsService](../../src/NiTorrent.Application/Settings/AppSettingsService.cs), [EngineSettingsService](../../src/NiTorrent.Infrastructure/Settings/EngineSettingsService.cs), [TorrentEngineCoordinator](../../src/NiTorrent.Infrastructure/Torrents/TorrentEngineCoordinator.cs). Это вывод по коду при успешном прохождении указанного пути, а не наблюдение из runtime-трассы. В первую очередь стоит подтвердить число созданий и судьбу предыдущего экземпляра. Последствия для сокетов и времени здесь не проверены.
+Источники: [AppSettingsService](../../src/Modules/Torrents/Application/Settings/AppSettingsService.cs), [EngineSettingsService](../../src/Modules/Torrents/Engines/MonoTorrent/EngineSettingsService.cs), [TorrentEngineCoordinator](../../src/Modules/Torrents/Engines/MonoTorrent/TorrentEngineCoordinator.cs). Это вывод по коду при успешном прохождении указанного пути, а не наблюдение из runtime-трассы. В первую очередь стоит подтвердить число созданий и судьбу предыдущего экземпляра. Последствия для сокетов и времени здесь не проверены.
 
 ### Запись диагностических логов сама выполняет I/O
 
@@ -109,7 +112,7 @@ Bootstrap должен подготовить то, без чего окно н�
 
 У фоновой задачи должен быть владелец, сохранённый Task, отмена, обработка ошибки и ожидание завершения. Связь «движок готов → можно восстанавливать» должна быть явной. Не разбрасывать неотслеживаемые `Task.Run` по view models и не ожидать UI-готовность из того же пути, который ещё должен показать окно.
 
-В [RestoreSessionUseCase](../../src/NiTorrent.Application/Torrents/UseCase/RestoreSessionUseCase.cs) восстановление сейчас последовательное и содержит `Task.Delay(5)` на запись. Это минимум запрошенных задержек порядка `N × 5 ms`, кроме I/O и runtime; не оценка реального времени. Конкурентность добавления следует выбирать только после проверки требований MonoTorrent и нагрузки на диск.
+В [RestoreSessionUseCase](../../src/Modules/Torrents/Application/Torrents/UseCase/RestoreSessionUseCase.cs) восстановление сейчас последовательное и содержит `Task.Delay(5)` на запись. Это минимум запрошенных задержек порядка `N × 5 ms`, кроме I/O и runtime; не оценка реального времени. Конкурентность добавления следует выбирать только после проверки требований MonoTorrent и нагрузки на диск.
 
 ## Завершение и сворачивание
 

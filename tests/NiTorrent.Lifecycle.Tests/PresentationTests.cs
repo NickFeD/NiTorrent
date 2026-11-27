@@ -101,7 +101,7 @@ public sealed class PresentationTests
         public Task<WindowCloseChoice?> ShowWindowCloseChoiceAsync(bool value, CancellationToken ct = default) => throw new InvalidOperationException("No dialog expected");
         public Task<string?> PickSingleFilePathAsync(params string[] types) => throw new InvalidOperationException("No picker expected");
         public Task<string?> PickSingleFolderPathAsync(CancellationToken ct = default) => throw new InvalidOperationException("No picker expected");
-        public Task<TorrentPreviewDialogResult?> ShowAsync(TorrentPreview preview, CancellationToken ct) => throw new InvalidOperationException("No preview expected");
+        public Task<TorrentPreviewDialogResult?> ShowAsync(TorrentSource source, CancellationToken ct) => throw new InvalidOperationException("No preview expected");
         public Task OpenAsync(string path, CancellationToken ct = default) => throw new InvalidOperationException("No folder expected");
     }
 }

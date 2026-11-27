@@ -1,38 +1,13 @@
-﻿# Project Map
+# Карта проекта
 
-Status: active
-Last updated: 2026-04-05
+Сверено 2026-11-27. Подробные сценарии — [CURRENT_CODE](../analysis/CURRENT_CODE.md), принятые зависимости — [отчёт реализации](../analysis/MODULAR_MONOLITH_IMPLEMENTED_2026-11-27.md).
 
-## Source modules
+- [App](../../src/NiTorrent.App): точка входа, host и выбор адаптера.
+- [Torrents](../../src/Modules/Torrents): Contracts, Domain, Application, Infrastructure и Engines/MonoTorrent.
+- [Desktop](../../src/Modules/Desktop): Contracts, Presentation и WinUI.
+- [Updates](../../src/Modules/Updates): Contracts и Windows.
+- [tests](../../tests): все пять тестовых проектов. Lifecycle и Architecture — активные; остальные три используют прежнюю модель и не активированы.
+- [tools/startup-baseline](../../tools/startup-baseline): изолированные инструменты замеров.
+- [NiTorrent.slnx](../../NiTorrent.slnx): фактический состав решения; тип Project отличается от File.
 
-### `src/NiTorrent.Domain`
-- domain entities, intent/deferred model, state/policy rules.
-
-### `src/NiTorrent.Application`
-- use cases, workflows, contracts/ports, read/write orchestration.
-
-### `src/NiTorrent.Infrastructure`
-- MonoTorrent adapters, persistence stores, runtime integration, background coordination.
-
-### `src/NiTorrent.Presentation`
-- view models and presentation logic consuming application contracts.
-
-### `src/NiTorrent.App`
-- shell/app lifecycle wiring, pages, UI services, platform integrations.
-
-## Documentation modules
-
-### Active architecture set
-- `README_ARCHITECTURE.md` (entry point)
-- `USER_APP_LOGIC.md`
-- `TARGET_ARCHITECTURE.md`
-- `APPLICATION_CONTRACTS.md`
-- `NFR_SLO.md`
-- `FAILURE_MATRIX.md`
-- `ANTI_PATTERNS.md`
-- `REGRESSION_CHECKLIST.md`
-- `OPEN_QUESTIONS.md`
-- `ADR/`
-
-### Historical docs
-- `archive/` (not source of truth).
+В `src` остались только NiTorrent.App и Modules. Старые каталоги слоёв после переноса удалены. Имена некоторых сборок и namespaces сохранены; владельца типа определять по csproj. Реестр документов — [DOCUMENTATION_STATUS](../DOCUMENTATION_STATUS.md).

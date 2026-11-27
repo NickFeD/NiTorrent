@@ -1,11 +1,7 @@
-# Tech Debt Backlog
+# Технические ограничения для последующих задач
 
-## TD-001. Reflection в per-torrent runtime settings adapter
-`TorrentEntrySettingsRuntimeApplier` использует best-effort reflective доступ к настройкам `TorrentManager`.
-Если MonoTorrent даст стабильный публичный API для этих настроек, reflection нужно удалить.
+Актуализировано 2026-11-27. Это указатель на наблюдения, а не утверждённый план следующей реализации.
 
-## TD-002. Единая нормализация пользовательских ошибок
-Сейчас основные torrent-scenarios уже нормализуют сообщения, но это правило нужно удерживать при новых экранах и интеграциях.
+Текущий список — [OBSERVATIONS](../analysis/OBSERVATIONS.md), продуктовые вопросы — [QUESTIONS](../analysis/QUESTIONS.md). Проверить при соответствующей задаче: конкурентный дубликат InfoHash, повтор metadata, ранний Size новой модели, ошибки записи/применения настроек, незавершённый details и восстановление через источник.
 
-## TD-003. Дальнейшая чистка комментариев и исторических docs
-Исторические phase/transition документы остаются как архив; source-of-truth — `USER_APP_LOGIC.md` и актуальные project-map docs.
+Второй движок, несколько окон, частоты обновления и смена формата хранения требуют отдельного объёма. Старый пункт про отсутствующий TorrentEntrySettingsRuntimeApplier не относится к текущему коду; прежний backlog сохранён в [архиве](archive/TECH_DEBT_BACKLOG.md).

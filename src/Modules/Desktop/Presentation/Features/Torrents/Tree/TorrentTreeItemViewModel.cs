@@ -29,7 +29,6 @@ public sealed partial class TorrentTreeItemViewModel : ObservableObject
     public string TypeGlyph => IsFolder ? "\uE8B7" : "\uE7C3";
     public long SelectedSize => _folder?.SelectedSize ?? (_file?.IsSelected == true ? _file.Size : 0);
     public string SizeText => IsPlaceholder ? "" : PreviewSizeFormatter.Format(SelectedSize);
-    public double SizeColumnWidth => _tree.SizeColumnWidth;
     public Uri IconUri => new($"ms-appx:///Assets/FileTypes/{GetIconName()}.svg");
 
     private string GetIconName()
@@ -203,41 +202,11 @@ public sealed partial class TorrentTreeItemViewModel : ObservableObject
                 Children.Add(CreateFile(_tree, f, this));
 
             _childrenLoaded = true;
-            SortLoadedChildren(_tree.SortBySize, _tree.SortDescending);
         }
         finally
         {
             _loadGate.Release();
         }
-    }
-
-    public void SortLoadedChildren(bool bySize, bool descending)
-    {
-        if (!_childrenLoaded) return;
-        SortItems(Children, bySize, descending);
-        foreach (var child in Children)
-            child.SortLoadedChildren(bySize, descending);
-    }
-
-    public void RefreshSizeColumnWidth()
-    {
-        OnPropertyChanged(nameof(SizeColumnWidth));
-        if (!_childrenLoaded) return;
-        foreach (var child in Children)
-            child.RefreshSizeColumnWidth();
-    }
-
-    public static void SortItems(TreeItemCollection items, bool bySize, bool descending)
-    {
-        var comparer = StringComparer.CurrentCultureIgnoreCase;
-        var sorted = bySize
-            ? (descending
-                ? items.OrderByDescending(x => x.IsFolder).ThenByDescending(x => x.SelectedSize).ThenBy(x => x.Name, comparer)
-                : items.OrderByDescending(x => x.IsFolder).ThenBy(x => x.SelectedSize).ThenBy(x => x.Name, comparer))
-            : (descending
-                ? items.OrderByDescending(x => x.IsFolder).ThenByDescending(x => x.Name, comparer)
-                : items.OrderByDescending(x => x.IsFolder).ThenBy(x => x.Name, comparer));
-        items.ApplyOrder(sorted.ToArray());
     }
 
     private void RaiseCheckStateChangedLoadedSubtree()

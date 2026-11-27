@@ -216,9 +216,7 @@ public partial class TorrentViewModel(
 
     private async Task PreviewTorrent(TorrentSource torrentSource, CancellationToken ct)
     {
-        var previewTorrent = await _torrentsModule.PreviewAsync(torrentSource, ct);
-
-        var previewDialogResult = await _torrentPreview.ShowAsync(previewTorrent, ct);
+        var previewDialogResult = await _torrentPreview.ShowAsync(torrentSource, ct);
 
         if (previewDialogResult is null)
             return;
@@ -248,16 +246,16 @@ public partial class TorrentViewModel(
         }
     }
 
-    public Task AddMagnet(string magnet, CancellationToken ct)
+    public async Task AddMagnet(string magnet, CancellationToken ct)
     {
         try
         {
-            return PreviewTorrent(new Magnet(magnet), ct);
+            await PreviewTorrent(new Magnet(magnet), ct);
         }
         catch (Exception ex)
         {
             StatusText = "Не удалось добавить magnet-ссылку";
-            return _dialogs.ShowTextAsync("Ошибка добавления", UserErrorMapper.ToMessage(ex, "Не удалось добавить торрент."));
+            await _dialogs.ShowTextAsync("Ошибка добавления", UserErrorMapper.ToMessage(ex, "Не удалось добавить торрент."));
         }
     }
 

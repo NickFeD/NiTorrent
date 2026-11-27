@@ -1,4 +1,7 @@
-﻿# ADR Index
+# ADR Index
+
+<!-- documentation-status-2026-11-27 -->
+> ADR сохраняют исходные решения и даты; Accepted не означает, что текущая реализация полностью соответствует записи. Текущая архитектура — [отчёт](../../analysis/MODULAR_MONOLITH_IMPLEMENTED_2026-11-27.md), известные расхождения — [наблюдения](../../analysis/OBSERVATIONS.md). Новых ADR в этой актуализации не принималось.
 
 Status: active
 Last updated: 2026-04-06

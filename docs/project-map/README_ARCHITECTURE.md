@@ -1,60 +1,20 @@
-﻿# Architecture Entry Point
+# Документация архитектуры
 
-Status: active
-Last updated: 2026-04-05
+Актуализировано 2026-11-27. Этот каталог содержит текущие указатели и прежние решения; архитектура описывается по текущему рабочему дереву.
 
-This is the single entry point for architecture and product-behavior documentation in `docs/project-map`.
+Начинать с [контекста проекта](../analysis/README.md), [карты кода](../analysis/CURRENT_CODE.md) и [отчёта модульного монолита](../analysis/MODULAR_MONOLITH_IMPLEMENTED_2026-11-27.md). Согласованный объём и ответы владельца — в [ТЗ](../analysis/MODULAR_MONOLITH_REQUIREMENTS.md).
 
-## 1. Read in this order
+| Документ | Назначение |
+| --- | --- |
+| [PROJECT_MAP](PROJECT_MAP.md) | Расположение модулей и тестов |
+| [TARGET_ARCHITECTURE](TARGET_ARCHITECTURE.md) | Принятый первый этап и допустимое направление развития |
+| [APPLICATION_CONTRACTS](APPLICATION_CONTRACTS.md) | Фактический внешний интерфейс Torrents |
+| [CURRENT_ARCHITECTURE_STATE](CURRENT_ARCHITECTURE_STATE.md) | Указатель на состояние реализации и проверки |
+| [NUGET_PACKAGES_MAP](NUGET_PACKAGES_MAP.md) | Прямые PackageReference из текущих csproj |
+| [REGRESSION_CHECKLIST](REGRESSION_CHECKLIST.md) | Проверки будущих изменений |
+| [FAILURE_MATRIX](FAILURE_MATRIX.md), [NFR_SLO](NFR_SLO.md) | Текущее поведение и отдельно обозначенные ограничения |
+| [OPEN_QUESTIONS](OPEN_QUESTIONS.md), [TECH_DEBT_BACKLOG](TECH_DEBT_BACKLOG.md) | Указатели на открытые вопросы и наблюдения |
+| [USER_APP_LOGIC](USER_APP_LOGIC.md), [ADR](ADR/README.md) | Прежние продуктовые требования/решения, не доказательство реализации |
+| [archive](archive) | История; записи active/closed внутри снимков относятся к их дате |
 
-1. `USER_APP_LOGIC.md`
-- Product behavior from the user perspective.
-
-2. `TARGET_ARCHITECTURE.md`
-- Target architecture, boundaries, canonical flows, governance rules.
-
-3. `APPLICATION_CONTRACTS.md`
-- Application-layer contracts and guarantees.
-
-4. `NFR_SLO.md`
-- Non-functional expectations and reliability/responsiveness objectives.
-
-5. `FAILURE_MATRIX.md`
-- Expected behavior for known failure modes.
-
-6. `ANTI_PATTERNS.md`
-- Architectural guardrails (what must not be done).
-
-7. `REGRESSION_CHECKLIST.md`
-- Practical verification list after changes.
-
-8. `OPEN_QUESTIONS.md`
-- Ambiguities and pending clarifications. Do not implement speculative behavior.
-
-9. `CURRENT_ARCHITECTURE_STATE.md`
-- Snapshot of current implementation alignment.
-
-10. `TECH_DEBT_BACKLOG.md`
-- Deferred engineering cleanup and technical debt.
-
-## 2. Decision records
-
-- See `ADR/README.md` and accepted ADR files for fixed architectural decisions.
-
-## 3. Reference docs
-
-- `PROJECT_MAP.md` — codebase module map.
-- `NUGET_PACKAGES_MAP.md` — dependency/reference map.
-- `ONBOARDING.md` — quick onboarding checklist.
-
-## 4. Archive policy
-
-- Historical plans, closed transition reports, and old phase notes belong in `docs/project-map/archive/`.
-- Files in `archive/` are not a source of truth for current implementation decisions.
-
-## 5. Rule for ambiguity
-
-If any requirement can be interpreted in more than one valid way:
-1. record it in `OPEN_QUESTIONS.md`;
-2. do not ship assumption-based behavior;
-3. apply only approved behavior and update related docs in the same change set.
+Раньше текущими здесь назывались TorrentEntry, intent/deferred workflows и ITorrentWorkflowService. Эти документы больше не используются как карта существующего кода. Они сохранены в архиве, чтобы не переписывать прошлые решения задним числом. Реальное расхождение требований и реализации фиксируется в [OBSERVATIONS](../analysis/OBSERVATIONS.md), а не исправляется молча.

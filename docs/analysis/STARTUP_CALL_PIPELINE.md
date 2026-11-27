@@ -1,5 +1,8 @@
 # Порядок вызовов запуска NiTorrent
 
+<!-- documentation-status-2026-11-27 -->
+> Датированный отчёт/исследование предыдущего этапа. Наблюдения, команды и ограничения ниже относятся к его дате. Текущая карта, подписки и тесты — [в отчёте модульного монолита](MODULAR_MONOLITH_IMPLEMENTED_2026-11-27.md); рабочие инструкции — [в README](README.md).
+
 Исторический снимок до переработки. После реализации первого этапа актуальный порядок находится в [RUNTIME_LIFECYCLE_IMPLEMENTED.md](RUNTIME_LIFECYCLE_IMPLEMENTED.md). Удалённые исходники прежнего lifecycle доступны в коммите `265f29b`.
 
 Состояние кода на 24 ноября 2026 года, коммит `265f29b`. Это текущий порядок для обсуждения перестановок. Изменений логики приложения по этой схеме ещё нет.
@@ -245,7 +248,7 @@ ShutdownAsync, защита от повторного входа
 ## Исходники
 
 - [Program](../../src/NiTorrent.App/Program.cs), [App](../../src/NiTorrent.App/App.xaml.cs), [App.xaml](../../src/NiTorrent.App/App.xaml).
-- [NiTorrentApplication](../../src/NiTorrent.App/Services/AppLifecycle/NiTorrentApplication.cs), [AppHostLifecycleService](../../src/NiTorrent.App/Services/AppLifecycle/AppHostLifecycleService.cs), [координатор](../../src/NiTorrent.Application/AppLifecycleCoordinator.cs).
-- [MainWindowLifecycle](../../src/NiTorrent.App/Services/AppLifecycle/MainWindowLifecycle.cs), [MainWindow](../../src/NiTorrent.App/MainWindow.xaml.cs), [TorrentPage](../../src/NiTorrent.App/Views/Torrents/TorrentPage.xaml.cs), [TorrentViewModel](../../src/NiTorrent.Presentation/Features/Torrents/TorrentViewModel.cs).
-- [RestoreSessionUseCase](../../src/NiTorrent.Application/Torrents/UseCase/RestoreSessionUseCase.cs), [TorrentEngineLifecycle](../../src/NiTorrent.Infrastructure/Torrents/TorrentEngineLifecycle.cs), [EngineSettingsService](../../src/NiTorrent.Infrastructure/Settings/EngineSettingsService.cs), [TorrentEngineCoordinator](../../src/NiTorrent.Infrastructure/Torrents/TorrentEngineCoordinator.cs).
-- [DI Infrastructure](../../src/NiTorrent.Infrastructure/DI/DependencyInjection.cs), [источник статусов](../../src/NiTorrent.Infrastructure/Torrents/InMemoryTorrentRuntimeStateSource.cs), [очередь активаций](../../src/NiTorrent.App/Services/AppLifecycle/ActivationQueue.cs).
+- [NiTorrentApplication](../../src/NiTorrent.App/Services/AppLifecycle/NiTorrentApplication.cs), `AppHostLifecycleService` (исторический путь: `../../src/NiTorrent.App/Services/AppLifecycle/AppHostLifecycleService.cs`), `координатор` (исторический путь: `../../src/NiTorrent.Application/AppLifecycleCoordinator.cs`).
+- [MainWindowLifecycle](../../src/Modules/Desktop/WinUI/Services/AppLifecycle/MainWindowLifecycle.cs), [MainWindow](../../src/Modules/Desktop/WinUI/MainWindow.xaml.cs), [TorrentPage](../../src/Modules/Desktop/WinUI/Views/Torrents/TorrentPage.xaml.cs), [TorrentViewModel](../../src/Modules/Desktop/Presentation/Features/Torrents/TorrentViewModel.cs).
+- [RestoreSessionUseCase](../../src/Modules/Torrents/Application/Torrents/UseCase/RestoreSessionUseCase.cs), [TorrentEngineLifecycle](../../src/Modules/Torrents/Engines/MonoTorrent/TorrentEngineLifecycle.cs), [EngineSettingsService](../../src/Modules/Torrents/Engines/MonoTorrent/EngineSettingsService.cs), [TorrentEngineCoordinator](../../src/Modules/Torrents/Engines/MonoTorrent/TorrentEngineCoordinator.cs).
+- [DI Infrastructure](../../src/Modules/Torrents/Infrastructure/DI/DependencyInjection.cs), [источник статусов](../../src/Modules/Torrents/Infrastructure/Torrents/InMemoryTorrentRuntimeStateSource.cs), [очередь активаций](../../src/Modules/Desktop/WinUI/Services/AppLifecycle/ActivationQueue.cs).
